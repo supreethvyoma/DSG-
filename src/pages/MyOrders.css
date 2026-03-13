@@ -1,0 +1,85 @@
+.my-orders-page {
+  padding: 20px;
+  background: var(--site-bg);
+  min-height: 100vh;
+}
+
+.my-orders-page h1 {
+  margin: 0 0 16px;
+  color: var(--site-text);
+  font-size: 28px;
+}
+
+.my-orders-empty {
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: 8px;
+  padding: 14px;
+  color: var(--site-text-soft);
+  box-shadow: var(--site-card-shadow);
+}
+
+.my-order-card {
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+  box-shadow: var(--site-card-shadow);
+}
+
+.my-order-card p {
+  margin: 6px 0;
+}
+
+.my-order-status {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.my-order-items{
+margin-top:8px;
+border-top:1px solid var(--site-border);
+padding-top:8px;
+}
+
+.my-order-item{
+font-size:14px;
+color:var(--site-text);
+margin-top:4px;
+}
+
+.my-order-invoice-btn{
+  margin-top:12px;
+  border:1px solid var(--site-border);
+  background:var(--site-surface);
+  color:var(--site-text);
+  border-radius:8px;
+  padding:8px 12px;
+  font-size:13px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.my-order-invoice-btn:hover{
+  border-color:var(--site-link);
+  color:var(--site-link);
+}
+
+.my-order-invoice-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+  border-color:#d5d9d9;
+  color:var(--site-text-soft);
+}
+
+.my-order-invoice-note{
+  margin:8px 0 0;
+  font-size:12px;
+  color:var(--site-text-soft);
+}

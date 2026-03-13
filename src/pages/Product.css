@@ -1,0 +1,291 @@
+.product-container{
+display:grid;
+grid-template-columns:1fr 1.5fr 1fr;
+gap:40px;
+padding:40px;
+background:var(--site-surface);
+border:1px solid var(--site-border);
+border-radius:8px;
+margin:16px;
+box-shadow:var(--site-card-shadow);
+}
+
+.product-main-image{
+width:100%;
+border-radius:8px;
+}
+
+.product-title{
+font-size:28px;
+font-weight:600;
+}
+
+.product-center .price{
+font-size:24px;
+color:var(--site-link);
+margin:10px 0;
+}
+
+.rating{
+color:var(--site-badge-bg);
+margin-bottom:10px;
+}
+
+.stock{
+margin-bottom:10px;
+}
+
+.in-stock{
+color:#15803d;
+}
+
+.out-stock{
+color:#dc2626;
+}
+
+.description{
+line-height:1.6;
+}
+
+.buy-box{
+border:1px solid var(--site-border);
+padding:20px;
+border-radius:8px;
+height:fit-content;
+background:var(--site-surface);
+}
+
+.buy-price{
+font-size:22px;
+font-weight:bold;
+}
+
+.delivery{
+color:#15803d;
+margin:10px 0;
+}
+
+.add-cart-btn{
+width:100%;
+padding:12px;
+background:var(--site-badge-bg);
+border:1px solid var(--site-button-hover);
+border-radius:20px;
+cursor:pointer;
+font-weight:600;
+color:var(--site-badge-text);
+}
+
+.add-cart-btn:hover{
+background:var(--site-button-bg);
+}
+
+.buy-now-btn{
+width:100%;
+padding:12px;
+margin-top:10px;
+background:var(--site-button-bg);
+border:1px solid var(--site-button-hover);
+border-radius:20px;
+cursor:pointer;
+font-weight:600;
+color:var(--site-button-text);
+}
+
+.buy-now-btn:hover{
+background:var(--site-button-hover);
+}
+
+.buy-now-btn:disabled,
+.add-cart-btn:disabled{
+cursor:not-allowed;
+opacity:0.7;
+}
+
+.reviews-section{
+padding:40px;
+background:var(--site-surface);
+border:1px solid var(--site-border);
+border-radius:8px;
+margin:16px;
+box-shadow:var(--site-card-shadow);
+}
+
+.review-card{
+border:1px solid var(--site-border);
+padding:10px;
+border-radius:6px;
+margin-top:10px;
+background:var(--site-surface-muted);
+}
+
+.review-form{
+margin-top:20px;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.review-form textarea,
+.review-form select{
+padding:8px;
+border:1px solid var(--site-border);
+border-radius:4px;
+background:var(--site-surface);
+color:var(--site-text);
+}
+
+.related-section{
+padding:40px;
+background:var(--site-surface);
+border:1px solid var(--site-border);
+border-radius:8px;
+margin:16px;
+color:var(--site-text);
+box-shadow:var(--site-card-shadow);
+}
+
+.related-section h3{
+margin:0;
+color:var(--site-text);
+}
+
+.related-products{
+display:flex;
+gap:20px;
+margin-top:20px;
+overflow-x:auto;
+padding-bottom:10px;
+scroll-behavior:smooth;
+}
+.related-products::-webkit-scrollbar{
+height:6px;
+}
+
+.related-products::-webkit-scrollbar-thumb{
+background:var(--site-border);
+border-radius:10px;
+}
+
+.related-card{
+min-width:200px;
+flex:0 0 200px;
+border:1px solid var(--site-border);
+padding:10px;
+border-radius:6px;
+transition:0.2s;
+background:var(--site-surface);
+color:var(--site-text);
+}
+
+.related-card:hover{
+transform:scale(1.05);
+box-shadow:0 5px 12px rgba(0,0,0,0.1);
+}
+
+.related-card img{
+width:100%;
+}
+
+.related-card h4{
+margin:10px 0 6px;
+color:var(--site-text);
+font-size:15px;
+line-height:1.35;
+}
+
+.related-card p{
+margin:0;
+color:var(--site-link);
+font-weight:700;
+}
+
+.view-btn{
+margin-top:6px;
+padding:6px 10px;
+border:1px solid var(--site-border);
+background:var(--site-surface);
+color:var(--site-text);
+cursor:pointer;
+border-radius:18px;
+}
+
+.view-btn:hover{
+background:var(--site-surface-muted);
+}
+
+.related-empty{
+margin:8px 0;
+color:var(--site-text-soft);
+}
+
+@media(max-width:900px){
+.product-container{
+grid-template-columns:1fr;
+}
+}
+.image-gallery{
+display:flex;
+gap:15px;
+}
+
+.thumbnail-column{
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.thumbnail{
+width:60px;
+height:60px;
+object-fit:cover;
+cursor:pointer;
+border:1px solid var(--site-border);
+padding:4px;
+border-radius:4px;
+background:var(--site-surface);
+}
+
+.thumbnail:hover{
+border:2px solid var(--site-badge-bg);
+}
+
+.main-image-container{
+width:100%;
+overflow:hidden;
+border-radius:8px;
+}
+
+.product-main-image{
+width:100%;
+border-radius:8px;
+transition:transform 0.3s ease;
+}
+
+.product-main-image:hover{
+transform:scale(1.15);
+cursor:zoom-in;
+}
+
+.qty-box{
+display:flex;
+align-items:center;
+gap:10px;
+margin-bottom:15px;
+}
+
+.qty-btn{
+width:30px;
+height:30px;
+border:1px solid var(--site-border);
+background:var(--site-surface);
+cursor:pointer;
+font-size:18px;
+color:var(--site-text);
+}
+
+.qty-number{
+font-weight:bold;
+min-width:20px;
+text-align:center;
+}
