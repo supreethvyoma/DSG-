@@ -28,10 +28,96 @@ const REGION_TO_CURRENCY = {
   BE: "EUR"
 };
 
+const COUNTRY_NAME_TO_REGION = {
+  india: "IN",
+  usa: "US",
+  "united states": "US",
+  "united states of america": "US",
+  uk: "GB",
+  "united kingdom": "GB",
+  england: "GB",
+  scotland: "GB",
+  wales: "GB",
+  canada: "CA",
+  australia: "AU",
+  "new zealand": "NZ",
+  japan: "JP",
+  china: "CN",
+  singapore: "SG",
+  "united arab emirates": "AE",
+  uae: "AE",
+  "saudi arabia": "SA",
+  qatar: "QA",
+  kuwait: "KW",
+  oman: "OM",
+  bahrain: "BH",
+  pakistan: "PK",
+  bangladesh: "BD",
+  nepal: "NP",
+  "sri lanka": "LK",
+  germany: "DE",
+  france: "FR",
+  italy: "IT",
+  spain: "ES",
+  netherlands: "NL",
+  ireland: "IE",
+  portugal: "PT",
+  belgium: "BE"
+};
+
+const CURRENCY_TO_LOCALE = {
+  INR: "en-IN",
+  USD: "en-US",
+  GBP: "en-GB",
+  CAD: "en-CA",
+  AUD: "en-AU",
+  NZD: "en-NZ",
+  JPY: "ja-JP",
+  CNY: "zh-CN",
+  SGD: "en-SG",
+  AED: "en-AE",
+  SAR: "ar-SA",
+  QAR: "ar-QA",
+  KWD: "ar-KW",
+  OMR: "ar-OM",
+  BHD: "ar-BH",
+  PKR: "en-PK",
+  BDT: "bn-BD",
+  NPR: "ne-NP",
+  LKR: "en-LK",
+  EUR: "de-DE"
+};
+
+const BASE_CURRENCY = "INR";
+
+const CURRENCY_EXCHANGE_RATES = {
+  INR: 1,
+  USD: 0.012,
+  GBP: 0.009,
+  CAD: 0.016,
+  AUD: 0.019,
+  NZD: 0.021,
+  JPY: 1.71,
+  CNY: 0.087,
+  SGD: 0.016,
+  AED: 0.044,
+  SAR: 0.045,
+  QAR: 0.044,
+  KWD: 0.0037,
+  OMR: 0.0046,
+  BHD: 0.0045,
+  PKR: 3.34,
+  BDT: 1.46,
+  NPR: 1.6,
+  LKR: 3.61,
+  EUR: 0.011
+};
+
 const STORAGE_KEYS = {
   preferredCurrency: "preferredCurrency",
   geoCountry: "geoCountry",
-  geoPrompted: "currencyGeoPermissionPrompted"
+  geoPrompted: "currencyGeoPermissionPrompted",
+  deliveryCountry: "selectedDeliveryCountry"
 };
 
 function getBrowserLocale() {
@@ -58,6 +144,18 @@ function getBrowserTimeZone() {
 function getRegionFromLocale(locale) {
   const match = String(locale || "").match(/-([A-Za-z]{2})$/);
   return match ? match[1].toUpperCase() : "";
+}
+
+function normalizeCountryRegion(country) {
+  const value = String(country || "").trim();
+  if (!value) return "";
+
+  const upper = value.toUpperCase();
+  if (REGION_TO_CURRENCY[upper]) {
+    return upper;
+  }
+
+  return COUNTRY_NAME_TO_REGION[value.toLowerCase()] || "";
 }
 
 function isIndiaTimeZone(timeZone) {
@@ -105,6 +203,12 @@ export function requestLocationPermissionForCurrency() {
 
 export function getUserCurrency() {
   if (typeof localStorage !== "undefined") {
+    const deliveryCountry = localStorage.getItem(STORAGE_KEYS.deliveryCountry);
+    const deliveryRegion = normalizeCountryRegion(deliveryCountry);
+    if (deliveryRegion && REGION_TO_CURRENCY[deliveryRegion]) {
+      return REGION_TO_CURRENCY[deliveryRegion];
+    }
+
     const saved = localStorage.getItem(STORAGE_KEYS.preferredCurrency);
     if (saved) return saved;
 
@@ -124,21 +228,41 @@ export function getUserCurrency() {
   return REGION_TO_CURRENCY[region] || "USD";
 }
 
-export function formatCurrencyForUser(value, options = {}) {
+export function convertCurrencyAmount(value, options = {}) {
   const amount = Number(value || 0);
+  const sourceCurrency = String(options.sourceCurrency || BASE_CURRENCY).toUpperCase();
+  const targetCurrency = String(options.currency || getUserCurrency()).toUpperCase();
+
+  if (!Number.isFinite(amount)) return 0;
+  if (sourceCurrency === targetCurrency) return amount;
+
+  const sourceRate = CURRENCY_EXCHANGE_RATES[sourceCurrency];
+  const targetRate = CURRENCY_EXCHANGE_RATES[targetCurrency];
+  if (!sourceRate || !targetRate) return amount;
+
+  const inBaseCurrency = sourceCurrency === BASE_CURRENCY ? amount : amount / sourceRate;
+  return inBaseCurrency * targetRate;
+}
+
+export function formatCurrencyForUser(value, options = {}) {
   const currency = options.currency || getUserCurrency();
+  const amount = convertCurrencyAmount(value, {
+    sourceCurrency: options.sourceCurrency || BASE_CURRENCY,
+    currency
+  });
   const browserLocale = getBrowserLocale();
   const locale =
     options.locale ||
-    (currency === "INR" && !String(browserLocale).toUpperCase().includes("-IN")
-      ? "en-IN"
-      : browserLocale);
+    CURRENCY_TO_LOCALE[currency] ||
+    (currency === "INR" && !String(browserLocale).toUpperCase().includes("-IN") ? "en-IN" : browserLocale);
+  const maximumFractionDigits = options.maximumFractionDigits ?? 2;
+  const minimumFractionDigits = options.minimumFractionDigits ?? Math.min(2, maximumFractionDigits);
 
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits,
+    maximumFractionDigits
   }).format(amount);
 }
 

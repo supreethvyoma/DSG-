@@ -42,6 +42,28 @@ const normalizeAboutProduct = (rawAboutProduct = []) => {
     .filter(Boolean);
 };
 
+const getCategoryLabel = (product) => {
+  const raw = String(product?.category || "").trim();
+
+  if (raw && raw.toLowerCase() !== "general") {
+    return raw;
+  }
+
+  const name = String(product?.name || "").toLowerCase();
+  if (name.includes("gita")) return "Gita";
+  if (name.includes("grammar")) return "Grammar";
+  if (name.includes("vedanta")) return "Vedanta";
+  if (name.includes("chant")) return "Chanting";
+  return "General";
+};
+
+const getAverageRating = (product) => {
+  const reviews = Array.isArray(product?.reviews) ? product.reviews : [];
+  if (reviews.length === 0) return Number(product?.rating || 0);
+
+  return reviews.reduce((sum, review) => sum + Number(review?.rating || 0), 0) / reviews.length;
+};
+
 // Create product (ADMIN)
 router.post("/", protect, admin, async (req, res) => {
   try {
@@ -90,8 +112,79 @@ router.put("/:id", protect, admin, async (req, res) => {
 // Get all products
 router.get("/", async (req, res) => {
   try {
-    const products = await Product.find();
-    res.json(products);
+    const hasPaginationQuery =
+      req.query.page !== undefined ||
+      req.query.limit !== undefined ||
+      req.query.sort !== undefined ||
+      req.query.category !== undefined;
+
+    if (!hasPaginationQuery) {
+      const products = await Product.find();
+      return res.json(products);
+    }
+
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, Math.min(48, Number.parseInt(req.query.limit, 10) || 8));
+    const sortOption = String(req.query.sort || "featured").trim();
+    const selectedCategory = String(req.query.category || "All").trim();
+
+    const products = await Product.find().lean();
+    const baseProducts = products;
+
+    const categories = ["All", ...new Set(baseProducts.map((product) => getCategoryLabel(product)))];
+    const categoryCounts = { All: baseProducts.length };
+    categories.forEach((category) => {
+      if (category === "All") return;
+      categoryCounts[category] = baseProducts.filter(
+        (product) => getCategoryLabel(product).toLowerCase() === category.toLowerCase()
+      ).length;
+    });
+
+    const filteredProducts = baseProducts.filter((product) => {
+      if (selectedCategory === "All") return true;
+      return getCategoryLabel(product).toLowerCase() === selectedCategory.toLowerCase();
+    });
+
+    filteredProducts.sort((a, b) => {
+      if (sortOption === "priceLow") {
+        return Number(a?.price || 0) - Number(b?.price || 0);
+      }
+
+      if (sortOption === "priceHigh") {
+        return Number(b?.price || 0) - Number(a?.price || 0);
+      }
+
+      if (sortOption === "rating") {
+        return getAverageRating(b) - getAverageRating(a);
+      }
+
+      if (sortOption === "latest") {
+        return new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime();
+      }
+
+      if (sortOption === "name") {
+        return String(a?.name || "").localeCompare(String(b?.name || ""));
+      }
+
+      const stockDelta = Number(b?.stock || 0) - Number(a?.stock || 0);
+      if (stockDelta !== 0) return stockDelta;
+      return getAverageRating(b) - getAverageRating(a);
+    });
+
+    const total = filteredProducts.length;
+    const startIndex = (page - 1) * limit;
+    const items = filteredProducts.slice(startIndex, startIndex + limit);
+
+    return res.json({
+      items,
+      page,
+      limit,
+      total,
+      totalBase: baseProducts.length,
+      hasMore: startIndex + items.length < total,
+      categories,
+      categoryCounts
+    });
   } catch (error) {
     res.status(500).json({ message: "Failed to load products", error: error.message });
   }

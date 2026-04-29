@@ -137,7 +137,8 @@ function normalizeSettings(settings) {
     distancePricing: normalizeDistancePricing(settings?.distancePricing || {}, settings?.deliveryCharge || 0),
     siteTheme: String(settings?.siteTheme || DEFAULT_THEME),
     customThemes: normalizeCustomThemes(settings?.customThemes || []),
-    productCategories: normalizeProductCategories(settings?.productCategories || [])
+    productCategories: normalizeProductCategories(settings?.productCategories || []),
+    heroBannerImage: String(settings?.heroBannerImage || "").trim()
   };
 }
 
@@ -163,6 +164,7 @@ router.put("/", protect, admin, async (req, res) => {
   const hasProductCategories = Array.isArray(req.body?.productCategories);
   const hasWarehouseLocation = Boolean(req.body?.warehouseLocation && typeof req.body.warehouseLocation === "object");
   const hasDistancePricing = Boolean(req.body?.distancePricing && typeof req.body.distancePricing === "object");
+  const hasHeroBannerImage = typeof req.body?.heroBannerImage === "string";
 
   const gstPercent = Number.isNaN(rawGst) ? 0 : Math.min(50, Math.max(0, rawGst));
   const deliveryCharge = Number.isNaN(rawDelivery) ? 0 : Math.max(0, rawDelivery);
@@ -192,6 +194,9 @@ router.put("/", protect, admin, async (req, res) => {
   settings.distancePricing = distancePricing;
   settings.customThemes = customThemes;
   settings.productCategories = productCategories;
+  settings.heroBannerImage = hasHeroBannerImage
+    ? String(req.body?.heroBannerImage || "").trim()
+    : String(settings.heroBannerImage || "").trim();
   settings.siteTheme = hasSiteTheme && allowedThemeIds.has(rawTheme)
     ? rawTheme
     : allowedThemeIds.has(settings.siteTheme)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
@@ -130,9 +130,10 @@ function MyAccount() {
   const saveAddress = () => {
     const cleanPhone = String(phone || "").replace(/\D/g, "");
     const cleanPincode = String(pincode || "").trim();
+    const cleanCountry = String(country || "").trim();
 
-    if (!name || !cleanPhone || !address || !city || !state || !cleanPincode) {
-      alert("Please fill full name, phone, address, city, state, and pincode.");
+    if (!name || !cleanPhone || !address || !city || !state || !cleanPincode || !cleanCountry) {
+      alert("Please fill full name, phone, address, city, state, postal code, and country.");
       return;
     }
 
@@ -141,8 +142,8 @@ function MyAccount() {
       return;
     }
 
-    if (!/^\d{6}$/.test(cleanPincode)) {
-      alert("Enter a valid 6-digit pincode.");
+    if (!/^[A-Za-z0-9\s-]{3,12}$/.test(cleanPincode)) {
+      alert("Enter a valid postal code.");
       return;
     }
 
@@ -155,7 +156,7 @@ function MyAccount() {
       city,
       state,
       pincode: cleanPincode,
-      country,
+      country: cleanCountry,
       isDefault: editingIndex === null ? addresses.length === 0 : addresses[editingIndex]?.isDefault
     };
 
@@ -216,7 +217,7 @@ function MyAccount() {
             <>
               <strong>{formatDate(orderSummary.latestOrder.createdAt)}</strong>
               <p>
-                {orderSummary.latestOrder.status || "Pending"} �{" "}
+                {orderSummary.latestOrder.status || "Pending"} •{" "}
                 {formatCurrencyForUser(orderSummary.latestOrder.total)}
               </p>
               <Link to="/my-orders" className="my-account-pill-link">
@@ -410,12 +411,12 @@ function MyAccount() {
               <input value={state} onChange={(e) => setState(e.target.value)} placeholder="e.g. Uttar Pradesh" />
             </label>
             <label>
-              <span>Pincode</span>
-              <input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="e.g. 110001" />
+              <span>Postal Code</span>
+              <input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="e.g. 110001 or SW1A 1AA" />
             </label>
             <label>
               <span>Country</span>
-              <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. India" />
+              <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. India, USA, UK" />
             </label>
 
             <div className="my-account-address-form-actions">
@@ -498,4 +499,5 @@ function MyAccount() {
 }
 
 export default MyAccount;
+
 

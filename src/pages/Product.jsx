@@ -252,8 +252,7 @@ function Product() {
           <hr />
           <div className="price-block">
             <p className="price">
-              <span className="price-symbol">₹</span>
-              <strong>{Number(product.price || 0).toLocaleString("en-IN")}</strong>
+              <strong>{formatCurrencyForUser(product.price)}</strong>
             </p>
             <p className="price-meta">
               M.R.P.: <span>{formatCurrencyForUser(listPrice)}</span> ({discountPercent}% off)

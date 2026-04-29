@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 
 const DeliveryLocationContext = createContext(null);
 const STORAGE_KEY = "addresses";
+const SELECTED_DELIVERY_COUNTRY_KEY = "selectedDeliveryCountry";
 
 function normalizeStoredAddress(item) {
   return {
@@ -36,6 +37,18 @@ function readStoredAddresses() {
   } catch {
     return [];
   }
+}
+
+function syncSelectedDeliveryCountry(address) {
+  if (typeof localStorage === "undefined") return;
+
+  const country = String(address?.country || "").trim();
+  if (country) {
+    localStorage.setItem(SELECTED_DELIVERY_COUNTRY_KEY, country);
+    return;
+  }
+
+  localStorage.removeItem(SELECTED_DELIVERY_COUNTRY_KEY);
 }
 
 export function DeliveryLocationProvider({ children }) {
@@ -156,6 +169,7 @@ export function DeliveryLocationProvider({ children }) {
 
     setAddresses(nextAddresses);
     setSelectedIndex(nextAddresses.length - 1);
+    syncSelectedDeliveryCountry(nextAddress);
     void persistAddresses(nextAddresses);
   };
 
@@ -170,12 +184,12 @@ export function DeliveryLocationProvider({ children }) {
         isDefault: payload?.isDefault ?? existing.isDefault
       });
 
-      return current.map((item, itemIndex) => {
+      const next = current.map((item, itemIndex) => {
         if (itemIndex === index) return nextAddress;
         if (nextAddress.isDefault) return { ...item, isDefault: false };
         return item;
       });
-
+      syncSelectedDeliveryCountry((selectedIndex === index ? nextAddress : next[selectedIndex]) || null);
       void persistAddresses(next);
       return next;
     });
@@ -188,6 +202,9 @@ export function DeliveryLocationProvider({ children }) {
       if (next.length > 0 && !next.some((item) => item.isDefault)) {
         next[0] = { ...next[0], isDefault: true };
       }
+      const nextSelectedIndex =
+        selectedIndex === null ? null : selectedIndex === index ? 0 : selectedIndex > index ? selectedIndex - 1 : selectedIndex;
+      syncSelectedDeliveryCountry(nextSelectedIndex === null ? null : next[nextSelectedIndex] || null);
       void persistAddresses(next);
       return next;
     });
@@ -202,6 +219,7 @@ export function DeliveryLocationProvider({ children }) {
 
   const selectAddress = (index) => {
     setSelectedIndex(index);
+    syncSelectedDeliveryCountry(addresses[index] || null);
   };
 
   const setDefaultAddress = (index) => {
@@ -210,6 +228,7 @@ export function DeliveryLocationProvider({ children }) {
         ...item,
         isDefault: itemIndex === index
       }));
+      syncSelectedDeliveryCountry(next[index] || null);
       void persistAddresses(next);
       return next;
     });
@@ -219,6 +238,18 @@ export function DeliveryLocationProvider({ children }) {
   const selectedAddress = useMemo(() => {
     return selectedIndex === null ? null : addresses[selectedIndex] || null;
   }, [addresses, selectedIndex]);
+
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+
+    const country = String(selectedAddress?.country || "").trim();
+    if (country) {
+      localStorage.setItem(SELECTED_DELIVERY_COUNTRY_KEY, country);
+      return;
+    }
+
+    localStorage.removeItem(SELECTED_DELIVERY_COUNTRY_KEY);
+  }, [selectedAddress]);
 
   return (
     <DeliveryLocationContext.Provider

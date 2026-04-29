@@ -268,6 +268,13 @@ function Navbar() {
       </div> */}
 <div className="navbar-attached-bar">
         <div className="navbar-inner navbar-attached-bar-inner">
+          <Link
+            to="/collection"
+            className="navbar-ondemand-btn"
+            aria-label="Open all collection"
+          >
+            All Collection
+          </Link>
           <a
             href="http://localhost:5174/"
             className="navbar-ondemand-btn"

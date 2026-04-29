@@ -3,20 +3,9 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import ProductCard from "../components/ProductCard";
 import RecentlyViewed from "../components/RecentlyViewed";
+import { formatCurrencyForUser } from "../utils/currency";
 import "./Home.css";
 
-const PRODUCT_CATEGORY_FILTERS = [
-  "General",
-  "Dharma",
-  "Grammar",
-  "Scriptures",
-  "Gita",
-  "Chanting",
-  "Sanskrit",
-  "Books"
-];
-
-const CATEGORY_SELECTOR_OPTIONS = ["All", ...PRODUCT_CATEGORY_FILTERS];
 const CATALOG_PREVIEW_LIMIT = 12;
 
 function getCategoryLabel(product) {
@@ -41,19 +30,15 @@ function getAverageRating(product) {
 }
 
 function formatPrice(value) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
+  return formatCurrencyForUser(value, {
     maximumFractionDigits: 0
-  }).format(Number(value || 0));
+  });
 }
 
 function Home() {
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [productCategoryFilters, setProductCategoryFilters] = useState(PRODUCT_CATEGORY_FILTERS);
-  const [sortOption, setSortOption] = useState("default");
+  const [heroBannerImage, setHeroBannerImage] = useState("");
   const spotlightRef = useRef(null);
   const catalogRef = useRef(null);
   const topRatedSectionRef = useRef(null);
@@ -64,12 +49,11 @@ function Home() {
     axios
       .get("/api/settings")
       .then((res) => {
-        const nextCategories = Array.isArray(res.data?.productCategories) && res.data.productCategories.length > 0
-          ? res.data.productCategories
-          : PRODUCT_CATEGORY_FILTERS;
-        setProductCategoryFilters(nextCategories.filter((category) => String(category || "").trim()));
+        setHeroBannerImage(String(res.data?.heroBannerImage || "").trim());
       })
-      .catch(() => setProductCategoryFilters(PRODUCT_CATEGORY_FILTERS));
+      .catch(() => {
+        setHeroBannerImage("");
+      });
 
     setIsLoadingProducts(true);
     axios
@@ -78,64 +62,6 @@ function Home() {
       .catch(() => setProducts([]))
       .finally(() => setIsLoadingProducts(false));
   }, []);
-
-  const categories = CATEGORY_SELECTOR_OPTIONS;
-
-  const productCategoryOptions = useMemo(() => ["All", ...productCategoryFilters], [productCategoryFilters]);
-
-  const productCategoryCounts = useMemo(() => {
-    const counts = { All: products.length };
-
-    productCategoryFilters.forEach((category) => {
-      counts[category] = products.filter(
-        (product) => String(product?.category || "").trim().toLowerCase() === category.toLowerCase()
-      ).length;
-    });
-
-    return counts;
-  }, [productCategoryFilters, products]);
-
-  const stats = useMemo(() => {
-    const inStockCount = products.filter((product) => Number(product?.stock || 0) > 0).length;
-    const reviewCount = products.reduce(
-      (sum, product) => sum + (Array.isArray(product?.reviews) ? product.reviews.length : 0),
-      0
-    );
-
-    return {
-      totalProducts: products.length,
-      inStockCount,
-      categoryCount: Math.max(0, categories.length - 1),
-      reviewCount
-    };
-  }, [categories.length, products]);
-
-  const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      const category = getCategoryLabel(product).toLowerCase();
-
-      const matchesCategory =
-        selectedCategory === "All" || category === String(selectedCategory || "").trim().toLowerCase();
-
-      return matchesCategory;
-    });
-  }, [products, selectedCategory]);
-
-  const sortedProducts = useMemo(() => {
-    const nextProducts = [...filteredProducts];
-
-    if (sortOption === "priceLow") {
-      nextProducts.sort((a, b) => Number(a?.price || 0) - Number(b?.price || 0));
-    } else if (sortOption === "priceHigh") {
-      nextProducts.sort((a, b) => Number(b?.price || 0) - Number(a?.price || 0));
-    } else if (sortOption === "rating") {
-      nextProducts.sort((a, b) => getAverageRating(b) - getAverageRating(a));
-    } else if (sortOption === "latest") {
-      nextProducts.sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime());
-    }
-
-    return nextProducts;
-  }, [filteredProducts, sortOption]);
 
   const topRatedProducts = useMemo(() => {
     return [...products]
@@ -155,24 +81,16 @@ function Home() {
       .slice(0, 4);
   }, [products]);
 
-  const featuredProduct = topRatedProducts[0] || newArrivals[0] || null;
-  const catalogProducts = sortedProducts;
+  const featuredProduct = topRatedProducts[0] || newArrivals[0] || budgetPicks[0] || null;
+
+  const catalogProducts = products;
   const catalogPreviewProducts = useMemo(
     () => catalogProducts.slice(0, CATALOG_PREVIEW_LIMIT),
     [catalogProducts]
   );
 
-  const handleCategoryPick = (category) => {
-    setSelectedCategory(category);
-    catalogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const scrollSpotlight = (direction) => {
     spotlightRef.current?.scrollBy({ left: direction * 320, behavior: "smooth" });
-  };
-
-  const scrollToCatalog = () => {
-    catalogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const scrollToSection = (sectionRef) => {
@@ -181,69 +99,28 @@ function Home() {
 
   return (
     <div className="home-page">
-      <section className="home-hero">
-        <div className="home-hero-copy">
-          <span className="home-kicker">Digital Sanskrit Guru</span>
-          <h1>Traditional knowledge, designed for modern browsing.</h1>
-          <p>
-            Discover Sanskrit books, study aids, chanting resources, and Vedanta material in a storefront that is
-            easier to scan, compare, and continue from where you left off.
-          </p>
-          <div className="home-hero-signals">
-            <span>{stats.totalProducts} curated products</span>
-            <span>{stats.categoryCount} browseable paths</span>
-            <span>{stats.inStockCount} ready to order</span>
-          </div>
-          <div className="home-hero-actions">
-            <button type="button" className="home-primary-btn" onClick={scrollToCatalog}>
-              Start Browsing
-            </button>
-            <Link className="home-secondary-btn" to={featuredProduct ? `/product/${featuredProduct._id}` : "/"}>
-              View Featured Pick
-            </Link>
-          </div>
-        </div>
-
-        <div className="home-hero-grid">
-          <article className="hero-panel hero-panel-featured">
-            <span className="hero-panel-label">Featured Today</span>
-            <strong>{featuredProduct?.name || "Curated Product"}</strong>
-            <p>
-              {featuredProduct?.description ||
-                "Handpicked learning material with strong reviews and solid availability."}
-            </p>
-            {featuredProduct && (
-              <div className="hero-panel-featured-meta">
-                <span>{getCategoryLabel(featuredProduct)}</span>
-                <span>{formatPrice(featuredProduct.price)}</span>
-                <span>{getAverageRating(featuredProduct).toFixed(1)} rating</span>
+      {heroBannerImage ? (
+        <section className="home-banner home-banner-has-media">
+          <img src={heroBannerImage} alt="Homepage banner" className="home-banner-image" />
+          <div className="home-banner-overlay">
+            <div className="home-banner-copy">
+              <span className="home-banner-label">Digital Sanskrit Guru</span>
+              <h1>Discover books, chanting resources, and study material in one place.</h1>
+              <p>
+                Browse top-rated learning picks, fresh arrivals, and affordable essentials with a faster storefront flow.
+              </p>
+              <div className="home-banner-actions">
+                <button type="button" className="home-banner-cta primary" onClick={() => scrollToSection(topRatedSectionRef)}>
+                  Shop top picks
+                </button>
+                <button type="button" className="home-banner-cta" onClick={() => catalogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                  Browse catalog
+                </button>
               </div>
-            )}
-            {featuredProduct && (
-              <Link to={`/product/${featuredProduct._id}`} className="hero-panel-link">
-                Open Product
-              </Link>
-            )}
-          </article>
-
-          <article className="hero-panel hero-panel-stat">
-            <strong>{stats.totalProducts}</strong>
-            <span>Products in catalog</span>
-          </article>
-          <article className="hero-panel hero-panel-stat">
-            <strong>{stats.categoryCount}</strong>
-            <span>Active categories</span>
-          </article>
-          <article className="hero-panel hero-panel-stat">
-            <strong>{stats.inStockCount}</strong>
-            <span>Available right now</span>
-          </article>
-          <article className="hero-panel hero-panel-stat">
-            <strong>{stats.reviewCount}</strong>
-            <span>Total customer reviews</span>
-          </article>
-        </div>
-      </section>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className="home-strip">
         <button
@@ -314,7 +191,7 @@ function Home() {
               <span className="home-section-kicker">Fresh drop</span>
               <h3>New Arrivals</h3>
             </div>
-            <span>Latest</span>
+            <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
           <div className="home-mini-grid">
             {isLoadingProducts
@@ -344,7 +221,7 @@ function Home() {
               <span className="home-section-kicker">Best value</span>
               <h3>Budget Picks</h3>
             </div>
-            <span>Value</span>
+            <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
           <div className="home-mini-grid">
             {isLoadingProducts
@@ -376,42 +253,7 @@ function Home() {
           <div>
             <span className="home-section-kicker">Catalog</span>
             <h2>Browse the Collection</h2>
-            <p>Filter by product category and sort by what matters most. Swipe horizontally to explore.</p>
-          </div>
-
-          <div className="home-catalog-tools">
-            <div className="home-sort-box">
-              <label htmlFor="home-sort">Sort by</label>
-              <select id="home-sort" value={sortOption} onChange={(e) => setSortOption(e.target.value)}>
-                <option value="default">Default</option>
-                <option value="latest">Latest</option>
-                <option value="rating">Highest Rated</option>
-                <option value="priceLow">Price: Low to High</option>
-                <option value="priceHigh">Price: High to Low</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="home-filter-row">
-          <div className="home-category-row">
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                className={selectedCategory === category ? "active" : ""}
-                onClick={() => handleCategoryPick(category)}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          <div className="home-results-meta">
-            <span>
-              Showing {catalogPreviewProducts.length} preview products out of {catalogProducts.length}
-              {selectedCategory !== "All" ? ` in ${selectedCategory}` : ""}
-            </span>
+            <p>Swipe horizontally to explore products across the full collection.</p>
           </div>
         </div>
 
@@ -453,4 +295,3 @@ function Home() {
 }
 
 export default Home;
-
