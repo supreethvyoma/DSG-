@@ -205,8 +205,25 @@ function Product() {
   const galleryImages = getGalleryImages(product);
   const extraProductDetails = getExtraProductDetails(product.name);
   const aboutProductPoints = buildAboutProductPoints(product, extraProductDetails);
+  const bundleItems = Array.isArray(product.bundleItems) ? product.bundleItems : [];
+  const isBundle =
+    String(product.productType || "single") === "bundle" ||
+    bundleItems.length > 0;
+  const isFestiveOffer = product.festiveOffer === true;
+  const festiveDiscountPercent = Math.min(95, Math.max(0, Number(product.festiveDiscountPercent || 0)));
   const reviewCount = Array.isArray(product.reviews) ? product.reviews.length : 0;
-  const listPrice = Number(product.price || 0) + 500;
+  const bundleOriginalTotal = bundleItems.reduce((sum, item) => {
+    const bundledProduct = item?.product;
+    return sum + Number(bundledProduct?.price || 0) * Math.max(1, Number(item?.quantity || 1));
+  }, 0);
+  const bundleSavings = Math.max(0, bundleOriginalTotal - Number(product.price || 0));
+  const festiveOriginalPrice =
+    isFestiveOffer && festiveDiscountPercent > 0
+      ? Math.round(Number(product.price || 0) / (1 - festiveDiscountPercent / 100))
+      : 0;
+  const listPrice = festiveOriginalPrice > Number(product.price || 0)
+    ? festiveOriginalPrice
+    : Number(product.price || 0) + 500;
   const discountPercent = listPrice > 0 ? Math.max(0, Math.round(((listPrice - Number(product.price || 0)) / listPrice) * 100)) : 0;
 
   return (
@@ -247,6 +264,12 @@ function Product() {
 
         <div className="product-center">
           <h1 className="product-title">{product.name}</h1>
+          {isBundle ? <p className="product-bundle-pill">Bundle offer</p> : null}
+          {isFestiveOffer ? (
+            <p className="product-bundle-pill product-festive-pill">
+              {festiveDiscountPercent > 0 ? `Festive offer • ${festiveDiscountPercent}% off` : "Festive offer"}
+            </p>
+          ) : null}
           <p className="product-store-link">Visit the Digital Sanskrit Guru Store</p>
           <p className="rating">{renderStars(product.rating)} <span>{Number(product.rating || 0).toFixed(1)} | {reviewCount} ratings</span></p>
           <hr />
@@ -254,6 +277,12 @@ function Product() {
             <p className="price">
               <strong>{formatCurrencyForUser(product.price)}</strong>
             </p>
+            {isBundle && bundleOriginalTotal > Number(product.price || 0) ? (
+              <div className="bundle-savings-box">
+                <span>Individual total: {formatCurrencyForUser(bundleOriginalTotal)}</span>
+                <strong>You save {formatCurrencyForUser(bundleSavings)}</strong>
+              </div>
+            ) : null}
             <p className="price-meta">
               M.R.P.: <span>{formatCurrencyForUser(listPrice)}</span> ({discountPercent}% off)
             </p>
@@ -336,7 +365,37 @@ function Product() {
             <span>Reviews</span>
             <strong>{Array.isArray(product.reviews) ? product.reviews.length : 0} customer reviews</strong>
           </div>
+          {isBundle ? (
+            <div className="product-detail-card">
+              <span>Bundle Items</span>
+              <strong>{bundleItems.length} products included</strong>
+            </div>
+          ) : null}
         </div>
+
+        {isBundle && bundleItems.length > 0 ? (
+          <div className="product-details-description">
+            <h4>Included in this bundle</h4>
+            <ul className="product-bundle-list">
+              {bundleItems.map((item, index) => {
+                const includedProduct = item?.product;
+                const includedId = includedProduct?._id || item?.product;
+                const includedName = includedProduct?.name || "Included product";
+                return (
+                  <li key={`${includedId || "bundle-item"}-${index}`}>
+                    <div>
+                      <strong>{includedName}</strong>
+                      <span>Quantity: {Math.max(1, Number(item?.quantity || 1))}</span>
+                    </div>
+                    {includedProduct?._id ? (
+                      <Link to={`/product/${includedProduct._id}`}>View item</Link>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="product-details-description">
           <h4>About this product</h4>

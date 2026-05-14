@@ -15,6 +15,54 @@ const DEFAULT_CATEGORY_OPTIONS = [
   "Books"
 ];
 
+function createEmptyHeroBanner() {
+  return { image: "", productId: "" };
+}
+
+function createEmptyBundleItem() {
+  return { productId: "", quantity: "1" };
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const image = new window.Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not process banner image."));
+    image.src = src;
+  });
+}
+
+async function optimizeHeroBannerFile(file) {
+  const source = await readFileAsDataUrl(file);
+  const image = await loadImageElement(source);
+  const maxWidth = 1600;
+  const maxHeight = 700;
+  const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+  const targetWidth = Math.max(1, Math.round(image.width * scale));
+  const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return source;
+  }
+
+  context.drawImage(image, 0, 0, targetWidth, targetHeight);
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
 function AdminAddProducts() {
   const { token } = useAuth();
   const formSectionRef = useRef(null);
@@ -26,6 +74,10 @@ function AdminAddProducts() {
   const [imagesInput, setImagesInput] = useState("");
   const [description, setDescription] = useState("");
   const [aboutProduct, setAboutProduct] = useState("");
+  const [festiveOffer, setFestiveOffer] = useState(false);
+  const [festiveDiscountPercent, setFestiveDiscountPercent] = useState("0");
+  const [productType, setProductType] = useState("single");
+  const [bundleItems, setBundleItems] = useState([createEmptyBundleItem()]);
   const [category, setCategory] = useState("General");
   const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORY_OPTIONS);
   const [newCategory, setNewCategory] = useState("");
@@ -39,6 +91,11 @@ function AdminAddProducts() {
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [heroBanners, setHeroBanners] = useState([createEmptyHeroBanner()]);
+  const [activeHeroBannerIndex, setActiveHeroBannerIndex] = useState(0);
+  const [isSavingHeroBanner, setIsSavingHeroBanner] = useState(false);
+  const [isUploadingHeroBanners, setIsUploadingHeroBanners] = useState(false);
+  const [heroBannerMessage, setHeroBannerMessage] = useState("");
   const imagePreview = image.trim() || "https://picsum.photos/120";
   const imagePreviews = imagesInput
     .split(/\r?\n|,/)
@@ -57,10 +114,26 @@ function AdminAddProducts() {
           ? res.data.productCategories
           : DEFAULT_CATEGORY_OPTIONS;
         setCategoryOptions(nextCategories);
+        const nextHeroBanners =
+          Array.isArray(res.data?.heroBanners) && res.data.heroBanners.length > 0
+            ? res.data.heroBanners.map((item) => ({
+                image: String(item?.image || "").trim(),
+                productId: String(item?.productId || "").trim()
+              }))
+            : [
+                {
+                  image: String(res.data?.heroBannerImage || "").trim(),
+                  productId: String(res.data?.heroBannerProductId || "").trim()
+                }
+              ].filter((item) => item.image);
+        setHeroBanners(nextHeroBanners.length > 0 ? nextHeroBanners : [createEmptyHeroBanner()]);
+        setActiveHeroBannerIndex(0);
       })
       .catch(() => {
         if (!active) return;
         setCategoryOptions(DEFAULT_CATEGORY_OPTIONS);
+        setHeroBanners([createEmptyHeroBanner()]);
+        setActiveHeroBannerIndex(0);
       });
 
     setIsLoadingProducts(true);
@@ -90,7 +163,8 @@ function AdminAddProducts() {
       deliveryCharge: currentSettings?.deliveryCharge ?? 0,
       siteTheme: currentSettings?.siteTheme,
       customThemes: currentSettings?.customThemes || [],
-      productCategories: nextCategories
+      productCategories: nextCategories,
+      heroBanners: currentSettings?.heroBanners || []
     };
 
     const { data } = await axios.put("/api/settings", payload, {
@@ -114,6 +188,38 @@ function AdminAddProducts() {
     }
   };
 
+  const activeHeroBanner = heroBanners[activeHeroBannerIndex] || createEmptyHeroBanner();
+  const availableBundleProducts = useMemo(() => {
+    const editingId = String(editingProduct?._id || "");
+    return products.filter((product) => String(product?._id || "") !== editingId);
+  }, [products, editingProduct]);
+
+  const selectedBundleProducts = useMemo(() => {
+    return bundleItems
+      .map((item) => {
+        const matchedProduct = availableBundleProducts.find(
+          (product) => String(product?._id || "") === String(item.productId || "")
+        );
+        if (!matchedProduct) return null;
+        return {
+          ...matchedProduct,
+          quantity: Math.max(1, Number(item.quantity || 1))
+        };
+      })
+      .filter(Boolean);
+  }, [availableBundleProducts, bundleItems]);
+
+  const calculatedBundlePrice = useMemo(() => {
+    return selectedBundleProducts.reduce(
+      (sum, product) => sum + Number(product?.price || 0) * Math.max(1, Number(product?.quantity || 1)),
+      0
+    );
+  }, [selectedBundleProducts]);
+
+  const selectedHeroProduct = useMemo(() => {
+    return products.find((product) => product?._id === activeHeroBanner.productId) || null;
+  }, [products, activeHeroBanner]);
+
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const base = [...products].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || "")));
@@ -133,7 +239,7 @@ function AdminAddProducts() {
 
   const formSummary = useMemo(() => {
     const normalizedName = name.trim();
-    const numericPrice = Number(price);
+    const numericPrice = productType === "bundle" ? Number(calculatedBundlePrice || 0) : Number(price);
     const numericStock = Number(stock);
     const primaryImage = image.trim();
 
@@ -153,7 +259,7 @@ function AdminAddProducts() {
       numericPrice,
       numericStock
     };
-  }, [image, name, price, stock]);
+  }, [calculatedBundlePrice, image, name, price, productType, stock]);
 
   const resetForm = () => {
     setName("");
@@ -162,10 +268,111 @@ function AdminAddProducts() {
     setImagesInput("");
     setDescription("");
     setAboutProduct("");
+    setFestiveOffer(false);
+    setFestiveDiscountPercent("0");
+    setProductType("single");
+    setBundleItems([createEmptyBundleItem()]);
     setCategory("General");
     setStock("1");
     setEditingProduct(null);
     setFormMessage("");
+  };
+
+  const saveHeroBanner = async () => {
+    setIsSavingHeroBanner(true);
+    setHeroBannerMessage("");
+
+    try {
+      const nextHeroBanners = heroBanners
+        .map((item) => ({
+          image: String(item?.image || "").trim(),
+          productId: String(item?.productId || "").trim()
+        }))
+        .filter((item) => item.image);
+
+      const res = await axios.put(
+        "/api/settings",
+        { heroBanners: nextHeroBanners },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const savedHeroBanners =
+        Array.isArray(res.data?.heroBanners) && res.data.heroBanners.length > 0
+          ? res.data.heroBanners.map((item) => ({
+              image: String(item?.image || "").trim(),
+              productId: String(item?.productId || "").trim()
+            }))
+          : [createEmptyHeroBanner()];
+      setHeroBanners(savedHeroBanners);
+      setActiveHeroBannerIndex((current) => Math.min(current, savedHeroBanners.length - 1));
+      setHeroBannerMessage("Hero banners updated.");
+    } catch (err) {
+      setHeroBannerMessage(err?.response?.data?.message || "Could not save hero banners.");
+    } finally {
+      setIsSavingHeroBanner(false);
+    }
+  };
+
+  const updateHeroBanner = (index, field, value) => {
+    setHeroBanners((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const addHeroBanner = () => {
+    setHeroBanners((current) => {
+      const next = [...current, createEmptyHeroBanner()];
+      setActiveHeroBannerIndex(next.length - 1);
+      return next;
+    });
+    setHeroBannerMessage("");
+  };
+
+  const removeHeroBanner = (index) => {
+    setHeroBanners((current) => {
+      if (current.length === 1) return [createEmptyHeroBanner()];
+      return current.filter((_, itemIndex) => itemIndex !== index);
+    });
+    setActiveHeroBannerIndex((current) => (current > index ? current - 1 : Math.max(0, current === index ? current - 1 : current)));
+    setHeroBannerMessage("");
+  };
+
+  const handleHeroBannerFileUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploadingHeroBanners(true);
+    setHeroBannerMessage("");
+
+    try {
+      const imageFiles = files.filter((file) => String(file.type || "").startsWith("image/"));
+      if (imageFiles.length === 0) {
+        setHeroBannerMessage("Please choose image files only.");
+        return;
+      }
+
+      const uploadedBanners = await Promise.all(
+        imageFiles.slice(0, 10).map(async (file) => ({
+          image: await optimizeHeroBannerFile(file),
+          productId: ""
+        }))
+      );
+
+      setHeroBanners((current) => {
+        const existingConfigured = current.filter((item) => String(item?.image || "").trim());
+        const next = [...existingConfigured, ...uploadedBanners].slice(0, 10);
+        const finalList = next.length > 0 ? next : [createEmptyHeroBanner()];
+        setActiveHeroBannerIndex(Math.max(0, finalList.length - 1));
+        return finalList;
+      });
+
+      setHeroBannerMessage(`${uploadedBanners.length} banner image${uploadedBanners.length === 1 ? "" : "s"} added. Save hero banners to publish them.`);
+    } catch {
+      setHeroBannerMessage("Could not upload banner images.");
+    } finally {
+      setIsUploadingHeroBanners(false);
+      event.target.value = "";
+    }
   };
 
   const handleAddCategory = async () => {
@@ -240,6 +447,11 @@ function AdminAddProducts() {
       return;
     }
 
+    if (productType === "bundle" && selectedBundleProducts.length === 0) {
+      setFormMessage("Select at least one existing product for the bundle.");
+      return;
+    }
+
     const payload = {
       name: formSummary.normalizedName,
       price: formSummary.numericPrice,
@@ -247,6 +459,18 @@ function AdminAddProducts() {
       images: imagesInput,
       description: description.trim(),
       aboutProduct,
+      festiveOffer,
+      festiveDiscountPercent: festiveOffer ? Math.min(95, Math.max(0, Number(festiveDiscountPercent || 0))) : 0,
+      productType,
+      bundleItems:
+        productType === "bundle"
+          ? bundleItems
+              .map((item) => ({
+                productId: String(item.productId || "").trim(),
+                quantity: Math.max(1, Number(item.quantity || 1))
+              }))
+              .filter((item) => item.productId)
+          : [],
       category: category.trim() || "General",
       stock: formSummary.numericStock
     };
@@ -284,6 +508,17 @@ function AdminAddProducts() {
     setImagesInput(Array.isArray(product.images) && product.images.length > 0 ? product.images.join("\n") : product.image || "");
     setDescription(product.description || "");
     setAboutProduct(Array.isArray(product.aboutProduct) ? product.aboutProduct.join("\n") : "");
+    setFestiveOffer(product.festiveOffer === true);
+    setFestiveDiscountPercent(String(Number(product.festiveDiscountPercent || 0)));
+    setProductType(String(product.productType || "single") === "bundle" ? "bundle" : "single");
+    setBundleItems(
+      Array.isArray(product.bundleItems) && product.bundleItems.length > 0
+        ? product.bundleItems.map((item) => ({
+            productId: String(item?.product?._id || item?.product || ""),
+            quantity: String(Math.max(1, Number(item?.quantity || 1)))
+          }))
+        : [createEmptyBundleItem()]
+    );
     setCategory(product.category || "General");
     setStock(String(product.stock ?? 1));
     setFormMessage("");
@@ -413,6 +648,20 @@ function AdminAddProducts() {
     }
   };
 
+  const updateBundleItem = (index, field, value) => {
+    setBundleItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const addBundleItem = () => {
+    setBundleItems((current) => [...current, createEmptyBundleItem()]);
+  };
+
+  const removeBundleItem = (index) => {
+    setBundleItems((current) => (current.length === 1 ? [createEmptyBundleItem()] : current.filter((_, itemIndex) => itemIndex !== index)));
+  };
+
   return (
     <div className="admin-layout">
       <AdminSidebar />
@@ -461,8 +710,43 @@ function AdminAddProducts() {
             </label>
             <label className="admin-field">
               <span>Price</span>
-              <input type="number" min="1" placeholder="e.g. 999" value={price} onChange={(e) => setPrice(e.target.value)} />
+              <input
+                type="number"
+                min="1"
+                placeholder="e.g. 999"
+                value={productType === "bundle" ? String(calculatedBundlePrice || "") : price}
+                onChange={(e) => setPrice(e.target.value)}
+                readOnly={productType === "bundle"}
+              />
             </label>
+            <label className="admin-field">
+              <span>Product Type</span>
+              <select value={productType} onChange={(e) => setProductType(e.target.value === "bundle" ? "bundle" : "single")}>
+                <option value="single">Single Product</option>
+                <option value="bundle">Bundle</option>
+              </select>
+            </label>
+            <label className="admin-field">
+              <span>Festive Offer</span>
+              <select value={festiveOffer ? "yes" : "no"} onChange={(e) => setFestiveOffer(e.target.value === "yes")}>
+                <option value="no">Regular Product</option>
+                <option value="yes">Festive Offer</option>
+              </select>
+            </label>
+            {festiveOffer ? (
+              <label className="admin-field">
+                <span>Festive Discount %</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="95"
+                  step="1"
+                  placeholder="e.g. 20"
+                  value={festiveDiscountPercent}
+                  onChange={(e) => setFestiveDiscountPercent(e.target.value)}
+                />
+              </label>
+            ) : null}
             <label className="admin-field">
               <span>Primary Image URL</span>
               <input placeholder="Paste the main image URL" value={image} onChange={(e) => setImage(e.target.value)} />
@@ -551,6 +835,67 @@ function AdminAddProducts() {
                 rows={5}
               />
             </label>
+            {productType === "bundle" ? (
+              <div className="admin-field admin-field-wide">
+                <span>Bundle Products</span>
+                <div className="admin-bundle-builder">
+                  <div className="admin-bundle-builder-head">
+                    <strong>Create this bundle from existing products</strong>
+                    <button type="button" onClick={addBundleItem}>
+                      Add Bundle Item
+                    </button>
+                  </div>
+
+                  <div className="admin-bundle-builder-list">
+                    {bundleItems.map((item, index) => (
+                      <div key={`bundle-item-${index}`} className="admin-bundle-builder-row">
+                        <select
+                          value={item.productId}
+                          onChange={(e) => updateBundleItem(index, "productId", e.target.value)}
+                        >
+                          <option value="">Select existing product</option>
+                          {availableBundleProducts.map((product) => (
+                            <option key={product._id} value={product._id}>
+                              {product.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateBundleItem(index, "quantity", e.target.value)}
+                          placeholder="Qty"
+                        />
+
+                        <button type="button" className="danger" onClick={() => removeBundleItem(index)}>
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="admin-bundle-preview">
+                    <span>Bundle preview</span>
+                    {selectedBundleProducts.length > 0 ? (
+                      <>
+                        <ul>
+                          {selectedBundleProducts.map((product) => (
+                            <li key={`${product._id}-${product.quantity}`}>
+                              {product.name} x {product.quantity}
+                            </li>
+                          ))}
+                        </ul>
+                        <p><strong>Calculated bundle price:</strong> Rs {calculatedBundlePrice}</p>
+                      </>
+                    ) : (
+                      <p>No products selected for this bundle yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <label className="admin-field admin-field-wide">
               <span>Additional Image URLs</span>
               <textarea
@@ -603,6 +948,140 @@ function AdminAddProducts() {
                 Cancel
               </button>
             )}
+          </div>
+        </section>
+
+        <section className="card add-product-card hero-banner-admin-card">
+          <div className="add-product-card-header">
+            <div>
+              <h3>Homepage Hero Banner</h3>
+              <p>Manage multiple featured banners and choose which product each one should open.</p>
+            </div>
+            <div className="add-product-status-badges">
+              <span className={heroBanners.length > 1 ? "status-badge valid" : "status-badge"}>
+                {heroBanners.length} Banner{heroBanners.length === 1 ? "" : "s"}
+              </span>
+              <span className={heroBanners.some((item) => item.image.trim()) ? "status-badge valid" : "status-badge"}>Images</span>
+              <span className={heroBanners.some((item) => item.productId) ? "status-badge valid" : "status-badge"}>Linked Products</span>
+            </div>
+          </div>
+
+          <div className="hero-banner-admin-list">
+            {heroBanners.map((banner, index) => (
+              <button
+                key={`hero-banner-${index}`}
+                type="button"
+                className={`hero-banner-admin-list-item${activeHeroBannerIndex === index ? " active" : ""}`}
+                onClick={() => setActiveHeroBannerIndex(index)}
+              >
+                <span>Banner {index + 1}</span>
+                <strong>{banner.image.trim() ? "Configured" : "Empty"}</strong>
+              </button>
+            ))}
+            <button type="button" className="hero-banner-admin-add-btn" onClick={addHeroBanner}>
+              + Add Banner
+            </button>
+            <label className="hero-banner-admin-upload-btn">
+              {isUploadingHeroBanners ? "Uploading..." : "Upload Multiple Images"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleHeroBannerFileUpload}
+                disabled={isUploadingHeroBanners}
+              />
+            </label>
+          </div>
+
+          <div className="hero-banner-admin-layout">
+            <div className="hero-banner-admin-preview">
+              {activeHeroBanner.image.trim() ? (
+                <img
+                  src={activeHeroBanner.image.trim()}
+                  alt="Hero banner preview"
+                  onError={(e) => {
+                    e.currentTarget.src = "https://picsum.photos/1200/420";
+                  }}
+                />
+              ) : (
+                <div className="hero-banner-admin-empty">
+                  <strong>No banner image selected</strong>
+                  <span>Paste a hero banner URL to preview how it will look on the home page.</span>
+                </div>
+              )}
+            </div>
+
+            <div className="hero-banner-admin-controls">
+              <label className="admin-field admin-field-wide">
+                <span>Banner Image URL</span>
+                <textarea
+                  className="hero-banner-url-field"
+                  placeholder="https://example.com/banner.jpg"
+                  value={activeHeroBanner.image}
+                  onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "image", e.target.value)}
+                  rows={4}
+                />
+              </label>
+
+              <label className="admin-field admin-field-wide">
+                <span>Banner Opens Product</span>
+                <select
+                  value={activeHeroBanner.productId}
+                  onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "productId", e.target.value)}
+                >
+                  <option value="">No linked product</option>
+                  {products.map((product) => (
+                    <option key={product._id} value={product._id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {editingProduct?._id ? (
+                <button
+                  type="button"
+                  className="hero-banner-admin-link-btn"
+                  onClick={() => updateHeroBanner(activeHeroBannerIndex, "productId", editingProduct._id)}
+                >
+                  Link Banner To Current Edit Product
+                </button>
+              ) : null}
+
+              {heroBanners.length > 1 ? (
+                <button
+                  type="button"
+                  className="hero-banner-admin-remove-btn"
+                  onClick={() => removeHeroBanner(activeHeroBannerIndex)}
+                >
+                  Remove This Banner
+                </button>
+              ) : null}
+
+              <div className="hero-banner-admin-meta">
+                <div>
+                  <span>Currently linked</span>
+                  <strong>{selectedHeroProduct?.name || "No product selected"}</strong>
+                </div>
+                <div>
+                  <span>Recommended format</span>
+                  <strong>Wide landscape image</strong>
+                </div>
+              </div>
+
+              <div className="pricing-actions-row">
+                <button className="pricing-save-btn" onClick={saveHeroBanner} disabled={isSavingHeroBanner}>
+                  {isSavingHeroBanner ? "Saving..." : "Save Hero Banners"}
+                </button>
+                <span>Clicking each live banner will open its selected product page.</span>
+              </div>
+
+              {heroBannerMessage ? (
+                <p className={`pricing-message ${heroBannerMessage.includes("updated") ? "success" : "error"}`}>
+                  {heroBannerMessage}
+                </p>
+              ) : null}
+            </div>
           </div>
         </section>
 

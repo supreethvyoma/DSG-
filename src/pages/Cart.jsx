@@ -2,34 +2,41 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useCart } from "../hooks/useCart";
+import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { formatCurrencyForUser } from "../utils/currency";
 import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
 import "./Cart.css";
 
-function getSavedDefaultAddress() {
-  try {
-    const raw = localStorage.getItem("addresses");
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed) || parsed.length === 0) return null;
-    return parsed.find((item) => item?.isDefault) || parsed[0];
-  } catch {
-    return null;
-  }
-}
-
 function Cart() {
-  const { cartItems, removeFromCart, updateQty } = useCart();
+  const {
+    cartItems,
+    savedForLaterItems,
+    removeFromCart,
+    updateQty,
+    saveForLater,
+    moveToCartFromSaved,
+    removeSavedForLater
+  } = useCart();
+  const { selectedAddress } = useDeliveryLocation();
   const [charges, setCharges] = useState({
     gstPercent: 0,
     deliveryCharge: 0,
     warehouseLocation: {},
     distancePricing: {}
   });
-  const [defaultAddress] = useState(() => getSavedDefaultAddress());
 
-  const total = cartItems.reduce(
-    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+  const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
+  const itemCount = cartItems.reduce(
+    (sum, item) => sum + Math.max(1, Number(item.quantity || 1)),
     0
+  );
+
+  const subtotal = roundMoney(
+    cartItems.reduce(
+      (sum, item) => sum + Number(item.price || 0) * Math.max(1, Number(item.quantity || 1)),
+      0
+    )
   );
 
   useEffect(() => {
@@ -54,25 +61,27 @@ function Cart() {
     };
   }, []);
 
-  const deliveryDetails = useMemo(() => getDeliveryPricingDetails(charges, defaultAddress), [charges, defaultAddress]);
+  const deliveryDetails = useMemo(
+    () => getDeliveryPricingDetails(charges, selectedAddress),
+    [charges, selectedAddress]
+  );
 
   const totals = useMemo(() => {
-    const subtotal = Number(total || 0);
-    const gstAmount = (subtotal * Number(charges.gstPercent || 0)) / 100;
-    const deliveryCharge = Number(deliveryDetails.deliveryCharge || 0);
+    const gstAmount = roundMoney((subtotal * Number(charges.gstPercent || 0)) / 100);
+    const deliveryCharge = roundMoney(Number(deliveryDetails.deliveryCharge || 0));
     return {
       subtotal,
       gstAmount,
       deliveryCharge,
-      grandTotal: subtotal + gstAmount + deliveryCharge
+      grandTotal: roundMoney(subtotal + gstAmount + deliveryCharge)
     };
-  }, [total, charges.gstPercent, deliveryDetails.deliveryCharge]);
+  }, [subtotal, charges.gstPercent, deliveryDetails.deliveryCharge]);
 
-  if (cartItems.length === 0) {
+  if (cartItems.length === 0 && savedForLaterItems.length === 0) {
     return (
       <div className="cart-page">
         <div className="cart-empty-card">
-          <h2>Your Amazon-style cart is empty</h2>
+          <h2>Your cart is empty</h2>
           <Link to="/">Go Shopping</Link>
         </div>
       </div>
@@ -88,60 +97,101 @@ function Cart() {
 
       <div className="cart-container">
         <div className="cart-items-panel">
-          <div className="cart-items">
-          {cartItems.map((item, index) => {
-            const qty = item.quantity || 1;
+          {cartItems.length > 0 ? (
+            <>
+              <div className="cart-items">
+              {cartItems.map((item, index) => {
+                const qty = Math.max(1, Number(item.quantity || 1));
+                const lineTotal = roundMoney(Number(item.price || 0) * qty);
 
-            return (
-              <div key={item._id || item.id || index} className="cart-item">
-                <img
-                  src={item.image || "https://picsum.photos/200"}
-                  alt={item.name}
-                  className="cart-image"
-                />
+                return (
+                  <div key={item._id || item.id || index} className="cart-item">
+                    <img
+                      src={item.image || "https://picsum.photos/200"}
+                      alt={item.name}
+                      className="cart-image"
+                    />
 
-                <div className="cart-info">
-                  <h3>{item.name}</h3>
-                  <p className="cart-item-price-mobile">{formatCurrencyForUser(item.price)}</p>
+                    <div className="cart-info">
+                      <h3>{item.name}</h3>
+                      <p className="cart-item-price-mobile">{formatCurrencyForUser(lineTotal)}</p>
 
-                  <div className="qty-box">
-                    <button onClick={() => updateQty(item._id || item.id, qty > 1 ? qty - 1 : 1)}>
-                      -
-                    </button>
-                    <span>{qty}</span>
-                    <button onClick={() => updateQty(item._id || item.id, qty + 1)}>+</button>
+                      <div className="qty-box">
+                        <button onClick={() => updateQty(item._id || item.id, qty > 1 ? qty - 1 : 1)}>
+                          -
+                        </button>
+                        <span>{qty}</span>
+                        <button onClick={() => updateQty(item._id || item.id, qty + 1)}>+</button>
+                      </div>
+                    </div>
+
+                    <div className="cart-item-actions">
+                      <button className="remove-btn" onClick={() => removeFromCart(item._id || item.id)}>
+                        Delete
+                      </button>
+                      <button className="save-later-btn" onClick={() => saveForLater(item)}>
+                        Save for later
+                      </button>
+                      <strong className="cart-item-price">{formatCurrencyForUser(lineTotal)}</strong>
+                    </div>
                   </div>
-                </div>
-
-                <div className="cart-item-actions">
-                  <button className="remove-btn" onClick={() => removeFromCart(item._id || item.id)}>
-                    Delete
-                  </button>
-                  <strong className="cart-item-price">{formatCurrencyForUser(item.price)}</strong>
-                </div>
+                );
+              })}
               </div>
-            );
-          })}
-          </div>
-          <p className="cart-subtotal-inline">
-            Subtotal ({cartItems.length} items): <strong>{formatCurrencyForUser(totals.subtotal)}</strong>
-          </p>
+              <p className="cart-subtotal-inline">
+                Subtotal ({itemCount} items): <strong>{formatCurrencyForUser(totals.subtotal)}</strong>
+              </p>
+            </>
+          ) : (
+            <div className="cart-empty-card">
+              <h2>Your cart is empty</h2>
+              <Link to="/">Go Shopping</Link>
+            </div>
+          )}
+          {savedForLaterItems.length > 0 && (
+            <div className="saved-later-section">
+              <h3>Saved for later ({savedForLaterItems.length})</h3>
+              <div className="saved-later-list">
+                {savedForLaterItems.map((item, index) => (
+                  <div key={item._id || item.id || `saved-${index}`} className="saved-later-item">
+                    <img
+                      src={item.image || "https://picsum.photos/200"}
+                      alt={item.name}
+                      className="saved-later-image"
+                    />
+                    <div className="saved-later-info">
+                      <strong>{item.name}</strong>
+                      <span>{formatCurrencyForUser(Number(item.price || 0))}</span>
+                    </div>
+                    <div className="saved-later-actions">
+                      <button onClick={() => moveToCartFromSaved(item)}>Move to cart</button>
+                      <button onClick={() => removeSavedForLater(item._id || item.id)}>Remove</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="cart-summary">
           <p className="cart-total">
-            Subtotal ({cartItems.length} items): <strong>{formatCurrencyForUser(totals.subtotal)}</strong>
+            Subtotal ({itemCount} items): <strong>{formatCurrencyForUser(totals.subtotal)}</strong>
           </p>
           <p>GST ({charges.gstPercent}%): {formatCurrencyForUser(totals.gstAmount)}</p>
-          <p>Delivery{defaultAddress ? "" : " (base fee)"}: {formatCurrencyForUser(totals.deliveryCharge)}</p>
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p>Estimated warehouse distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>
           )}
+          {deliveryDetails.pricingMode === "international" && deliveryDetails.matchedCountry && (
+            <p>International delivery applied for {deliveryDetails.matchedCountry}.</p>
+          )}
           <h3>Order Total: {formatCurrencyForUser(totals.grandTotal)}</h3>
 
-          <Link to="/checkout" className="checkout-link">
-            <button className="checkout-btn">Proceed to checkout</button>
-          </Link>
+          {cartItems.length > 0 ? (
+            <Link to="/checkout" className="checkout-link">
+              <button className="checkout-btn">Proceed to checkout</button>
+            </Link>
+          ) : null}
         </div>
       </div>
     </div>

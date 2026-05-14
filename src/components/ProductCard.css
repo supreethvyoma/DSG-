@@ -50,6 +50,16 @@ font-weight:600;
 border-radius:4px;
 }
 
+.product-badge.festive{
+background:#b91c1c;
+color:#fff7ed;
+}
+
+.product-badge.bundle{
+background:#1d4ed8;
+color:#eff6ff;
+}
+
 .wishlist-heart-btn{
 position:absolute;
 top:10px;
@@ -181,6 +191,46 @@ font-size:18px;
 text-decoration:line-through;
 color:var(--site-text-soft);
 font-size:13px;
+}
+
+.product-bundle-savings{
+display:grid;
+gap:3px;
+margin-top:2px;
+padding:8px 10px;
+border-radius:10px;
+background:color-mix(in srgb, var(--site-button-bg) 10%, var(--site-surface));
+border:1px solid color-mix(in srgb, var(--site-button-bg) 24%, var(--site-border));
+}
+
+.product-bundle-savings span{
+font-size:11px;
+color:var(--site-text-soft);
+}
+
+.product-bundle-savings strong{
+font-size:13px;
+color:var(--site-link);
+}
+
+.product-festive-savings{
+display:grid;
+gap:3px;
+margin-top:2px;
+padding:8px 10px;
+border-radius:10px;
+background:#fff1f2;
+border:1px solid #fecdd3;
+}
+
+.product-festive-savings span{
+font-size:11px;
+color:#9f1239;
+}
+
+.product-festive-savings strong{
+font-size:13px;
+color:#be123c;
 }
 
 /* RATING */

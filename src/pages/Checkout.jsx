@@ -4,7 +4,7 @@ import axios from "axios";
 import { useCart } from "../hooks/useCart";
 import { useAuth } from "../hooks/useAuth";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
-import { formatCurrencyForUser } from "../utils/currency";
+import { convertCurrencyAmount, formatCurrencyForUser, getUserCurrency } from "../utils/currency";
 import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
 import "./Checkout.css";
 
@@ -30,7 +30,8 @@ function Checkout() {
     gstPercent: 0,
     deliveryCharge: 0,
     warehouseLocation: {},
-    distancePricing: {}
+    distancePricing: {},
+    internationalDelivery: {}
   });
   const [coupons, setCoupons] = useState([]);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
@@ -40,6 +41,7 @@ function Checkout() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
   useEffect(() => {
     let active = true;
@@ -52,12 +54,19 @@ function Checkout() {
           gstPercent: Number(res.data?.gstPercent || 0),
           deliveryCharge: Number(res.data?.deliveryCharge || 0),
           warehouseLocation: res.data?.warehouseLocation || {},
-          distancePricing: res.data?.distancePricing || {}
+          distancePricing: res.data?.distancePricing || {},
+          internationalDelivery: res.data?.internationalDelivery || {}
         });
       })
       .catch(() => {
         if (!active) return;
-        setCharges({ gstPercent: 0, deliveryCharge: 0, warehouseLocation: {}, distancePricing: {} });
+        setCharges({
+          gstPercent: 0,
+          deliveryCharge: 0,
+          warehouseLocation: {},
+          distancePricing: {},
+          internationalDelivery: {}
+        });
       });
 
     return () => {
@@ -89,23 +98,28 @@ function Checkout() {
     };
   }, []);
 
+  const itemCount = useMemo(
+    () => cartItems.reduce((sum, item) => sum + Math.max(1, Number(item.quantity || 1)), 0),
+    [cartItems]
+  );
+
   const deliveryDetails = useMemo(() => {
     return getDeliveryPricingDetails(charges, selectedAddress);
   }, [charges, selectedAddress]);
 
   const totals = useMemo(() => {
-    const subtotal = cartItems.reduce(
+    const subtotal = roundMoney(cartItems.reduce(
       (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
       0
-    );
-    const gstAmount = (subtotal * Number(charges.gstPercent || 0)) / 100;
-    const deliveryCharge = Number(deliveryDetails.deliveryCharge || 0);
-    const grandTotal = subtotal + gstAmount + deliveryCharge;
+    ));
+    const gstAmount = roundMoney((subtotal * Number(charges.gstPercent || 0)) / 100);
+    const deliveryCharge = roundMoney(Number(deliveryDetails.deliveryCharge || 0));
+    const grandTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
     return { subtotal, gstAmount, deliveryCharge, grandTotal };
   }, [cartItems, charges.gstPercent, deliveryDetails.deliveryCharge]);
 
   const finalTotal = useMemo(
-    () => Math.max(0, Number(totals.grandTotal || 0) - Number(discount || 0)),
+    () => roundMoney(Math.max(0, Number(totals.grandTotal || 0) - Number(discount || 0))),
     [totals.grandTotal, discount]
   );
 
@@ -153,6 +167,10 @@ function Checkout() {
 
 
   const createOrderWithPaymentStatus = async (selected, paymentStatus, paymentInfo = {}) => {
+    const checkoutCurrency = getUserCurrency();
+    const checkoutDisplayTotal = convertCurrencyAmount(finalTotal, { currency: checkoutCurrency });
+    const checkoutCountry = String(selected?.country || "").trim().toUpperCase();
+
     const { data } = await axios.post(
       "/api/orders",
       {
@@ -163,7 +181,12 @@ function Checkout() {
         discount,
         paymentStatus,
         razorpayOrderId: paymentInfo?.razorpayOrderId || "",
-        razorpayPaymentId: paymentInfo?.razorpayPaymentId || ""
+        razorpayPaymentId: paymentInfo?.razorpayPaymentId || "",
+        currencyDisplay: {
+          currency: checkoutCurrency,
+          amount: checkoutDisplayTotal,
+          detectedCountry: checkoutCountry
+        }
       },
       getOrderHeaders()
     );
@@ -340,7 +363,7 @@ function Checkout() {
   return (
     <div className="checkout-page">
       <h1 className="checkout-title">
-        Checkout <span>({cartItems.length} items)</span>
+        Checkout <span>({itemCount} items)</span>
       </h1>
       <p className="checkout-lead">Select a delivery address and review your order before payment.</p>
       {isDummyPaymentEnabled ? (
@@ -441,7 +464,10 @@ function Checkout() {
               <div key={index} className="summary-item">
                 <span>{item.name}</span>
                 <span>
-                  {formatCurrencyForUser(item.price)} x {item.quantity || 1}
+                  {Math.max(1, Number(item.quantity || 1))} x {formatCurrencyForUser(item.price)} = {" "}
+                  {formatCurrencyForUser(
+                    roundMoney(Number(item.price || 0) * Math.max(1, Number(item.quantity || 1)))
+                  )}
                 </span>
               </div>
             ))}
@@ -463,6 +489,11 @@ function Checkout() {
           </div>
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p className="coupon-selector-empty">Estimated distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>
+          )}
+          {deliveryDetails.pricingMode === "international" && deliveryDetails.matchedCountry && (
+            <p className="coupon-selector-empty">
+              International delivery applied for {deliveryDetails.matchedCountry}.
+            </p>
           )}
           <div className="summary-item summary-total">
             <span>Total</span>

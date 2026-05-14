@@ -9,6 +9,7 @@ function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -18,7 +19,7 @@ function Login() {
     setErrorMessage("");
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       navigate("/");
     } catch (err) {
       const message = err?.response?.data?.message || "Login failed";
@@ -61,6 +62,15 @@ function Login() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+
+            <label className="login-remember">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span>Remember me on this device</span>
+            </label>
 
             <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Signing in..." : "Login"}

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
@@ -15,6 +15,7 @@ import Checkout from "./pages/Checkout";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminRoute from "./components/AdminRoute";
 import AdminOrders from "./pages/AdminOrders";
+import AdminOrderDetails from "./pages/AdminOrderDetails";
 import MyOrders from "./pages/MyOrders";
 import MyAccount from "./pages/MyAccount";
 import Wishlist from "./pages/Wishlist";
@@ -24,8 +25,7 @@ import { requestLocationPermissionForCurrency } from "./utils/currency";
 import AdminCoupons from "./pages/AdminCoupons";
 import AdminUsers from "./pages/AdminUsers";
 import AdminThemeSettings from "./pages/AdminThemeSettings";
-import { applySiteTheme, DEFAULT_SITE_THEME } from "./utils/siteTheme";
-
+import { applySiteTheme, DEFAULT_SITE_THEME, readStoredSiteTheme } from "./utils/siteTheme";
 
 function App() {
   useEffect(() => {
@@ -34,6 +34,7 @@ function App() {
 
   useEffect(() => {
     let active = true;
+    const storedThemeSettings = readStoredSiteTheme();
 
     axios
       .get("/api/settings")
@@ -43,7 +44,12 @@ function App() {
       })
       .catch(() => {
         if (!active) return;
-        applySiteTheme(DEFAULT_SITE_THEME);
+        if (storedThemeSettings) {
+          applySiteTheme(
+            storedThemeSettings.siteTheme || DEFAULT_SITE_THEME,
+            storedThemeSettings.customThemes || []
+          );
+        }
       });
 
     return () => {
@@ -52,7 +58,7 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Navbar />
 
       <Routes>
@@ -61,101 +67,101 @@ function App() {
         <Route path="/search" element={<SearchResults />} />
         <Route path="/product/:id" element={<Product />} />
         <Route path="/wishlist" element={<Wishlist />} />
-        {/* <Route path="/cart" element={<Cart />} /> */}
+        <Route path="/cart" element={<Cart />} />
         <Route
-  path="/cart"
-  element={
-    <ProtectedRoute>
-      <Cart />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/checkout"
-  element={
-    <ProtectedRoute>
-      <Checkout />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/account"
-  element={
-    <ProtectedRoute>
-      <MyAccount />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/my-orders"
-  element={
-    <ProtectedRoute>
-      <MyOrders />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/admin"
-  element={
-    <AdminRoute>
-      <AdminDashboard />
-    </AdminRoute>
-  }
-/>
-<Route
-  path="/admin/orders"
-  element={
-    <AdminRoute>
-      <AdminOrders />
-    </AdminRoute>
-  }
-/>
-<Route
-  path="/admin/products"
-  element={
-    <AdminRoute>
-      <AdminProducts />
-    </AdminRoute>
-  }
-/>
-<Route
-  path="/admin/add-products"
-  element={
-    <AdminRoute>
-      <AdminAddProducts />
-    </AdminRoute>
-  }
-/>
-<Route
-  path="/admin/coupons"
-  element={
-    <AdminRoute>
-      <AdminCoupons />
-    </AdminRoute>
-  }
-/>
-<Route
-  path="/admin/users"
-  element={
-    <AdminRoute>
-      <AdminUsers />
-    </AdminRoute>
-  }
-/>
-<Route
-  path="/admin/theme"
-  element={
-    <AdminRoute>
-      <AdminThemeSettings />
-    </AdminRoute>
-  }
-/>
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <Checkout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <MyAccount />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-orders"
+          element={
+            <ProtectedRoute>
+              <MyOrders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <AdminRoute>
+              <AdminOrders />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/orders/:id"
+          element={
+            <AdminRoute>
+              <AdminOrderDetails />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <AdminRoute>
+              <AdminProducts />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/add-products"
+          element={
+            <AdminRoute>
+              <AdminAddProducts />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/coupons"
+          element={
+            <AdminRoute>
+              <AdminCoupons />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <AdminUsers />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/theme"
+          element={
+            <AdminRoute>
+              <AdminThemeSettings />
+            </AdminRoute>
+          }
+        />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
       </Routes>
 
       <Footer />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

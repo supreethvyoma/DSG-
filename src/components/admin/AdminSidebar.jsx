@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import "../../pages/AdminDashboard.css";
 
@@ -12,22 +13,68 @@ const adminNavItems = [
 ];
 
 function AdminSidebar() {
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 1024) {
+        setIsMobileNavOpen(false);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
-    <aside className="sidebar">
-      <h2>Admin</h2>
-      <nav>
-        {adminNavItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === "/admin"}
-            className={({ isActive }) => (isActive ? "active" : undefined)}
+    <>
+      <button
+        type="button"
+        className={isMobileNavOpen ? "admin-mobile-nav-toggle active" : "admin-mobile-nav-toggle"}
+        onClick={() => setIsMobileNavOpen((current) => !current)}
+        aria-label={isMobileNavOpen ? "Close admin navigation" : "Open admin navigation"}
+        aria-expanded={isMobileNavOpen}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+
+      <button
+        type="button"
+        className={isMobileNavOpen ? "admin-mobile-nav-backdrop active" : "admin-mobile-nav-backdrop"}
+        aria-label="Close admin navigation"
+        onClick={() => setIsMobileNavOpen(false)}
+      />
+
+      <aside className={isMobileNavOpen ? "sidebar mobile-open" : "sidebar"}>
+        <div className="sidebar-head">
+          <h2>Admin</h2>
+          <button
+            type="button"
+            className="sidebar-close-btn"
+            onClick={() => setIsMobileNavOpen(false)}
+            aria-label="Close admin navigation"
           >
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
-    </aside>
+            {"\u00D7"}
+          </button>
+        </div>
+        <nav>
+          {adminNavItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === "/admin"}
+              className={({ isActive }) => (isActive ? "active" : undefined)}
+              onClick={() => setIsMobileNavOpen(false)}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      </aside>
+    </>
   );
 }
 

@@ -1,33 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import ProductCard from "../components/ProductCard";
 import "./Collection.css";
 
-function getCategoryLabel(product) {
-  const raw = String(product?.category || "").trim();
-
-  if (raw && raw.toLowerCase() !== "general") {
-    return raw;
-  }
-
-  const name = String(product?.name || "").toLowerCase();
-  if (name.includes("gita")) return "Gita";
-  if (name.includes("grammar")) return "Grammar";
-  if (name.includes("vedanta")) return "Vedanta";
-  if (name.includes("chant")) return "Chanting";
-  return "General";
-}
-
-function getAverageRating(product) {
-  const reviews = Array.isArray(product?.reviews) ? product.reviews : [];
-  if (reviews.length === 0) return Number(product?.rating || 0);
-  return reviews.reduce((sum, review) => sum + Number(review?.rating || 0), 0) / reviews.length;
-}
-
 const PRODUCTS_PER_PAGE = 8;
 
 function Collection() {
+  const location = useLocation();
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingMoreProducts, setIsLoadingMoreProducts] = useState(false);
@@ -65,7 +45,9 @@ function Collection() {
         setAvailableProducts(Number(data?.totalBase || 0));
         setHasMoreProducts(Boolean(data?.hasMore));
         setCategories(Array.isArray(data?.categories) && data.categories.length > 0 ? data.categories : ["All"]);
-        setCategoryCounts(data?.categoryCounts && typeof data.categoryCounts === "object" ? data.categoryCounts : { All: 0 });
+        setCategoryCounts(
+          data?.categoryCounts && typeof data.categoryCounts === "object" ? data.categoryCounts : { All: 0 }
+        );
       } catch {
         if (!isMounted) return;
         setProducts([]);
@@ -107,12 +89,24 @@ function Collection() {
     };
   }, [isMobileFilterOpen]);
 
-  const collectionStats = useMemo(() => {
-    return {
+  useEffect(() => {
+    if (selectedCategory !== "All" && !categories.includes(selectedCategory)) {
+      setSelectedCategory("All");
+    }
+  }, [categories, selectedCategory]);
+
+  useEffect(() => {
+    const categoryFromQuery = String(new URLSearchParams(location.search).get("category") || "All").trim() || "All";
+    setSelectedCategory(categoryFromQuery);
+  }, [location.search]);
+
+  const collectionStats = useMemo(
+    () => ({
       total: availableProducts,
       visible: totalProducts
-    };
-  }, [availableProducts, totalProducts]);
+    }),
+    [availableProducts, totalProducts]
+  );
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -128,10 +122,6 @@ function Collection() {
   const handleResetFilters = () => {
     resetFilters();
     setIsMobileFilterOpen(false);
-  };
-
-  const handleFilterSelect = (callback) => {
-    callback();
   };
 
   const handleLoadMoreProducts = async () => {
@@ -171,10 +161,12 @@ function Collection() {
             <h1>Browse the full collection</h1>
             <p>Narrow down categories and shop faster with a cleaner filter flow.</p>
           </div>
-          <Link to="/" className="collection-back-link">Back to Home</Link>
+          <Link to="/" className="collection-back-link">
+            Back to Home
+          </Link>
         </div>
 
-        <div className="collection-layout">
+        <div className="collection-content">
           {isMobileFilterOpen ? (
             <button
               type="button"
@@ -184,56 +176,36 @@ function Collection() {
             />
           ) : null}
 
-          <aside className={`collection-filters${isMobileFilterOpen ? " collection-filters-open" : ""}`}>
-            <div className="collection-filter-card">
-              <div className="collection-filter-head">
-                <div className="collection-filter-head-copy">
-                  <span className="collection-filter-head-kicker">Refine results</span>
-                  <h2>Filters</h2>
-                  <p>{collectionStats.visible} items match your selection</p>
-                </div>
-                <div className="collection-filter-head-actions">
-                  <button type="button" onClick={handleResetFilters} className="collection-clear-btn">
-                    Clear all
-                  </button>
+          <aside className={`collection-sidebar${isMobileFilterOpen ? " open" : ""}`}>
+            <div className="collection-sidebar-card">
+              <div className="collection-mobile-filter-head">
+                <h3>Filters</h3>
+                <button type="button" onClick={() => setIsMobileFilterOpen(false)} aria-label="Close filters">
+                  ×
+                </button>
+              </div>
+
+              <h3>Category</h3>
+              <div className="collection-device-row">
+                {categories.map((category) => (
                   <button
+                    key={category}
                     type="button"
-                    className="collection-filter-close-btn"
-                    aria-label="Close filters"
-                    onClick={() => setIsMobileFilterOpen(false)}
+                    className={selectedCategory === category ? "active" : ""}
+                    onClick={() => setSelectedCategory(category)}
                   >
-                    ×
+                    {category} ({categoryCounts[category] || 0})
                   </button>
-                </div>
+                ))}
               </div>
 
-              <div className="collection-filter-groups">
-                <div className="collection-filter-group">
-                  <div className="collection-filter-group-head">
-                    <strong>Category</strong>
-                  </div>
-                  <div className="collection-filter-list">
-                    {categories.map((category) => (
-                      <button
-                        key={category}
-                        type="button"
-                        className={selectedCategory === category ? "active" : ""}
-                        onClick={() => handleFilterSelect(() => setSelectedCategory(category))}
-                      >
-                        <span className="collection-filter-indicator" aria-hidden="true" />
-                        <span className="collection-filter-label">
-                          {category} <em>({categoryCounts[category] || 0})</em>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
+              <button type="button" className="collection-mobile-reset-btn" onClick={handleResetFilters}>
+                Reset filters
+              </button>
 
               <button
                 type="button"
-                className="collection-filter-apply-btn"
+                className="collection-mobile-apply-btn"
                 onClick={() => setIsMobileFilterOpen(false)}
               >
                 View {collectionStats.visible} items
@@ -241,20 +213,56 @@ function Collection() {
             </div>
           </aside>
 
-          <div className="collection-results-panel">
-            <div className="collection-results-toolbar">
-              <div className="collection-results-copy">
-                <strong>Showing {products.length} of {collectionStats.visible}</strong>
-                <span>{selectedCategory !== "All" ? selectedCategory : "All categories"}</span>
+          <div className="collection-main">
+            <div className="collection-mobile-toolbar">
+              <button
+                type="button"
+                className="collection-mobile-filter-btn"
+                onClick={() => setIsMobileFilterOpen(true)}
+              >
+                Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              </button>
+
+              <div className="collection-sort-box collection-sort-box-mobile">
+                <label htmlFor="collection-sort-mobile">Sort by</label>
+                <select
+                  id="collection-sort-mobile"
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                >
+                  <option value="featured">Featured</option>
+                  <option value="latest">Latest</option>
+                  <option value="rating">Highest Rated</option>
+                  <option value="priceLow">Price: Low to High</option>
+                  <option value="priceHigh">Price: High to Low</option>
+                  <option value="name">Name: A to Z</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="collection-main-head">
+              <div>
+                <div className="collection-results-meta">
+                  Showing {products.length} of {collectionStats.visible}
+                  {selectedCategory !== "All" ? ` in ${selectedCategory}` : ""}
+                </div>
+
+                {selectedCategory !== "All" ? (
+                  <div className="collection-active-filters">
+                    <button
+                      type="button"
+                      className="collection-filter-chip"
+                      onClick={() => setSelectedCategory("All")}
+                    >
+                      {selectedCategory} ×
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="collection-results-actions">
-                <button
-                  type="button"
-                  className="collection-mobile-filter-toggle"
-                  onClick={() => setIsMobileFilterOpen(true)}
-                >
-                  Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+              <div className="collection-head-actions">
+                <button type="button" className="collection-clear-btn" onClick={resetFilters}>
+                  Clear all
                 </button>
 
                 <div className="collection-sort-box">
@@ -289,7 +297,6 @@ function Collection() {
                 <div className="collection-empty-state">
                   <strong>No products found</strong>
                   <p>Try changing your filters or clearing them to see more products.</p>
-                  <button type="button" onClick={handleResetFilters}>Reset filters</button>
                 </div>
               )}
             </div>

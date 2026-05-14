@@ -1,27 +1,68 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { generateInvoicePdf } from "../utils/invoicePdf";
-import { formatDateForFileName, formatDateTime } from "../utils/date";
+import { formatDateForFileName } from "../utils/date";
+import { formatBaseCurrency, formatOrderDisplayCurrency } from "../utils/currency";
 import "./AdminOrders.css";
 
+const Icon = ({ name }) => {
+  const paths = {
+    export: "M12 3v10m0 0 4-4m-4 4-4-4M4 14v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4",
+    invoice: "M7 3h8l4 4v14H7V3Zm8 0v5h5M10 12h6M10 16h6M10 20h4",
+    search: "M11 5a6 6 0 1 1 0 12a6 6 0 0 1 0-12Zm4.5 10.5L20 20",
+    reset: "M4 4v6h6M20 20v-6h-6M5 15a7 7 0 0 0 12 3M19 9A7 7 0 0 0 7 6",
+    view: "M2 12s4-7 10-7s10 7 10 7s-4 7-10 7S2 12 2 12Zm10 3a3 3 0 1 0 0-6a3 3 0 0 0 0 6"
+  };
+
+  return (
+    <svg className="admin-order-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d={paths[name]} />
+    </svg>
+  );
+};
+
+const BACKEND_STATUSES = ["Pending", "Shipped", "Delivered", "Cancelled"];
+const DISPLAY_STATUSES = ["On Hold", ...BACKEND_STATUSES];
+const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
+
 function AdminOrders() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const canUpdateOrders = Boolean(user?.isAdmin);
+  const canViewRevenue = Boolean(user?.isAdmin);
   const [orders, setOrders] = useState([]);
   const [fromDateTime, setFromDateTime] = useState("");
   const [toDateTime, setToDateTime] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("All");
-  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("All");
+  const [searchText, setSearchText] = useState("");
+  const [sortOrder, setSortOrder] = useState("newest");
   const [updatingOrderId, setUpdatingOrderId] = useState("");
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [pageMessage, setPageMessage] = useState("");
-  const allowedStatuses = ["Pending", "Shipped", "Delivered"];
   const statusStep = {
-    Pending: 0,
-    Shipped: 1,
-    Delivered: 2
+    "On Hold": 0,
+    Pending: 1,
+    Shipped: 2,
+    Delivered: 3,
+    Cancelled: 0
+  };
+
+  const getPaymentStatus = (order) => {
+    if (String(order?.refundStatus || "").trim() === "Refunded") return "Refunded";
+    const raw = String(order?.paymentStatus || "").trim();
+    if (PAYMENT_STATUSES.includes(raw)) return raw;
+    return "Paid";
+  };
+
+  const getDisplayStatus = (order) => {
+    const rawStatus = String(order?.status || "").trim();
+    if (rawStatus === "Cancelled") return "Cancelled";
+    if (getPaymentStatus(order) !== "Paid") return "On Hold";
+    if (BACKEND_STATUSES.includes(rawStatus)) return rawStatus;
+    return "Pending";
   };
 
   const toInputDateTime = (date) => {
@@ -42,39 +83,60 @@ function AdminOrders() {
       const res = await axios.get("/api/orders", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setOrders(res.data);
+      setOrders(Array.isArray(res.data) ? res.data : []);
       setPageMessage("");
-    } catch {
+    } catch (err) {
       setOrders([]);
-      setPageMessage("Unable to load orders right now.");
+      setPageMessage(err?.response?.data?.message || "Unable to load orders right now.");
     } finally {
       setIsLoadingOrders(false);
     }
   };
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    loadOrders();
+    if (!token) return;
+    void loadOrders();
   }, [token]);
 
   const updateStatus = async (orderId, status) => {
-    const safeStatus = allowedStatuses.includes(status) ? status : "Pending";
+    const safeStatus = DISPLAY_STATUSES.includes(status) ? status : "On Hold";
+    const targetOrder = orders.find((item) => item?._id === orderId);
+    const paymentStatus = getPaymentStatus(targetOrder);
+    const apiStatus = safeStatus === "On Hold" ? "Pending" : safeStatus;
+
+    if (
+      (apiStatus === "Pending" || apiStatus === "Shipped" || apiStatus === "Delivered") &&
+      paymentStatus !== "Paid"
+    ) {
+      window.alert("Payment is not completed. Keep this order On Hold.");
+      return;
+    }
+
+    if (!BACKEND_STATUSES.includes(apiStatus)) {
+      window.alert("Invalid status selected.");
+      return;
+    }
+
+    const reason =
+      apiStatus === "Cancelled"
+        ? window.prompt("Reason for cancelling this order?", "Cancelled by admin")
+        : "";
+    if (apiStatus === "Cancelled" && reason === null) return;
+
     setUpdatingOrderId(orderId);
     try {
       await axios.put(
         `/api/orders/${orderId}/status`,
-        { status: safeStatus },
+        { status: apiStatus, reason },
         {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
 
       await loadOrders();
-      setPageMessage("Order status updated successfully.");
+      setPageMessage("Order updated successfully.");
     } catch (err) {
-      setPageMessage(err?.response?.data?.message || "Unable to update order status.");
+      setPageMessage(err?.response?.data?.message || "Unable to update this order.");
     } finally {
       setUpdatingOrderId("");
     }
@@ -90,12 +152,10 @@ function AdminOrders() {
     let fromTs = hasFrom ? rawFromTs : null;
     let toTs = hasTo ? rawToTs : null;
 
-    // datetime-local usually returns YYYY-MM-DDTHH:mm; include that full minute for "to" filter.
     if (toTs !== null && toDateTime.length === 16) {
       toTs += 59_999;
     }
 
-    // If user accidentally selects an inverted range, still return meaningful results.
     if (fromTs !== null && toTs !== null && fromTs > toTs) {
       const temp = fromTs;
       fromTs = toTs;
@@ -111,62 +171,83 @@ function AdminOrders() {
     });
   }, [orders, fromDateTime, toDateTime]);
 
+  const searchedOrders = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    if (!query) return filteredOrders;
+
+    return filteredOrders.filter((order) => {
+      const orderId = String(order?._id || "").toLowerCase();
+      const name = String(order?.user?.name || "").toLowerCase();
+      const email = String(order?.user?.email || "").toLowerCase();
+      const status = String(getDisplayStatus(order) || "").toLowerCase();
+      const itemText = (order?.items || [])
+        .map((item) => `${item?.name || ""} ${item?.bundleName || ""}`)
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        orderId.includes(query) ||
+        name.includes(query) ||
+        email.includes(query) ||
+        status.includes(query) ||
+        itemText.includes(query)
+      );
+    });
+  }, [filteredOrders, searchText]);
+
   const statusSummary = useMemo(() => {
-    return filteredOrders.reduce(
+    return searchedOrders.reduce(
       (acc, order) => {
-        const safeStatus = allowedStatuses.includes(order?.status) ? order.status : "Pending";
+        const safeStatus = getDisplayStatus(order);
         acc[safeStatus] += 1;
         return acc;
       },
-      { Pending: 0, Shipped: 0, Delivered: 0 }
+      { "On Hold": 0, Pending: 0, Shipped: 0, Delivered: 0, Cancelled: 0 }
     );
-  }, [filteredOrders]);
-
-  const paymentSummary = useMemo(() => {
-    return filteredOrders.reduce(
-      (acc, order) => {
-        const paymentStatus = String(order?.paymentStatus || "").trim() || "Paid";
-        if (paymentStatus === "Paid") acc.Paid += 1;
-        else if (paymentStatus === "Failed") acc.Failed += 1;
-        else acc.Pending += 1;
-        return acc;
-      },
-      { Paid: 0, Failed: 0, Pending: 0 }
-    );
-  }, [filteredOrders]);
+  }, [searchedOrders]);
 
   const visibleOrders = useMemo(() => {
-    return filteredOrders.filter((order) => {
-      const paymentStatus = String(order?.paymentStatus || "").trim() || "Paid";
-      const safeStatus = allowedStatuses.includes(order?.status) ? order.status : "Pending";
-      const statusMatch = selectedStatus === "All" ? true : safeStatus === selectedStatus;
-      const paymentMatch = selectedPaymentStatus === "All" ? true : paymentStatus === selectedPaymentStatus;
-      return statusMatch && paymentMatch;
+    if (selectedStatus === "All") return searchedOrders;
+    return searchedOrders.filter((order) => getDisplayStatus(order) === selectedStatus);
+  }, [searchedOrders, selectedStatus]);
+
+  const sortedOrders = useMemo(() => {
+    const sorted = [...visibleOrders];
+    sorted.sort((a, b) => {
+      const aTs = new Date(a?.createdAt).getTime() || 0;
+      const bTs = new Date(b?.createdAt).getTime() || 0;
+      return sortOrder === "oldest" ? aTs - bTs : bTs - aTs;
     });
-  }, [filteredOrders, selectedStatus, selectedPaymentStatus]);
+    return sorted;
+  }, [visibleOrders, sortOrder]);
 
   const exportOrdersCsv = () => {
     const headers = [
       "Order ID",
       "Customer",
       "Email",
+      "Payment Country",
       "Items",
-      "Total",
+      "Total INR",
+      "Customer Display Total",
+      "Order Status",
       "Payment Status",
-      "Status",
+      "Refund Status",
       "Created At"
     ];
-    const rows = filteredOrders.map((order) => {
+    const rows = sortedOrders.map((order) => {
       const itemCount = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 1), 0);
-      const paymentStatus = String(order.paymentStatus || "").trim() || "Paid";
       return [
         order._id,
         order.user?.name || "Unknown",
         order.user?.email || "",
+        getPaymentCountry(order),
         itemCount,
         Math.round(order.total || 0),
-        paymentStatus,
-        order.status || "Pending",
+        formatCustomerPaid(order),
+        getDisplayStatus(order),
+        getPaymentStatus(order),
+        order?.refundStatus || "Not Applicable",
         new Date(order.createdAt).toISOString()
       ];
     });
@@ -202,13 +283,119 @@ function AdminOrders() {
     setActiveQuickFilter(type);
   };
 
-  const generateInvoice = (order) => {
-    generateInvoicePdf(order, {
+  const generateInvoice = async (order) => {
+    await generateInvoicePdf(order, {
       customerName: order?.user?.name || order?.shipping?.name || "Customer",
       customerEmail: order?.user?.email || "N/A",
       filePrefix: "invoice"
     });
   };
+
+  const formatMoney = (value) => {
+    const amount = Number(value || 0);
+    if (!Number.isFinite(amount)) return formatBaseCurrency(0);
+    return formatBaseCurrency(amount, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  };
+
+  const formatCustomerPaid = (order, amountKey = "total", fallbackValue = order?.total || 0) =>
+    formatOrderDisplayCurrency(order, amountKey, fallbackValue, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+      fallbackToUserCurrency: true
+    });
+
+  const getPaymentCountry = (order) => {
+    const detectedCountry = String(order?.currencyDisplay?.detectedCountry || "").trim().toUpperCase();
+    const shippingCountry = String(order?.shipping?.country || "").trim();
+    if (detectedCountry) return detectedCountry;
+    return shippingCountry || "Unknown";
+  };
+
+  const getCapturedCurrencyLabel = (order) => {
+    const explicitCurrency = String(order?.currencyDisplay?.currency || order?.displayCurrency || order?.currency || "")
+      .trim()
+      .toUpperCase();
+    if (explicitCurrency) return `Captured ${explicitCurrency}`;
+
+    const paymentCountry = getPaymentCountry(order);
+    const normalizedCountry = String(paymentCountry || "").trim().toUpperCase();
+    const inferredCurrencyMap = {
+      IN: "INR",
+      INDIA: "INR",
+      US: "USD",
+      USA: "USD",
+      "UNITED STATES": "USD",
+      GB: "GBP",
+      UK: "GBP",
+      "UNITED KINGDOM": "GBP",
+      CA: "CAD",
+      CANADA: "CAD",
+      AU: "AUD",
+      AUSTRALIA: "AUD",
+      SG: "SGD",
+      SINGAPORE: "SGD",
+      AE: "AED",
+      UAE: "AED",
+      "UNITED ARAB EMIRATES": "AED",
+      DE: "EUR",
+      FR: "EUR",
+      IT: "EUR",
+      ES: "EUR",
+      NL: "EUR",
+      IE: "EUR",
+      PT: "EUR",
+      BE: "EUR"
+    };
+
+    return `Captured ${inferredCurrencyMap[normalizedCountry] || "INR"}`;
+  };
+
+  const getCustomerName = (order) => order?.user?.name || order?.shipping?.name || "Unknown customer";
+
+  const getCustomerInitials = (order) => {
+    const name = getCustomerName(order);
+    return (
+      name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join("") || "U"
+    );
+  };
+
+  const getItemCount = (order) =>
+    (order?.items || []).reduce((sum, item) => sum + Number(item?.quantity || 1), 0);
+
+  const formatOrderDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Date unavailable";
+    return new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  };
+
+  const overviewStats = useMemo(() => {
+    const totalRevenue = sortedOrders.reduce((sum, order) => {
+      if (getDisplayStatus(order) === "Cancelled" || getPaymentStatus(order) === "Refunded") return sum;
+      return sum + Number(order?.total || 0);
+    }, 0);
+    const pendingPayments = sortedOrders.filter((order) => getPaymentStatus(order) !== "Paid").length;
+    const fulfilledOrders = sortedOrders.filter((order) =>
+      ["Shipped", "Delivered"].includes(getDisplayStatus(order))
+    ).length;
+
+    return {
+      totalOrders: sortedOrders.length,
+      totalRevenue,
+      pendingPayments,
+      fulfilledOrders
+    };
+  }, [sortedOrders]);
 
   return (
     <div className="admin-layout">
@@ -216,75 +403,80 @@ function AdminOrders() {
 
       <main className="admin-main admin-orders-page">
         <div className="admin-orders-header">
-          <h1>All Orders</h1>
-          <div className="admin-orders-header-actions">
-            <p>
-              Showing {visibleOrders.length} of {orders.length}
+          <div>
+            <p className="admin-orders-kicker">Operations</p>
+            <h1>Orders</h1>
+            <p className="admin-orders-subtitle">
+              Monitor customer payments, fulfillment progress, and store totals from one place.
             </p>
+          </div>
+          <div className="admin-orders-header-actions">
+            <span className="admin-orders-count">
+              Showing {visibleOrders.length} of {orders.length}
+            </span>
             <button className="export-btn" onClick={exportOrdersCsv}>
-              Export Orders CSV
+              <Icon name="export" />
+              Export CSV
             </button>
           </div>
         </div>
 
-        <section className="status-management-panel">
+        {pageMessage ? <p className="admin-orders-feedback">{pageMessage}</p> : null}
+
+        <section className="admin-orders-overview" aria-label="Orders summary">
+          <article className="admin-overview-card">
+            <p className="admin-overview-label">Visible Orders</p>
+            <p className="admin-overview-value">{overviewStats.totalOrders}</p>
+          </article>
+          {canViewRevenue ? (
+            <article className="admin-overview-card">
+              <p className="admin-overview-label">Visible Revenue</p>
+              <p className="admin-overview-value">{formatMoney(overviewStats.totalRevenue)}</p>
+            </article>
+          ) : null}
+          <article className="admin-overview-card">
+            <p className="admin-overview-label">Payment Follow-up</p>
+            <p className="admin-overview-value">{overviewStats.pendingPayments}</p>
+          </article>
+          <article className="admin-overview-card">
+            <p className="admin-overview-label">Fulfilled Orders</p>
+            <p className="admin-overview-value">{overviewStats.fulfilledOrders}</p>
+          </article>
+        </section>
+
+        <section className="status-management-panel" aria-label="Status filters">
           <button
             className={selectedStatus === "All" ? "status-filter-chip active" : "status-filter-chip"}
             onClick={() => setSelectedStatus("All")}
           >
-            All ({filteredOrders.length})
+            All ({searchedOrders.length})
           </button>
-          <button
-            className={selectedStatus === "Pending" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedStatus("Pending")}
-          >
-            Pending ({statusSummary.Pending})
-          </button>
-          <button
-            className={selectedStatus === "Shipped" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedStatus("Shipped")}
-          >
-            Shipped ({statusSummary.Shipped})
-          </button>
-          <button
-            className={selectedStatus === "Delivered" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedStatus("Delivered")}
-          >
-            Delivered ({statusSummary.Delivered})
-          </button>
+          {DISPLAY_STATUSES.map((status) => (
+            <button
+              key={status}
+              className={selectedStatus === status ? "status-filter-chip active" : "status-filter-chip"}
+              onClick={() => setSelectedStatus(status)}
+            >
+              {status} ({statusSummary[status]})
+            </button>
+          ))}
         </section>
 
-        <section className="status-management-panel payment-panel">
-          <button
-            className={selectedPaymentStatus === "All" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedPaymentStatus("All")}
-          >
-            All Payments ({filteredOrders.length})
-          </button>
-          <button
-            className={selectedPaymentStatus === "Paid" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedPaymentStatus("Paid")}
-          >
-            Paid ({paymentSummary.Paid})
-          </button>
-          <button
-            className={selectedPaymentStatus === "Pending" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedPaymentStatus("Pending")}
-          >
-            Pending ({paymentSummary.Pending})
-          </button>
-          <button
-            className={selectedPaymentStatus === "Failed" ? "status-filter-chip active" : "status-filter-chip"}
-            onClick={() => setSelectedPaymentStatus("Failed")}
-          >
-            Failed ({paymentSummary.Failed})
-          </button>
-        </section>
+        <section className="orders-filter-bar" aria-label="Order filters">
+          <label className="orders-search-field">
+            <span>Search orders</span>
+            <span className="orders-search-input-wrap">
+              <Icon name="search" />
+              <input
+                type="search"
+                placeholder="Order ID, customer, email, item..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+              />
+            </span>
+          </label>
 
-        {pageMessage ? <p className="admin-orders-feedback">{pageMessage}</p> : null}
-
-        <div className="orders-filter-bar">
-          <div className="quick-filter-buttons">
+          <div className="quick-filter-buttons" aria-label="Quick date filters">
             <button
               className={activeQuickFilter === "24h" ? "quick-filter-btn active" : "quick-filter-btn"}
               onClick={() => applyQuickFilter("24h")}
@@ -304,42 +496,59 @@ function AdminOrders() {
               This Month
             </button>
           </div>
-          <label>
-            From
-            <input
-              type="datetime-local"
-              value={fromDateTime}
-              onChange={(e) => {
-                setFromDateTime(e.target.value);
-                setActiveQuickFilter("");
-              }}
-            />
+
+          <div className="orders-date-grid">
+            <label>
+              <span>From</span>
+              <input
+                type="datetime-local"
+                value={fromDateTime}
+                onChange={(e) => {
+                  setFromDateTime(e.target.value);
+                  setActiveQuickFilter("");
+                }}
+              />
+            </label>
+            <label>
+              <span>To</span>
+              <input
+                type="datetime-local"
+                value={toDateTime}
+                onChange={(e) => {
+                  setToDateTime(e.target.value);
+                  setActiveQuickFilter("");
+                }}
+              />
+            </label>
+          </div>
+
+          <label className="orders-sort-field">
+            <span>Sort</span>
+            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
           </label>
-          <label>
-            To
-            <input
-              type="datetime-local"
-              value={toDateTime}
-              onChange={(e) => {
-                setToDateTime(e.target.value);
-                setActiveQuickFilter("");
-              }}
-            />
-          </label>
+
           <button
             className="clear-filter-btn"
             onClick={() => {
               setFromDateTime("");
               setToDateTime("");
               setActiveQuickFilter("");
+              setSearchText("");
             }}
           >
-            Clear Filter
+            <Icon name="reset" />
+            Reset
           </button>
-        </div>
+        </section>
 
         {!isLoadingOrders && visibleOrders.length === 0 && (
-          <p className="admin-orders-empty">No orders found for selected filters.</p>
+          <section className="admin-orders-empty">
+            <h2>No orders found</h2>
+            <p>Try a different status, search term, or date range.</p>
+          </section>
         )}
 
         {isLoadingOrders && (
@@ -349,13 +558,13 @@ function AdminOrders() {
                 <tr>
                   <th>Order</th>
                   <th>Customer</th>
-                  <th>Email</th>
+                  <th>Country</th>
                   <th>Items</th>
-                  <th>Total</th>
+                  <th>Customer Paid</th>
+                  <th>Store Total</th>
                   <th>Payment</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Invoice</th>
+                  <th>Fulfillment</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -384,43 +593,75 @@ function AdminOrders() {
                 <tr>
                   <th>Order</th>
                   <th>Customer</th>
-                  <th>Email</th>
+                  <th>Country</th>
                   <th>Items</th>
-                  <th>Total</th>
+                  <th>Customer Paid</th>
+                  <th>Store Total</th>
                   <th>Payment</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Invoice</th>
+                  <th>Fulfillment</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleOrders.map((order) => {
-                  const displayStatus = allowedStatuses.includes(order.status) ? order.status : "Pending";
-                  const displayPaymentStatus = String(order.paymentStatus || "").trim() || "Paid";
-                  const isPaymentCompleted = displayPaymentStatus === "Paid";
-                  const itemCount = (order.items || []).reduce(
-                    (sum, item) => sum + Number(item.quantity || 1),
-                    0
-                  );
+                {sortedOrders.map((order) => {
+                  const displayStatus = getDisplayStatus(order);
+                  const statusKey = displayStatus.toLowerCase().replace(/\s+/g, "-");
+                  const paymentStatus = getPaymentStatus(order);
+                  const isCancelled = displayStatus === "Cancelled";
+                  const canProgressStatus = paymentStatus === "Paid" && !isCancelled;
+                  const productCount = getItemCount(order);
                   return (
                     <tr key={order._id}>
-                      <td className="order-code">#{order._id.slice(-6).toUpperCase()}</td>
-                      <td>{order.user?.name || "Unknown"}</td>
-                      <td>{order.user?.email || "-"}</td>
-                      <td>{itemCount}</td>
-                      <td>Rs {Math.round(order.total || 0)}</td>
-                      <td>
-                        <span
-                          className={`admin-payment-status payment-${displayPaymentStatus.toLowerCase()}`}
-                        >
-                          {displayPaymentStatus}
-                        </span>
+                      <td className="order-code">
+                        <Link to={`/admin/orders/${order._id}`} className="order-code-link">
+                          #{order._id.slice(-6).toUpperCase()}
+                        </Link>
+                        <span>{formatOrderDate(order.createdAt)}</span>
                       </td>
-                      <td>{formatDateTime(order.createdAt)}</td>
+                      <td>
+                        <div className="admin-order-customer">
+                          <span className="admin-order-avatar">{getCustomerInitials(order)}</span>
+                          <span className="admin-order-customer-text">
+                            <strong>{getCustomerName(order)}</strong>
+                            <small>{order.user?.email || "-"}</small>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="admin-order-country-cell">
+                        <strong>{getPaymentCountry(order)}</strong>
+                        <small>{order?.currencyDisplay?.detectedCountry ? "Detected" : "Shipping"}</small>
+                      </td>
+                      <td>
+                        <span className="admin-order-items-count">{productCount}</span>
+                      </td>
+                      <td className="admin-order-amount-cell">
+                        <strong>{formatCustomerPaid(order)}</strong>
+                        <small>{getCapturedCurrencyLabel(order)}</small>
+                      </td>
+                      <td className="admin-order-amount-cell">
+                        <strong>{formatMoney(order.total || 0)}</strong>
+                        <small>INR base</small>
+                      </td>
+                      <td>
+                        <div className="admin-order-payment-cell">
+                          <span className={`admin-order-status status-payment-${paymentStatus.toLowerCase()}`}>
+                            {paymentStatus === "Refunded"
+                              ? "Refunded"
+                              : paymentStatus === "Paid"
+                                ? "Paid"
+                                : paymentStatus === "Failed"
+                                  ? "Failed"
+                                  : "Not Paid"}
+                          </span>
+                        </div>
+                      </td>
                       <td>
                         <div className="admin-status-update">
                           <div className="order-status-tracker">
-                            {allowedStatuses.map((status, index) => {
+                            {DISPLAY_STATUSES.filter((status) => {
+                              if (status === "Cancelled") return isCancelled;
+                              return true;
+                            }).map((status, index) => {
                               const active = statusStep[displayStatus] >= index;
                               const isCurrent = displayStatus === status;
                               return (
@@ -434,54 +675,85 @@ function AdminOrders() {
                             })}
                           </div>
                           <div className="status-controls">
-                            <span className={`admin-order-status status-${displayStatus.toLowerCase()}`}>
+                            <span className={`admin-order-status status-${statusKey}`}>
                               {displayStatus}
                             </span>
-                            {displayStatus === "Pending" && (
+                            {canUpdateOrders && displayStatus === "On Hold" && (
                               <button
                                 className="status-action-btn"
-                                disabled={updatingOrderId === order._id || !isPaymentCompleted}
+                                disabled
+                                title="Waiting for successful payment"
+                              >
+                                Move to Pending
+                              </button>
+                            )}
+                            {canUpdateOrders && displayStatus === "Pending" && canProgressStatus && (
+                              <button
+                                className="status-action-btn"
+                                disabled={updatingOrderId === order._id}
                                 onClick={() => updateStatus(order._id, "Shipped")}
                               >
-                                {!isPaymentCompleted
-                                  ? "Payment Required"
-                                  : updatingOrderId === order._id
-                                    ? "Updating..."
-                                    : "Mark Shipped"}
+                                {updatingOrderId === order._id ? "Updating..." : "Mark Shipped"}
                               </button>
                             )}
-                            {displayStatus === "Shipped" && (
+                            {canUpdateOrders && displayStatus === "Shipped" && canProgressStatus && (
                               <button
                                 className="status-action-btn"
-                                disabled={updatingOrderId === order._id || !isPaymentCompleted}
+                                disabled={updatingOrderId === order._id}
                                 onClick={() => updateStatus(order._id, "Delivered")}
                               >
-                                {!isPaymentCompleted
-                                  ? "Payment Required"
-                                  : updatingOrderId === order._id
-                                    ? "Updating..."
-                                    : "Mark Delivered"}
+                                {updatingOrderId === order._id ? "Updating..." : "Mark Delivered"}
                               </button>
                             )}
+                            {canUpdateOrders && ["On Hold", "Pending"].includes(displayStatus) && (
+                              <button
+                                className="status-action-btn cancel"
+                                disabled={updatingOrderId === order._id}
+                                onClick={() => updateStatus(order._id, "Cancelled")}
+                              >
+                                {updatingOrderId === order._id ? "Updating..." : "Cancel"}
+                              </button>
+                            )}
+                            {!canProgressStatus ? (
+                              <p className="admin-status-note">
+                                {isCancelled
+                                  ? `Refund: ${order?.refundStatus || "Not Applicable"}`
+                                  : paymentStatus === "Failed"
+                                    ? "Payment failed"
+                                    : "Waiting for successful payment"}
+                              </p>
+                            ) : null}
                             <select
                               id={`status-${order._id}`}
                               value={displayStatus}
-                              disabled={updatingOrderId === order._id || !isPaymentCompleted}
+                              disabled={!canUpdateOrders || updatingOrderId === order._id || !canProgressStatus}
                               onChange={(e) => updateStatus(order._id, e.target.value)}
                             >
+                              {displayStatus === "On Hold" ? <option value="On Hold">On Hold</option> : null}
                               <option value="Pending">Pending</option>
                               <option value="Shipped">Shipped</option>
                               <option value="Delivered">Delivered</option>
+                              <option value="Cancelled">Cancelled</option>
                             </select>
-                            {!isPaymentCompleted ? (
-                              <span className="payment-guard-note">Complete payment before moving order status.</span>
-                            ) : null}
                           </div>
                         </div>
                       </td>
-                      <td>
-                        <button className="invoice-btn" onClick={() => generateInvoice(order)}>
-                          Generate
+                      <td className="admin-order-actions">
+                        <Link
+                          to={`/admin/orders/${order._id}`}
+                          className="admin-order-icon-btn"
+                          title="View order"
+                          aria-label="View order"
+                        >
+                          <Icon name="view" />
+                        </Link>
+                        <button
+                          className="admin-order-icon-btn"
+                          onClick={() => void generateInvoice(order)}
+                          title="Generate invoice"
+                          aria-label="Generate invoice"
+                        >
+                          <Icon name="invoice" />
                         </button>
                       </td>
                     </tr>
@@ -497,4 +769,3 @@ function AdminOrders() {
 }
 
 export default AdminOrders;
-

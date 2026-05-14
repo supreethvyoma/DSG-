@@ -45,6 +45,20 @@ const orderSchema = new mongoose.Schema(
       default: 0
     },
     total: Number,
+    currencyDisplay: {
+      currency: {
+        type: String,
+        default: ""
+      },
+      amount: {
+        type: Number,
+        default: null
+      },
+      detectedCountry: {
+        type: String,
+        default: ""
+      }
+    },
     shipping: {
       name: {
         type: String,
@@ -86,7 +100,7 @@ const orderSchema = new mongoose.Schema(
     status: {
       type: String,
       default: "Pending",
-      enum: ["Pending", "Shipped", "Delivered"]
+      enum: ["Pending", "Shipped", "Delivered", "Cancelled"]
     },
     paymentStatus: {
       type: String,
@@ -110,6 +124,15 @@ const orderSchema = new mongoose.Schema(
         type: Date,
         default: null
       }
+    },
+    refundStatus: {
+      type: String,
+      default: "Not Applicable",
+      enum: ["Not Applicable", "Pending", "Processing", "Refunded", "Rejected"]
+    },
+    cancelledAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

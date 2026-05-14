@@ -10,6 +10,7 @@ function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -19,7 +20,7 @@ function Register() {
     setIsSubmitting(true);
 
     try {
-      await register(name, email, password);
+      await register(name, email, password, rememberMe);
       navigate("/");
     } catch (err) {
       setError(err?.response?.data?.message || "Registration failed");
@@ -73,6 +74,15 @@ function Register() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+
+            <label className="register-remember">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+              />
+              <span>Remember me on this device</span>
+            </label>
 
             <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Creating..." : "Register"}

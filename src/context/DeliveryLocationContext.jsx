@@ -3,7 +3,7 @@ import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 
 const DeliveryLocationContext = createContext(null);
-const STORAGE_KEY = "addresses";
+const GUEST_STORAGE_KEY = "addresses:guest";
 const SELECTED_DELIVERY_COUNTRY_KEY = "selectedDeliveryCountry";
 
 function normalizeStoredAddress(item) {
@@ -29,14 +29,23 @@ function normalizeStoredAddress(item) {
   };
 }
 
-function readStoredAddresses() {
+function getUserStorageKey(userId) {
+  return `addresses:${String(userId || "").trim()}`;
+}
+
+function readStoredAddresses(storageKey) {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     const parsed = saved ? JSON.parse(saved) : [];
     return Array.isArray(parsed) ? parsed.map(normalizeStoredAddress) : [];
   } catch {
     return [];
   }
+}
+
+function writeStoredAddresses(storageKey, addresses) {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(storageKey, JSON.stringify(addresses));
 }
 
 function syncSelectedDeliveryCountry(address) {
@@ -52,19 +61,14 @@ function syncSelectedDeliveryCountry(address) {
 }
 
 export function DeliveryLocationProvider({ children }) {
-  const { token } = useAuth();
-  const [addresses, setAddresses] = useState(() => readStoredAddresses());
+  const { token, user } = useAuth();
+  const [addresses, setAddresses] = useState(() => readStoredAddresses(GUEST_STORAGE_KEY));
   const [selectedIndex, setSelectedIndex] = useState(() => {
-    const initial = readStoredAddresses();
+    const initial = readStoredAddresses(GUEST_STORAGE_KEY);
     if (initial.length === 0) return null;
     const defaultIndex = initial.findIndex((item) => item?.isDefault);
     return defaultIndex >= 0 ? defaultIndex : 0;
   });
-
-  useEffect(() => {
-    if (token) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(addresses));
-  }, [addresses, token]);
 
   useEffect(() => {
     let active = true;
@@ -75,46 +79,30 @@ export function DeliveryLocationProvider({ children }) {
       return index >= 0 ? index : 0;
     };
 
-    const migrateLocalAddressesIfNeeded = async (remoteAddresses) => {
-      const localAddresses = readStoredAddresses();
-      if (!Array.isArray(remoteAddresses) || remoteAddresses.length > 0 || localAddresses.length === 0) {
-        return remoteAddresses;
-      }
-
-      try {
-        const res = await axios.put(
-          "/api/auth/addresses",
-          { addresses: localAddresses },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        return Array.isArray(res.data?.addresses) ? res.data.addresses.map(normalizeStoredAddress) : localAddresses;
-      } catch {
-        return localAddresses;
-      }
-    };
-
     const loadAddresses = async () => {
-      if (!token) {
-        const localAddresses = readStoredAddresses();
+      if (!token || !user?._id) {
+        const localAddresses = readStoredAddresses(GUEST_STORAGE_KEY);
         if (!active) return;
         setAddresses(localAddresses);
         setSelectedIndex(getDefaultIndex(localAddresses));
         return;
       }
 
+      const userStorageKey = getUserStorageKey(user._id);
+
       try {
         const res = await axios.get("/api/auth/addresses", {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const remoteAddresses = Array.isArray(res.data?.addresses)
+        const nextAddresses = Array.isArray(res.data?.addresses)
           ? res.data.addresses.map(normalizeStoredAddress)
           : [];
-        const nextAddresses = await migrateLocalAddressesIfNeeded(remoteAddresses);
+        writeStoredAddresses(userStorageKey, nextAddresses);
         if (!active) return;
         setAddresses(nextAddresses);
         setSelectedIndex(getDefaultIndex(nextAddresses));
       } catch {
-        const localAddresses = readStoredAddresses();
+        const localAddresses = readStoredAddresses(userStorageKey);
         if (!active) return;
         setAddresses(localAddresses);
         setSelectedIndex(getDefaultIndex(localAddresses));
@@ -126,7 +114,7 @@ export function DeliveryLocationProvider({ children }) {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, user?._id]);
 
   useEffect(() => {
     if (addresses.length === 0) {
@@ -141,10 +129,12 @@ export function DeliveryLocationProvider({ children }) {
   }, [addresses, selectedIndex]);
 
   const persistAddresses = async (nextAddresses) => {
-    if (!token) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextAddresses));
+    if (!token || !user?._id) {
+      writeStoredAddresses(GUEST_STORAGE_KEY, nextAddresses);
       return;
     }
+
+    writeStoredAddresses(getUserStorageKey(user._id), nextAddresses);
 
     try {
       await axios.put(

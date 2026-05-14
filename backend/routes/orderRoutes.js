@@ -10,6 +10,7 @@ const router = express.Router();
 
 const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
 const allowedPaymentStatuses = new Set(["Pending", "Paid", "Failed"]);
+const allowedRefundStatuses = new Set(["Not Applicable", "Pending", "Processing", "Refunded", "Rejected"]);
 
 // Create order (logged-in user)
 router.post("/", protect, async (req, res) => {
@@ -61,6 +62,14 @@ router.post("/", protect, async (req, res) => {
     return res.status(400).json({ message: "Payment reference is required to place paid order." });
   }
 
+  const requestedCurrency = String(req.body?.currencyDisplay?.currency || "")
+    .trim()
+    .toUpperCase();
+  const requestedDisplayAmount = Number(req.body?.currencyDisplay?.amount);
+  const requestedDetectedCountry = String(req.body?.currencyDisplay?.detectedCountry || "")
+    .trim()
+    .toUpperCase();
+
   const order = await Order.create({
     user: req.user,
     items,
@@ -76,6 +85,12 @@ router.post("/", protect, async (req, res) => {
       razorpayOrderId,
       razorpayPaymentId,
       paidAt: rawPaymentStatus === "Paid" ? new Date() : null
+    },
+    refundStatus: "Not Applicable",
+    currencyDisplay: {
+      currency: requestedCurrency,
+      amount: Number.isFinite(requestedDisplayAmount) ? requestedDisplayAmount : null,
+      detectedCountry: requestedDetectedCountry
     },
     shipping: {
       name: shipping.name || "",
@@ -106,7 +121,8 @@ router.put("/:id/status", protect, admin, async (req, res) => {
   const statusMap = {
     pending: "Pending",
     shipped: "Shipped",
-    delivered: "Delivered"
+    delivered: "Delivered",
+    cancelled: "Cancelled"
   };
   const rawStatus = String(req.body.status || "").trim().toLowerCase();
   const normalizedStatus = statusMap[rawStatus];
@@ -121,13 +137,45 @@ router.put("/:id/status", protect, admin, async (req, res) => {
     return res.status(404).json({ message: "Order not found" });
   }
 
-  if (String(order.paymentStatus || "").trim() !== "Paid") {
+  if (String(order.status || "").trim() === "Cancelled" && normalizedStatus !== "Cancelled") {
+    return res.status(400).json({ message: "Cancelled orders cannot be moved back to shipping states." });
+  }
+
+  if (normalizedStatus !== "Cancelled" && String(order.paymentStatus || "").trim() !== "Paid") {
     return res.status(400).json({ message: "Order status can be updated only after payment is completed." });
   }
 
   order.status = normalizedStatus;
+  if (normalizedStatus === "Cancelled") {
+    order.cancelledAt = order.cancelledAt || new Date();
+    order.refundStatus = String(order.paymentStatus || "").trim() === "Paid" ? "Pending" : "Not Applicable";
+  }
   const updated = await order.save();
 
+  res.json(updated);
+});
+
+router.put("/:id/cancel", protect, async (req, res) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  const isOwner = String(order.user) === String(req.user);
+  if (!isOwner) {
+    return res.status(403).json({ message: "You can only cancel your own orders." });
+  }
+
+  if (String(order.status || "").trim() !== "Pending") {
+    return res.status(400).json({ message: "Only pending orders can be cancelled before shipping." });
+  }
+
+  order.status = "Cancelled";
+  order.cancelledAt = new Date();
+  order.refundStatus = String(order.paymentStatus || "").trim() === "Paid" ? "Pending" : "Not Applicable";
+
+  const updated = await order.save();
   res.json(updated);
 });
 
@@ -161,10 +209,41 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   res.json(updated);
 });
 
+router.put("/:id/refund-status", protect, admin, async (req, res) => {
+  const refundStatus = String(req.body?.refundStatus || "").trim();
+  if (!allowedRefundStatuses.has(refundStatus)) {
+    return res.status(400).json({ message: "Invalid refund status" });
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  if (String(order.status || "").trim() !== "Cancelled" || String(order.paymentStatus || "").trim() !== "Paid") {
+    return res.status(400).json({ message: "Refund status can be updated only for paid cancelled orders." });
+  }
+
+  order.refundStatus = refundStatus;
+  const updated = await order.save();
+  res.json(updated);
+});
+
 // GET logged-in user's orders
 router.get("/my", protect, async (req, res) => {
   const orders = await Order.find({ user: req.user }).sort({ createdAt: -1 });
   res.json(orders);
+});
+
+// Get single order (admin only)
+router.get("/:id", protect, admin, async (req, res) => {
+  const order = await Order.findById(req.params.id).populate("user", "name email").lean();
+
+  if (!order) {
+    return res.status(404).json({ message: "Order not found" });
+  }
+
+  res.json(order);
 });
 
 module.exports = router;

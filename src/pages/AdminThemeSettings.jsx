@@ -25,20 +25,10 @@ function toThemeId(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Could not read image file."));
-    reader.readAsDataURL(file);
-  });
-}
-
 function AdminThemeSettings() {
   const { token } = useAuth();
   const [siteTheme, setSiteTheme] = useState(DEFAULT_SITE_THEME);
   const [customThemes, setCustomThemes] = useState([]);
-  const [heroBannerImage, setHeroBannerImage] = useState("");
   const [themeForm, setThemeForm] = useState(EMPTY_THEME_FORM);
   const [isLoadingTheme, setIsLoadingTheme] = useState(true);
   const [isSavingTheme, setIsSavingTheme] = useState(false);
@@ -63,14 +53,12 @@ function AdminThemeSettings() {
         const nextTheme = String(res.data?.siteTheme || DEFAULT_SITE_THEME);
         setCustomThemes(nextCustomThemes);
         setSiteTheme(nextTheme);
-        setHeroBannerImage(String(res.data?.heroBannerImage || "").trim());
         applySiteTheme(nextTheme, nextCustomThemes);
       })
       .catch(() => {
         if (!active) return;
         setSiteTheme(DEFAULT_SITE_THEME);
         setCustomThemes([]);
-        setHeroBannerImage("");
       })
       .finally(() => {
         if (!active) return;
@@ -89,7 +77,7 @@ function AdminThemeSettings() {
     try {
       const res = await axios.put(
         "/api/settings",
-        { siteTheme, heroBannerImage },
+        { siteTheme },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -97,9 +85,8 @@ function AdminThemeSettings() {
       const nextTheme = String(res.data?.siteTheme || DEFAULT_SITE_THEME);
       setCustomThemes(nextCustomThemes);
       setSiteTheme(nextTheme);
-      setHeroBannerImage(String(res.data?.heroBannerImage || "").trim());
       applySiteTheme(nextTheme, nextCustomThemes);
-      setThemeMessage("Store theme and banner updated.");
+      setThemeMessage("Store theme updated.");
     } catch (err) {
       setThemeMessage(err?.response?.data?.message || "Could not save theme settings.");
     } finally {
@@ -147,8 +134,7 @@ function AdminThemeSettings() {
         "/api/settings",
         {
           siteTheme: nextThemeId,
-          customThemes: [...customThemes, nextCustomTheme],
-          heroBannerImage
+          customThemes: [...customThemes, nextCustomTheme]
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -157,7 +143,6 @@ function AdminThemeSettings() {
       const nextTheme = String(res.data?.siteTheme || DEFAULT_SITE_THEME);
       setCustomThemes(nextCustomThemes);
       setSiteTheme(nextTheme);
-      setHeroBannerImage(String(res.data?.heroBannerImage || "").trim());
       setThemeForm(EMPTY_THEME_FORM);
       applySiteTheme(nextTheme, nextCustomThemes);
       setThemeMessage("Custom theme created and selected.");
@@ -165,21 +150,6 @@ function AdminThemeSettings() {
       setThemeMessage(err?.response?.data?.message || "Could not create custom theme.");
     } finally {
       setIsCreatingTheme(false);
-    }
-  };
-
-  const handleBannerFileChange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const dataUrl = await readFileAsDataUrl(file);
-      setHeroBannerImage(dataUrl);
-      setThemeMessage("Banner image selected. Save Banner to publish it.");
-    } catch (err) {
-      setThemeMessage(err?.message || "Could not load banner image.");
-    } finally {
-      event.target.value = "";
     }
   };
 
@@ -252,48 +222,6 @@ function AdminThemeSettings() {
               {themeMessage}
             </p>
           )}
-        </section>
-
-        <section className="card pricing-controls-card">
-          <div className="pricing-controls-header">
-            <div>
-              <h3>Homepage Banner</h3>
-              <p>Set a single image banner that appears at the top of the home page.</p>
-            </div>
-            <span className="pricing-badge">Homepage</span>
-          </div>
-
-          <label className="pricing-field">
-            <span className="pricing-label">Banner Image URL</span>
-            <input
-              value={heroBannerImage}
-              onChange={(e) => setHeroBannerImage(e.target.value)}
-              placeholder="https://example.com/banner.jpg"
-            />
-          </label>
-
-          <label className="pricing-field">
-            <span className="pricing-label">Or Upload Banner Image</span>
-            <input type="file" accept="image/*" onChange={handleBannerFileChange} />
-          </label>
-
-          {heroBannerImage ? (
-            <div className="pricing-preview-row">
-              <img
-                src={heroBannerImage}
-                alt="Homepage banner preview"
-                style={{ width: "100%", maxHeight: "220px", objectFit: "cover", borderRadius: "12px", border: "1px solid var(--admin-border)" }}
-              />
-            </div>
-          ) : (
-            <p className="theme-settings-note">No banner image set. The home page will start directly with product sections.</p>
-          )}
-
-          <div className="pricing-actions-row">
-            <button className="pricing-save-btn" onClick={saveActiveTheme} disabled={isSavingTheme}>
-              {isSavingTheme ? "Saving..." : "Save Banner"}
-            </button>
-          </div>
         </section>
 
         <section className="card">

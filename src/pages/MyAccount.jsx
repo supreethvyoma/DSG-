@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import { useCart } from "../hooks/useCart";
@@ -9,11 +9,63 @@ import { formatCurrencyForUser } from "../utils/currency";
 import { formatDate } from "../utils/date";
 import "./MyAccount.css";
 
+async function fetchCoordinatesForAddress(parts = {}) {
+  const query = [
+    parts.address,
+    parts.landmark,
+    parts.city,
+    parts.state,
+    parts.pincode,
+    parts.country
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join(", ");
+
+  if (!query) {
+    return { latitude: null, longitude: null };
+  }
+
+  const params = new URLSearchParams({
+    q: query,
+    format: "jsonv2",
+    limit: "1",
+    addressdetails: "1"
+  });
+
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json"
+      }
+    });
+
+    if (!response.ok) {
+      return { latitude: null, longitude: null };
+    }
+
+    const results = await response.json();
+    const first = Array.isArray(results) ? results[0] : null;
+    const latitude = Number(first?.lat);
+    const longitude = Number(first?.lon);
+
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      return { latitude: null, longitude: null };
+    }
+
+    return { latitude, longitude };
+  } catch {
+    return { latitude: null, longitude: null };
+  }
+}
+
 function MyAccount() {
   const { user, token } = useAuth();
   const { cartItems } = useCart();
   const { wishlist } = useWishlist();
   const { addresses, addAddress, updateAddress, removeAddress, setDefaultAddress } = useDeliveryLocation();
+  const location = useLocation();
   const [orders, setOrders] = useState([]);
   const [showAddressForm, setShowAddressForm] = useState(addresses.length === 0);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -26,6 +78,23 @@ function MyAccount() {
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
   const [country, setCountry] = useState("India");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const shouldOpenAddressForm = params.get("openAddressForm") === "1";
+    const shouldScrollToAddresses = location.hash === "#manage-address" || shouldOpenAddressForm;
+
+    if (!shouldOpenAddressForm && !shouldScrollToAddresses) return;
+
+    if (shouldOpenAddressForm) {
+      setEditingIndex(null);
+      setShowAddressForm(true);
+    }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("manage-address")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [location.hash, location.search]);
 
   useEffect(() => {
     if (!token) return;
@@ -127,7 +196,7 @@ function MyAccount() {
     setEditingIndex(null);
   };
 
-  const saveAddress = () => {
+  const saveAddress = async () => {
     const cleanPhone = String(phone || "").replace(/\D/g, "");
     const cleanPincode = String(pincode || "").trim();
     const cleanCountry = String(country || "").trim();
@@ -147,6 +216,16 @@ function MyAccount() {
       return;
     }
 
+    const existingAddress = editingIndex === null ? null : addresses[editingIndex] || null;
+    const nextCoordinates = await fetchCoordinatesForAddress({
+      address,
+      landmark,
+      city,
+      state,
+      pincode: cleanPincode,
+      country: cleanCountry
+    });
+
     const payload = {
       label: addressLabel,
       name,
@@ -157,6 +236,14 @@ function MyAccount() {
       state,
       pincode: cleanPincode,
       country: cleanCountry,
+      latitude:
+        nextCoordinates.latitude !== null
+          ? nextCoordinates.latitude
+          : existingAddress?.latitude ?? null,
+      longitude:
+        nextCoordinates.longitude !== null
+          ? nextCoordinates.longitude
+          : existingAddress?.longitude ?? null,
       isDefault: editingIndex === null ? addresses.length === 0 : addresses[editingIndex]?.isDefault
     };
 
@@ -283,7 +370,7 @@ function MyAccount() {
         </div>
       </section>
 
-      <section className="my-account-panel my-account-panel-compact">
+      <section id="manage-address" className="my-account-panel my-account-panel-compact">
         <div className="my-account-panel-head">
           <div>
             <p className="my-account-section-kicker">Profile</p>

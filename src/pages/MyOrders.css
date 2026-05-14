@@ -135,6 +135,12 @@
   color: #067d62;
 }
 
+.my-order-status.status-cancelled {
+  background: #ffe7e7;
+  border-color: #ffbaba;
+  color: #b42318;
+}
+
 .my-order-status.status-on-hold {
   background: #fff7d6;
   border-color: #f4d77c;
@@ -177,6 +183,36 @@
 }
 
 .my-payment-status.payment-failed {
+  background: #ffe7e7;
+  border-color: #ffbaba;
+  color: #b42318;
+}
+
+.my-refund-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  width: fit-content;
+}
+
+.my-refund-status.refund-pending,
+.my-refund-status.refund-processing {
+  background: #fff7d6;
+  border-color: #f4d77c;
+  color: #8a5f00;
+}
+
+.my-refund-status.refund-refunded {
+  background: #e8f5e9;
+  border-color: #b7e0bc;
+  color: #067d62;
+}
+
+.my-refund-status.refund-rejected {
   background: #ffe7e7;
   border-color: #ffbaba;
   color: #b42318;
@@ -315,6 +351,22 @@
 
 .my-order-pay-btn:hover {
   background: #0f5bd0;
+}
+
+.my-order-cancel-btn {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b42318;
+  border-radius: 999px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.my-order-cancel-btn:hover {
+  background: #ffe4e6;
 }
 
 .my-order-pay-btn:disabled {

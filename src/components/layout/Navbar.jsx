@@ -1,10 +1,15 @@
 ﻿import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
 import { useWishlist } from "../../hooks/useWishlist";
 import { useDeliveryLocation } from "../../hooks/useDeliveryLocation";
 import "./Navbar.css";
+
+const onDemandUrl = String(
+  import.meta.env.VITE_ONDEMAND_URL || "https://antiquewhite-squid-823975.hostingersite.com/#/"
+).trim();
 
 function Navbar() {
   const { user, logout } = useAuth();
@@ -17,14 +22,17 @@ function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isCollectionFilterMenuOpen, setIsCollectionFilterMenuOpen] = useState(false);
   const [isManagingAddresses, setIsManagingAddresses] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [locationStatusMessage, setLocationStatusMessage] = useState("");
+  const [collectionCategories, setCollectionCategories] = useState(["All"]);
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     const query = searchQuery.trim();
-    navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
+    navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/collection");
   };
 
   useEffect(() => {
@@ -38,10 +46,41 @@ function Navbar() {
   useEffect(() => {
     setIsMenuOpen(false);
     setIsAddressModalOpen(false);
+    setIsCollectionFilterMenuOpen(false);
     setIsManagingAddresses(false);
     setIsDetectingLocation(false);
     setLocationStatusMessage("");
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    let active = true;
+
+    axios
+      .get("/api/products", {
+        params: {
+          page: 1,
+          limit: 1,
+          sort: "featured",
+          category: "All"
+        }
+      })
+      .then((res) => {
+        if (!active) return;
+        setCollectionCategories(
+          Array.isArray(res.data?.categories) && res.data.categories.length > 0
+            ? res.data.categories
+            : ["All"]
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setCollectionCategories(["All"]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (isAddressModalOpen) return;
@@ -255,37 +294,70 @@ function Navbar() {
         </div>
       </div>
 
-      {/* <div className="navbar-attached-bar">
+      <div className="navbar-attached-bar">
         <div className="navbar-inner navbar-attached-bar-inner">
-          <a
-            href="http://localhost:5174/"
-            className="navbar-ondemand-btn"
-            aria-label="OnDemand"
-          >
-            OnDemand
-          </a>
-        </div>
-      </div> */}
-<div className="navbar-attached-bar">
-        <div className="navbar-inner navbar-attached-bar-inner">
-          <Link
-            to="/collection"
-            className="navbar-ondemand-btn"
-            aria-label="Open all collection"
-          >
-            All Collection
-          </Link>
-          <a
-            href="http://localhost:5174/"
-            className="navbar-ondemand-btn"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Ondemand website"
-          >
-            Open OnDemand 
-          </a>
+          <div className="navbar-attached-bar-start">
+            {!isAdminRoute ? (
+              <>
+                <button
+                  type="button"
+                  className="navbar-collection-menu-btn"
+                  aria-label="Open collection filters"
+                  aria-expanded={isCollectionFilterMenuOpen}
+                  onClick={() => setIsCollectionFilterMenuOpen((current) => !current)}
+                >
+                  <span />
+                  <span />
+                  <span />
+                </button>
+                {isCollectionFilterMenuOpen ? (
+                  <div className="navbar-collection-filter-menu">
+                    <strong className="navbar-collection-filter-title">Browse by category</strong>
+                    <div className="navbar-collection-filter-list">
+                      {collectionCategories.map((category) => (
+                        <button
+                          key={category}
+                          type="button"
+                          className="navbar-collection-filter-item"
+                          onClick={() => {
+                            setIsCollectionFilterMenuOpen(false);
+                            navigate(
+                              category === "All"
+                                ? "/collection"
+                                : `/collection?category=${encodeURIComponent(category)}`
+                            );
+                          }}
+                        >
+                          {category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+          {onDemandUrl ? (
+            <a
+              href={onDemandUrl}
+              className="navbar-ondemand-btn"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Ondemand website"
+            >
+              Open OnDemand
+            </a>
+          ) : null}
         </div>
       </div>
+      {!isAdminRoute && isCollectionFilterMenuOpen ? (
+        <button
+          type="button"
+          className="navbar-collection-filter-backdrop"
+          aria-label="Close collection filters"
+          onClick={() => setIsCollectionFilterMenuOpen(false)}
+        />
+      ) : null}
       {isMenuOpen && (
         <button
           type="button"
@@ -449,7 +521,7 @@ function Navbar() {
             )}
 
             <div className="navbar-address-modal-actions">
-              <Link to="/checkout" onClick={() => setIsAddressModalOpen(false)}>
+              <Link to="/account?openAddressForm=1#manage-address" onClick={() => setIsAddressModalOpen(false)}>
                 Add Address
               </Link>
               <button type="button" onClick={() => setIsManagingAddresses((current) => !current)}>

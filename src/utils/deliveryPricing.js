@@ -86,6 +86,37 @@ export function normalizeDistancePricing(input, fallbackDeliveryCharge = 0) {
   };
 }
 
+function normalizeCountryName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function normalizeInternationalDelivery(input, fallbackDeliveryCharge = 0) {
+  const rawRates = Array.isArray(input?.countryRates) ? input.countryRates : [];
+  const seen = new Set();
+
+  const countryRates = rawRates.reduce((acc, item) => {
+    const country = String(item?.country || "").trim();
+    const key = normalizeCountryName(country);
+    if (!country || seen.has(key)) {
+      return acc;
+    }
+
+    seen.add(key);
+    acc.push({
+      country,
+      fee: Math.max(0, Number(item?.fee ?? 0))
+    });
+    return acc;
+  }, []);
+
+  return {
+    enabled: input?.enabled === true,
+    domesticCountry: String(input?.domesticCountry || "India").trim() || "India",
+    defaultFee: Math.max(0, Number(input?.defaultFee ?? fallbackDeliveryCharge ?? 0)),
+    countryRates
+  };
+}
+
 export function calculateDistanceKm(from, to) {
   const lat1 = normalizeCoordinate(from?.latitude);
   const lon1 = normalizeCoordinate(from?.longitude);
@@ -112,13 +143,41 @@ export function getDeliveryPricingDetails(settings, shipping) {
   const fallbackCharge = Math.max(0, Number(settings?.deliveryCharge || 0));
   const warehouseLocation = normalizeWarehouseLocation(settings?.warehouseLocation || {});
   const distancePricing = normalizeDistancePricing(settings?.distancePricing || {}, fallbackCharge);
+  const internationalDelivery = normalizeInternationalDelivery(settings?.internationalDelivery || {}, fallbackCharge);
+  const shippingCountry = String(shipping?.country || "").trim();
+  const normalizedShippingCountry = normalizeCountryName(shippingCountry);
+  const normalizedDomesticCountry = normalizeCountryName(internationalDelivery.domesticCountry);
+
+  if (
+    internationalDelivery.enabled &&
+    normalizedShippingCountry &&
+    normalizedShippingCountry !== normalizedDomesticCountry
+  ) {
+    const matchedRate = internationalDelivery.countryRates.find(
+      (item) => normalizeCountryName(item.country) === normalizedShippingCountry
+    );
+    const deliveryCharge = Math.round(
+      Math.max(0, Number((matchedRate ? matchedRate.fee : internationalDelivery.defaultFee) || 0)) * 100
+    ) / 100;
+
+    return {
+      deliveryCharge,
+      distanceKm: null,
+      isDistanceBased: false,
+      pricingMode: "international",
+      matchedCountry: matchedRate?.country || shippingCountry || ""
+    };
+  }
+
   const distanceKm = calculateDistanceKm(warehouseLocation, shipping);
 
   if (!distancePricing.enabled || distanceKm === null) {
     return {
       deliveryCharge: fallbackCharge,
       distanceKm: null,
-      isDistanceBased: false
+      isDistanceBased: false,
+      pricingMode: "fallback",
+      matchedCountry: ""
     };
   }
 
@@ -132,7 +191,9 @@ export function getDeliveryPricingDetails(settings, shipping) {
   return {
     deliveryCharge: Math.round(Math.max(0, deliveryCharge) * 100) / 100,
     distanceKm,
-    isDistanceBased: true
+    isDistanceBased: true,
+    pricingMode: "distance",
+    matchedCountry: ""
   };
 }
 

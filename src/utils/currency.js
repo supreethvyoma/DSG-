@@ -269,3 +269,56 @@ export function formatCurrencyForUser(value, options = {}) {
 export function formatCurrencyINR(value) {
   return formatCurrencyForUser(value, { locale: "en-IN", currency: "INR" });
 }
+
+export function formatBaseCurrency(value, options = {}) {
+  return formatCurrencyForUser(value, {
+    locale: options.locale || "en-IN",
+    currency: BASE_CURRENCY,
+    sourceCurrency: BASE_CURRENCY,
+    minimumFractionDigits: options.minimumFractionDigits,
+    maximumFractionDigits: options.maximumFractionDigits
+  });
+}
+
+export function formatOrderDisplayCurrency(order, amountKey = "total", fallbackValue = 0, options = {}) {
+  const orderAmount = Number(order?.[amountKey]);
+  const safeFallback = Number(fallbackValue || 0);
+  const value = Number.isFinite(orderAmount) ? orderAmount : safeFallback;
+  const rawStoredDisplayAmount = order?.currencyDisplay?.amount;
+  const hasStoredDisplayAmount =
+    rawStoredDisplayAmount !== null &&
+    rawStoredDisplayAmount !== undefined &&
+    rawStoredDisplayAmount !== "";
+  const storedDisplayAmount = hasStoredDisplayAmount ? Number(rawStoredDisplayAmount) : NaN;
+
+  const displayCurrency = String(
+    order?.currencyDisplay?.currency ||
+      order?.displayCurrency ||
+      order?.currency ||
+      (options.fallbackToUserCurrency ? getUserCurrency() : BASE_CURRENCY)
+  )
+    .trim()
+    .toUpperCase();
+
+  if (Number.isFinite(storedDisplayAmount) && displayCurrency) {
+    return formatCurrencyForUser(storedDisplayAmount, {
+      locale: options.locale,
+      currency: displayCurrency,
+      sourceCurrency: displayCurrency,
+      minimumFractionDigits: options.minimumFractionDigits,
+      maximumFractionDigits: options.maximumFractionDigits
+    });
+  }
+
+  if (!displayCurrency || displayCurrency === BASE_CURRENCY) {
+    return formatBaseCurrency(value, options);
+  }
+
+  return formatCurrencyForUser(value, {
+    locale: options.locale,
+    currency: displayCurrency,
+    sourceCurrency: BASE_CURRENCY,
+    minimumFractionDigits: options.minimumFractionDigits,
+    maximumFractionDigits: options.maximumFractionDigits
+  });
+}

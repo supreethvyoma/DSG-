@@ -7,6 +7,7 @@ import SalesChart from "../components/SalesChart";
 import { formatDate, formatTime } from "../utils/date";
 import {
   normalizeDistancePricing,
+  normalizeInternationalDelivery,
   normalizeWarehouseLocation,
   parseGoogleMapsCoordinates
 } from "../utils/deliveryPricing";
@@ -15,7 +16,7 @@ import "./AdminDashboard.css";
 const LOW_STOCK_THRESHOLD = 5;
 
 function normalizeStatus(status) {
-  if (status === "Shipped" || status === "Delivered") return status;
+  if (status === "Shipped" || status === "Delivered" || status === "Cancelled") return status;
   return "Pending";
 }
 
@@ -52,6 +53,18 @@ function AdminDashboard() {
       perKmCharge: 0,
       freeRadiusKm: 0,
       maxCharge: ""
+    },
+    internationalDelivery: {
+      enabled: false,
+      domesticCountry: "India",
+      defaultFee: 0,
+      countryRates: []
+    },
+    homeSectionVisibility: {
+      festiveOffers: true
+    },
+    collectionFilterVisibility: {
+      festiveOffers: true
     }
   });
   const [isSavingPricing, setIsSavingPricing] = useState(false);
@@ -60,7 +73,6 @@ function AdminDashboard() {
   const [adminEmail, setAdminEmail] = useState("");
   const [isMakingAdmin, setIsMakingAdmin] = useState(false);
   const [makeAdminMessage, setMakeAdminMessage] = useState("");
-
   useEffect(() => {
     let active = true;
 
@@ -138,6 +150,23 @@ function AdminDashboard() {
               res.data?.distancePricing?.maxCharge === null || res.data?.distancePricing?.maxCharge === undefined
                 ? ""
                 : String(Number(res.data.distancePricing.maxCharge))
+          },
+          internationalDelivery: {
+            enabled: res.data?.internationalDelivery?.enabled === true,
+            domesticCountry: String(res.data?.internationalDelivery?.domesticCountry || "India"),
+            defaultFee: String(Number(res.data?.internationalDelivery?.defaultFee ?? res.data?.deliveryCharge ?? 0)),
+            countryRates: Array.isArray(res.data?.internationalDelivery?.countryRates)
+              ? res.data.internationalDelivery.countryRates.map((item) => ({
+                  country: String(item?.country || ""),
+                  fee: String(Number(item?.fee || 0))
+                }))
+              : []
+          },
+          homeSectionVisibility: {
+            festiveOffers: res.data?.homeSectionVisibility?.festiveOffers !== false
+          },
+          collectionFilterVisibility: {
+            festiveOffers: res.data?.collectionFilterVisibility?.festiveOffers !== false
           }
         });
       })
@@ -147,7 +176,10 @@ function AdminDashboard() {
           gstPercent: "0",
           deliveryCharge: "0",
           warehouseLocation: { name: "", address: "", mapUrl: "", latitude: "", longitude: "" },
-          distancePricing: { enabled: true, baseFee: "0", perKmCharge: "0", freeRadiusKm: "0", maxCharge: "" }
+          distancePricing: { enabled: true, baseFee: "0", perKmCharge: "0", freeRadiusKm: "0", maxCharge: "" },
+          internationalDelivery: { enabled: false, domesticCountry: "India", defaultFee: "0", countryRates: [] },
+          homeSectionVisibility: { festiveOffers: true },
+          collectionFilterVisibility: { festiveOffers: true }
         });
       });
 
@@ -164,7 +196,17 @@ function AdminDashboard() {
         gstPercent: Math.max(0, Number(pricingSettings.gstPercent || 0)),
         deliveryCharge: Math.max(0, Number(pricingSettings.deliveryCharge || 0)),
         warehouseLocation: normalizeWarehouseLocation(pricingSettings.warehouseLocation),
-        distancePricing: normalizeDistancePricing(pricingSettings.distancePricing, pricingSettings.deliveryCharge)
+        distancePricing: normalizeDistancePricing(pricingSettings.distancePricing, pricingSettings.deliveryCharge),
+        internationalDelivery: normalizeInternationalDelivery(
+          pricingSettings.internationalDelivery,
+          pricingSettings.deliveryCharge
+        ),
+        homeSectionVisibility: {
+          festiveOffers: pricingSettings.homeSectionVisibility.festiveOffers
+        },
+        collectionFilterVisibility: {
+          festiveOffers: pricingSettings.collectionFilterVisibility.festiveOffers
+        }
       };
 
       const res = await axios.put("/api/settings", payload, {
@@ -196,6 +238,23 @@ function AdminDashboard() {
             res.data?.distancePricing?.maxCharge === null || res.data?.distancePricing?.maxCharge === undefined
               ? ""
               : String(Number(res.data.distancePricing.maxCharge))
+        },
+        internationalDelivery: {
+          enabled: res.data?.internationalDelivery?.enabled === true,
+          domesticCountry: String(res.data?.internationalDelivery?.domesticCountry || "India"),
+          defaultFee: String(Number(res.data?.internationalDelivery?.defaultFee ?? res.data?.deliveryCharge ?? 0)),
+          countryRates: Array.isArray(res.data?.internationalDelivery?.countryRates)
+            ? res.data.internationalDelivery.countryRates.map((item) => ({
+                country: String(item?.country || ""),
+                fee: String(Number(item?.fee || 0))
+              }))
+            : []
+        },
+        homeSectionVisibility: {
+          festiveOffers: res.data?.homeSectionVisibility?.festiveOffers !== false
+        },
+        collectionFilterVisibility: {
+          festiveOffers: res.data?.collectionFilterVisibility?.festiveOffers !== false
         }
       });
       setPricingMessage("Pricing settings updated.");
@@ -217,6 +276,55 @@ function AdminDashboard() {
     setPricingSettings((prev) => ({
       ...prev,
       distancePricing: { ...prev.distancePricing, [field]: value }
+    }));
+  };
+
+  const updateInternationalDeliveryField = (field, value) => {
+    setPricingSettings((prev) => ({
+      ...prev,
+      internationalDelivery: { ...prev.internationalDelivery, [field]: value }
+    }));
+  };
+
+  const updateVisibilityField = (section, field, value) => {
+    setPricingSettings((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value
+      }
+    }));
+  };
+
+  const updateInternationalCountryRate = (index, field, value) => {
+    setPricingSettings((prev) => ({
+      ...prev,
+      internationalDelivery: {
+        ...prev.internationalDelivery,
+        countryRates: prev.internationalDelivery.countryRates.map((item, itemIndex) =>
+          itemIndex === index ? { ...item, [field]: value } : item
+        )
+      }
+    }));
+  };
+
+  const addInternationalCountryRate = () => {
+    setPricingSettings((prev) => ({
+      ...prev,
+      internationalDelivery: {
+        ...prev.internationalDelivery,
+        countryRates: [...prev.internationalDelivery.countryRates, { country: "", fee: "0" }]
+      }
+    }));
+  };
+
+  const removeInternationalCountryRate = (index) => {
+    setPricingSettings((prev) => ({
+      ...prev,
+      internationalDelivery: {
+        ...prev.internationalDelivery,
+        countryRates: prev.internationalDelivery.countryRates.filter((_, itemIndex) => itemIndex !== index)
+      }
     }));
   };
 
@@ -542,6 +650,10 @@ function AdminDashboard() {
               <span>Rate / KM</span>
               <strong>{formatCurrency(Number(pricingSettings.distancePricing.perKmCharge || 0))}</strong>
             </div>
+            <div className="pricing-preview-chip">
+              <span>Intl Default</span>
+              <strong>{formatCurrency(Number(pricingSettings.internationalDelivery.defaultFee || 0))}</strong>
+            </div>
           </div>
 
           <div className="pricing-controls-grid">
@@ -719,6 +831,129 @@ function AdminDashboard() {
                   value={pricingSettings.distancePricing.maxCharge}
                   onChange={(e) => updateDistancePricingField("maxCharge", e.target.value)}
                 />
+              </label>
+            </div>
+          </div>
+
+          <div className="distance-pricing-section">
+            <div className="distance-pricing-header">
+              <div>
+                <h4>International Delivery Pricing</h4>
+                <p>Apply country-based delivery fees when the shipping country is outside your domestic country.</p>
+              </div>
+              <button type="button" className="pricing-link-btn" onClick={addInternationalCountryRate}>
+                Add Country Rate
+              </button>
+            </div>
+
+            <div className="distance-pricing-grid">
+              <label className="pricing-field">
+                <span className="pricing-label">International Pricing</span>
+                <select
+                  value={pricingSettings.internationalDelivery.enabled ? "enabled" : "disabled"}
+                  onChange={(e) => updateInternationalDeliveryField("enabled", e.target.value === "enabled")}
+                >
+                  <option value="enabled">Enabled</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </label>
+
+              <label className="pricing-field">
+                <span className="pricing-label">Domestic Country</span>
+                <input
+                  type="text"
+                  placeholder="e.g. India"
+                  value={pricingSettings.internationalDelivery.domesticCountry}
+                  onChange={(e) => updateInternationalDeliveryField("domesticCountry", e.target.value)}
+                />
+              </label>
+
+              <label className="pricing-field">
+                <span className="pricing-label">Default International Fee</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={pricingSettings.internationalDelivery.defaultFee}
+                  onChange={(e) => updateInternationalDeliveryField("defaultFee", e.target.value)}
+                />
+              </label>
+            </div>
+
+            {pricingSettings.internationalDelivery.countryRates.length > 0 ? (
+              <div className="delivery-zone-list">
+                {pricingSettings.internationalDelivery.countryRates.map((item, index) => (
+                  <div key={`intl-country-rate-${index}`} className="delivery-zone-card">
+                    <div className="delivery-zone-card-header">
+                      <strong>Country Rate {index + 1}</strong>
+                      <button type="button" onClick={() => removeInternationalCountryRate(index)}>
+                        Remove
+                      </button>
+                    </div>
+                    <div className="delivery-zone-grid">
+                      <label className="pricing-field">
+                        <span className="pricing-label">Country</span>
+                        <input
+                          type="text"
+                          placeholder="e.g. United States"
+                          value={item.country}
+                          onChange={(e) => updateInternationalCountryRate(index, "country", e.target.value)}
+                        />
+                      </label>
+                      <label className="pricing-field">
+                        <span className="pricing-label">Delivery Fee</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={item.fee}
+                          onChange={(e) => updateInternationalCountryRate(index, "fee", e.target.value)}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+          ) : (
+            <div className="delivery-zone-empty">
+              No country-specific rates yet. Add one if you want a different fee for specific international destinations.
+            </div>
+          )}
+          </div>
+
+          <div className="distance-pricing-section">
+            <div className="distance-pricing-header">
+              <div>
+                <h4>Festive Offer Visibility</h4>
+                <p>Control whether festive offers appear on the homepage and as a collection filter.</p>
+              </div>
+            </div>
+
+            <div className="distance-pricing-grid">
+              <label className="pricing-field">
+                <span className="pricing-label">Homepage Festive Offers Section</span>
+                <select
+                  value={pricingSettings.homeSectionVisibility.festiveOffers ? "shown" : "hidden"}
+                  onChange={(e) =>
+                    updateVisibilityField("homeSectionVisibility", "festiveOffers", e.target.value === "shown")
+                  }
+                >
+                  <option value="shown">Show</option>
+                  <option value="hidden">Hide</option>
+                </select>
+              </label>
+
+              <label className="pricing-field">
+                <span className="pricing-label">Collection Festive Offer Filter</span>
+                <select
+                  value={pricingSettings.collectionFilterVisibility.festiveOffers ? "shown" : "hidden"}
+                  onChange={(e) =>
+                    updateVisibilityField("collectionFilterVisibility", "festiveOffers", e.target.value === "shown")
+                  }
+                >
+                  <option value="shown">Show</option>
+                  <option value="hidden">Hide</option>
+                </select>
               </label>
             </div>
           </div>

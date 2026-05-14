@@ -3,24 +3,111 @@ import axios from "axios";
 
 const AuthContext = createContext();
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem("user");
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
-  const lastActivityTickRef = useRef(Date.now());
-  const normalizeUser = (value) => {
-    if (!value) return null;
-    return {
-      ...value,
-      isAdmin: Boolean(value.isAdmin)
-    };
+const AUTH_STORAGE_KEY = "authSession";
+const SESSION_DURATION_MS = 12 * 60 * 60 * 1000;
+const REMEMBER_ME_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
+function normalizeUser(value) {
+  if (!value) return null;
+  return {
+    ...value,
+    isAdmin: Boolean(value.isAdmin)
   };
+}
+
+function parseJwtPayload(token) {
+  try {
+    const payload = String(token || "").split(".")[1];
+    if (!payload) return null;
+    const normalizedBase64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = window.atob(normalizedBase64);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function getTokenExpiryMs(token, fallbackMsFromNow) {
+  const payload = parseJwtPayload(token);
+  const expMs = Number(payload?.exp || 0) * 1000;
+  if (Number.isFinite(expMs) && expMs > Date.now()) {
+    return expMs;
+  }
+  return Date.now() + fallbackMsFromNow;
+}
+
+function readStoredAuth() {
+  if (typeof window === "undefined") {
+    return { token: null, user: null, rememberMe: false };
+  }
+
+  const storages = [window.sessionStorage, window.localStorage];
+
+  for (const storage of storages) {
+    try {
+      const raw = storage.getItem(AUTH_STORAGE_KEY);
+      if (!raw) continue;
+
+      const parsed = JSON.parse(raw);
+      const token = String(parsed?.token || "").trim();
+      const expiresAt = Number(parsed?.expiresAt || 0);
+      const rememberMe = parsed?.rememberMe === true;
+      const user = normalizeUser(parsed?.user || null);
+
+      if (!token || !expiresAt || expiresAt <= Date.now()) {
+        storage.removeItem(AUTH_STORAGE_KEY);
+        continue;
+      }
+
+      return { token, user, rememberMe };
+    } catch {
+      storage.removeItem(AUTH_STORAGE_KEY);
+    }
+  }
+
+  return { token: null, user: null, rememberMe: false };
+}
+
+function clearStoredAuth() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(AUTH_STORAGE_KEY);
+  window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  window.localStorage.removeItem("user");
+  window.localStorage.removeItem("token");
+  window.sessionStorage.removeItem("user");
+  window.sessionStorage.removeItem("token");
+}
+
+function persistAuth({ token, user, rememberMe }) {
+  if (typeof window === "undefined" || !token) return;
+
+  const storage = rememberMe ? window.localStorage : window.sessionStorage;
+  const fallbackDuration = rememberMe ? REMEMBER_ME_DURATION_MS : SESSION_DURATION_MS;
+  const payload = {
+    token,
+    user: normalizeUser(user),
+    rememberMe,
+    expiresAt: getTokenExpiryMs(token, fallbackDuration)
+  };
+
+  clearStoredAuth();
+  storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+
+  if (rememberMe) {
+    window.localStorage.setItem("user", JSON.stringify(payload.user));
+    window.localStorage.setItem("token", token);
+  } else {
+    window.sessionStorage.setItem("user", JSON.stringify(payload.user));
+    window.sessionStorage.setItem("token", token);
+  }
+}
+
+export function AuthProvider({ children }) {
+  const initialAuth = readStoredAuth();
+  const [user, setUser] = useState(initialAuth.user);
+  const [token, setToken] = useState(initialAuth.token);
+  const [rememberMe, setRememberMe] = useState(initialAuth.rememberMe);
+  const lastActivityTickRef = useRef(Date.now());
 
   useEffect(() => {
     if (!token) return;
@@ -34,20 +121,20 @@ export function AuthProvider({ children }) {
         if (!active) return;
         const profile = normalizeUser(res.data || null);
         setUser(profile);
-        localStorage.setItem("user", JSON.stringify(profile));
+        persistAuth({ token, user: profile, rememberMe });
       })
       .catch(() => {
         if (!active) return;
         setUser(null);
         setToken(null);
-        localStorage.removeItem("user");
-        localStorage.removeItem("token");
+        setRememberMe(false);
+        clearStoredAuth();
       });
 
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [rememberMe, token]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -68,7 +155,6 @@ export function AuthProvider({ children }) {
       }
     };
 
-    // Mark session as active immediately.
     sendActivity(0);
 
     const intervalId = window.setInterval(() => {
@@ -82,7 +168,6 @@ export function AuthProvider({ children }) {
     }, 30000);
 
     const handleVisibilityChange = () => {
-      // Avoid counting hidden time.
       lastActivityTickRef.current = Date.now();
       if (document.visibilityState === "visible") {
         sendActivity(0);
@@ -98,49 +183,38 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  const register = async (name, email, password) => {
-    const res = await axios.post(
-      "/api/auth/register",
-      { name, email, password }
-    );
+  const register = async (name, email, password, nextRememberMe = false) => {
+    const res = await axios.post("/api/auth/register", { name, email, password, rememberMe: nextRememberMe });
     const nextUser = normalizeUser(res.data);
 
     setUser(nextUser);
     setToken(res.data.token);
-
-    localStorage.setItem("user", JSON.stringify(nextUser));
-    localStorage.setItem("token", res.data.token);
+    setRememberMe(nextRememberMe);
+    persistAuth({ token: res.data.token, user: nextUser, rememberMe: nextRememberMe });
   };
 
-  const login = async (email, password) => {
-    const res = await axios.post(
-      "/api/auth/login",
-      { email, password }
-    );
+  const login = async (email, password, nextRememberMe = false) => {
+    const res = await axios.post("/api/auth/login", { email, password, rememberMe: nextRememberMe });
     const nextUser = normalizeUser(res.data);
 
     setUser(nextUser);
     setToken(res.data.token);
-
-    localStorage.setItem("user", JSON.stringify(nextUser));
-    localStorage.setItem("token", res.data.token);
+    setRememberMe(nextRememberMe);
+    persistAuth({ token: res.data.token, user: nextUser, rememberMe: nextRememberMe });
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+    setRememberMe(false);
+    clearStoredAuth();
   };
 
   return (
-    <AuthContext.Provider
-      value={{ user, token, register, login, logout }}
-    >
+    <AuthContext.Provider value={{ user, token, rememberMe, register, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export { AuthContext };
-

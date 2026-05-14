@@ -24,6 +24,7 @@ function getProgressIndex(order) {
   const paymentStatus = getEffectivePaymentStatus(order);
   const status = String(order?.status || "Pending");
 
+  if (status === "Cancelled") return 0;
   if (paymentStatus !== "Paid") return 0;
   if (status === "Delivered") return 5;
   if (status === "Shipped") return 4;
@@ -68,6 +69,19 @@ function MyOrders() {
 
   const updateOrderPaymentStatus = async (orderId, payload) => {
     await axios.put(`/api/orders/${orderId}/payment-status`, payload, getAuthHeaders());
+  };
+
+  const cancelOrder = async (orderId) => {
+    const shouldCancel = window.confirm("Cancel this order before shipping?");
+    if (!shouldCancel) return;
+
+    try {
+      await axios.put(`/api/orders/${orderId}/cancel`, {}, getAuthHeaders());
+      await loadOrders();
+      setPageMessage("Order cancelled successfully.");
+    } catch (err) {
+      setPageMessage(err?.response?.data?.message || "Unable to cancel this order right now.");
+    }
   };
 
   const handleContinuePayment = async (order) => {
@@ -246,14 +260,18 @@ function MyOrders() {
         const status = String(order.status || "Pending");
         const paymentStatus = getEffectivePaymentStatus(order);
         const isPaid = paymentStatus === "Paid";
-        const orderStatusLabel = isPaid ? status : "On Hold";
+        const orderStatusLabel = status === "Cancelled" ? "Cancelled" : isPaid ? status : "On Hold";
+        const refundStatus = String(order?.refundStatus || "Not Applicable");
         const paymentStatusLabel = paymentStatus;
         const canDownloadInvoice = isPaid && (status === "Shipped" || status === "Delivered");
         const items = Array.isArray(order.items) ? order.items : [];
         const orderStatusClass = `my-order-status status-${orderStatusLabel.toLowerCase().replace(/\s+/g, "-")}`;
         const paymentStatusClass = `my-payment-status payment-${paymentStatusLabel.toLowerCase().replace(/\s+/g, "-")}`;
         const progressIndex = getProgressIndex(order);
-        const canContinuePayment = !isPaid && status !== "Delivered";
+        const canContinuePayment = !isPaid && status !== "Delivered" && status !== "Cancelled";
+        const canCancelOrder = status === "Pending";
+        const shouldShowRefundStatus = refundStatus !== "Not Applicable";
+        const refundStatusClass = `my-refund-status refund-${refundStatus.toLowerCase().replace(/\s+/g, "-")}`;
 
         return (
           <div key={order._id} className="my-order-card">
@@ -284,6 +302,12 @@ function MyOrders() {
                   </small>
                 ) : null}
               </div>
+              {shouldShowRefundStatus ? (
+                <div>
+                  <span>REFUND</span>
+                  <strong className={refundStatusClass}>{refundStatus}</strong>
+                </div>
+              ) : null}
               <div className="my-order-id-wrap">
                 <span>ORDER #</span>
                 <strong>{order._id}</strong>
@@ -337,6 +361,15 @@ function MyOrders() {
                   </button>
                 ) : null}
 
+                {canCancelOrder ? (
+                  <button
+                    className="my-order-cancel-btn"
+                    onClick={() => cancelOrder(order._id)}
+                  >
+                    Cancel order
+                  </button>
+                ) : null}
+
                 <button
                   className="my-order-invoice-btn"
                   disabled={!canDownloadInvoice}
@@ -350,7 +383,9 @@ function MyOrders() {
 
                 {!canDownloadInvoice ? (
                   <p className="my-order-invoice-note">
-                    Invoice is available after payment and shipping.
+                    {status === "Cancelled"
+                      ? "Invoice is not available for cancelled orders."
+                      : "Invoice is available after payment and shipping."}
                   </p>
                 ) : null}
               </div>
