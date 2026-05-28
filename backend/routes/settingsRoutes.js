@@ -3,6 +3,7 @@ const StoreSettings = require("../models/StoreSettings");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { DEFAULT_CURRENCY_EXCHANGE_RATES, normalizeCurrencyRates } = require("../utils/currency");
+const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 
 const router = express.Router();
 const DEFAULT_THEME = "sunrise";
@@ -260,8 +261,32 @@ function normalizeSettings(settings) {
     },
     collectionFilterVisibility: {
       festiveOffers: settings?.collectionFilterVisibility?.festiveOffers !== false
-    }
+    },
+    lastUpdatedByName: String(settings?.lastUpdatedByName || "").trim(),
+    lastUpdatedByEmail: String(settings?.lastUpdatedByEmail || "").trim().toLowerCase(),
+    lastUpdatedAt: settings?.lastUpdatedAt || null
   };
+}
+
+function summarizeSettingsChanges(previousSettings = {}, nextSettings = {}) {
+  const changes = [];
+
+  if (Number(previousSettings?.gstPercent || 0) !== Number(nextSettings?.gstPercent || 0)) changes.push("GST");
+  if (Number(previousSettings?.deliveryCharge || 0) !== Number(nextSettings?.deliveryCharge || 0)) changes.push("delivery charge");
+  if (JSON.stringify(previousSettings?.warehouseLocation || {}) !== JSON.stringify(nextSettings?.warehouseLocation || {})) changes.push("warehouse location");
+  if (JSON.stringify(previousSettings?.distancePricing || {}) !== JSON.stringify(nextSettings?.distancePricing || {})) changes.push("distance pricing");
+  if (JSON.stringify(previousSettings?.internationalDelivery || {}) !== JSON.stringify(nextSettings?.internationalDelivery || {})) changes.push("international delivery");
+  if (JSON.stringify(previousSettings?.pricingMarkets || []) !== JSON.stringify(nextSettings?.pricingMarkets || [])) changes.push("pricing markets");
+  if (JSON.stringify(previousSettings?.internationalPricingDefaults || {}) !== JSON.stringify(nextSettings?.internationalPricingDefaults || {})) changes.push("fallback currency");
+  if (JSON.stringify(previousSettings?.currencyConversionRates || {}) !== JSON.stringify(nextSettings?.currencyConversionRates || {})) changes.push("conversion rates");
+  if (String(previousSettings?.siteTheme || "") !== String(nextSettings?.siteTheme || "")) changes.push("site theme");
+  if (JSON.stringify(previousSettings?.customThemes || []) !== JSON.stringify(nextSettings?.customThemes || [])) changes.push("custom themes");
+  if (JSON.stringify(previousSettings?.productCategories || []) !== JSON.stringify(nextSettings?.productCategories || [])) changes.push("product categories");
+  if (JSON.stringify(previousSettings?.heroBanners || []) !== JSON.stringify(nextSettings?.heroBanners || [])) changes.push("hero banners");
+  if (JSON.stringify(previousSettings?.homeSectionVisibility || {}) !== JSON.stringify(nextSettings?.homeSectionVisibility || {})) changes.push("home sections");
+  if (JSON.stringify(previousSettings?.collectionFilterVisibility || {}) !== JSON.stringify(nextSettings?.collectionFilterVisibility || {})) changes.push("collection filters");
+
+  return changes;
 }
 
 async function getOrCreateSettings() {
@@ -278,6 +303,7 @@ router.get("/", async (req, res) => {
 });
 
 router.put("/", protect, admin, async (req, res) => {
+  const actor = await getAdminActorSnapshot(req.user);
   const rawGst = Number(req.body?.gstPercent);
   const rawDelivery = Number(req.body?.deliveryCharge);
   const rawTheme = String(req.body?.siteTheme || "").trim().toLowerCase();
@@ -310,6 +336,7 @@ router.put("/", protect, admin, async (req, res) => {
   const deliveryCharge = Number.isNaN(rawDelivery) ? 0 : Math.max(0, rawDelivery);
 
   const settings = await getOrCreateSettings();
+  const previousSettings = normalizeSettings(settings.toObject ? settings.toObject() : settings);
   const nextDeliveryCharge = Number.isNaN(rawDelivery) ? Number(settings.deliveryCharge || 0) : deliveryCharge;
   const warehouseLocation = hasWarehouseLocation
     ? normalizeWarehouseLocation(req.body?.warehouseLocation)
@@ -375,9 +402,29 @@ router.put("/", protect, admin, async (req, res) => {
     : allowedThemeIds.has(settings.siteTheme)
       ? settings.siteTheme
       : DEFAULT_THEME;
+  settings.lastUpdatedByName = actor.name;
+  settings.lastUpdatedByEmail = actor.email;
+  settings.lastUpdatedAt = new Date();
   await settings.save();
+  const normalizedSettings = normalizeSettings(settings);
+  const changedSections = summarizeSettingsChanges(previousSettings, normalizedSettings);
 
-  res.json(normalizeSettings(settings));
+  await logAdminAction({
+    req,
+    action: "settings-updated",
+    entityType: "store-settings",
+    entityId: String(settings._id || ""),
+    entityLabel: "Store Settings",
+    summary:
+      changedSections.length > 0
+        ? `Updated store settings: ${changedSections.slice(0, 4).join(", ")}`
+        : "Updated store settings",
+    details: {
+      changedSections
+    }
+  });
+
+  res.json(normalizedSettings);
 });
 
 module.exports = router;

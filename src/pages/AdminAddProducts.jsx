@@ -3,6 +3,7 @@ import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { COUNTRY_OPTIONS } from "../utils/countryOptions";
+import { formatDate, formatTime } from "../utils/date";
 import "./AdminDashboard.css";
 
 const DEFAULT_CATEGORY_OPTIONS = [
@@ -1648,6 +1649,12 @@ function AdminAddProducts() {
                       <span>
                         <strong>{product.name}</strong>
                         <small>{product.category || "General"}</small>
+                        {product.lastUpdatedAt ? (
+                          <small>
+                            Last updated by {product.lastUpdatedByName || product.lastUpdatedByEmail || "Admin"} on{" "}
+                            {formatDate(product.lastUpdatedAt)} {formatTime(product.lastUpdatedAt)}
+                          </small>
+                        ) : null}
                       </span>
                     </div>
                       <span>

@@ -8,6 +8,7 @@ const { convertCurrencyAmount, normalizeCurrencyCode } = require("../utils/curre
 const { getProductPriceDetails } = require("../utils/productPricing");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 
 const router = express.Router();
 
@@ -246,6 +247,7 @@ router.get("/", protect, admin, async (req, res) => {
 });
 // UPDATE order status (ADMIN)
 router.put("/:id/status", protect, admin, async (req, res) => {
+  const actor = await getAdminActorSnapshot(req.user);
   const statusMap = {
     pending: "Pending",
     shipped: "Shipped",
@@ -264,6 +266,8 @@ router.put("/:id/status", protect, admin, async (req, res) => {
   if (!order) {
     return res.status(404).json({ message: "Order not found" });
   }
+
+  const previousStatus = String(order.status || "").trim() || "Pending";
 
   if (String(order.status || "").trim() === "Cancelled" && normalizedStatus !== "Cancelled") {
     return res.status(400).json({ message: "Cancelled orders cannot be moved back to shipping states." });
@@ -287,7 +291,23 @@ router.put("/:id/status", protect, admin, async (req, res) => {
       }));
     }
   }
+  order.lastUpdatedByName = actor.name;
+  order.lastUpdatedByEmail = actor.email;
+  order.lastUpdatedAt = new Date();
   const updated = await order.save();
+
+  await logAdminAction({
+    req,
+    action: "order-status-updated",
+    entityType: "order",
+    entityId: String(updated._id || ""),
+    entityLabel: String(updated._id || ""),
+    summary: `Updated order ${String(updated._id || "").slice(-6)} status: ${previousStatus} -> ${normalizedStatus}`,
+    details: {
+      previousStatus,
+      nextStatus: normalizedStatus
+    }
+  });
 
   res.json(updated);
 });
@@ -381,6 +401,7 @@ router.put("/:id/items/:itemId/return-request", protect, async (req, res) => {
 });
 
 router.put("/:id/refund-status", protect, admin, async (req, res) => {
+  const actor = await getAdminActorSnapshot(req.user);
   const refundStatus = String(req.body?.refundStatus || "").trim();
   if (!allowedRefundStatuses.has(refundStatus)) {
     return res.status(400).json({ message: "Invalid refund status" });
@@ -391,16 +412,36 @@ router.put("/:id/refund-status", protect, admin, async (req, res) => {
     return res.status(404).json({ message: "Order not found" });
   }
 
+  const previousRefundStatus = String(order.refundStatus || "").trim() || "Not Applicable";
+
   if (String(order.status || "").trim() !== "Cancelled" || String(order.paymentStatus || "").trim() !== "Paid") {
     return res.status(400).json({ message: "Refund status can be updated only for paid cancelled orders." });
   }
 
   order.refundStatus = refundStatus;
+  order.lastUpdatedByName = actor.name;
+  order.lastUpdatedByEmail = actor.email;
+  order.lastUpdatedAt = new Date();
   const updated = await order.save();
+
+  await logAdminAction({
+    req,
+    action: "order-refund-updated",
+    entityType: "order",
+    entityId: String(updated._id || ""),
+    entityLabel: String(updated._id || ""),
+    summary: `Updated refund for order ${String(updated._id || "").slice(-6)}: ${previousRefundStatus} -> ${refundStatus}`,
+    details: {
+      previousRefundStatus,
+      nextRefundStatus: refundStatus
+    }
+  });
+
   res.json(updated);
 });
 
 router.put("/:id/items/:itemId/return-status", protect, admin, async (req, res) => {
+  const actor = await getAdminActorSnapshot(req.user);
   const returnStatus = String(req.body?.returnStatus || "").trim();
   const adminReason = String(req.body?.adminReason || "").trim();
   if (!allowedReturnStatuses.has(returnStatus)) {
@@ -416,6 +457,8 @@ router.put("/:id/items/:itemId/return-status", protect, admin, async (req, res) 
   if (!item) {
     return res.status(404).json({ message: "Order item not found" });
   }
+
+  const previousReturnStatus = String(item?.returnRequest?.status || "Not Requested").trim();
 
   if (String(item?.returnRequest?.status || "Not Requested").trim() === "Not Requested") {
     return res.status(400).json({ message: "This item does not have a return request." });
@@ -440,7 +483,29 @@ router.put("/:id/items/:itemId/return-status", protect, admin, async (req, res) 
   }
 
   order.markModified("items");
+  order.lastUpdatedByName = actor.name;
+  order.lastUpdatedByEmail = actor.email;
+  order.lastUpdatedAt = new Date();
   const updated = await order.save();
+
+  await logAdminAction({
+    req,
+    action: "order-return-updated",
+    entityType: "order-item-return",
+    entityId: `${String(updated._id || "")}:${String(req.params.itemId || "")}`,
+    entityLabel: String(item?.name || req.params.itemId || "").trim(),
+    summary:
+      `Updated return for order ${String(updated._id || "").slice(-6)} item ${String(item?.name || "").trim() || "item"}: ` +
+      `${previousReturnStatus} -> ${returnStatus}`,
+    details: {
+      orderId: String(updated._id || ""),
+      itemId: String(req.params.itemId || ""),
+      itemName: String(item?.name || "").trim(),
+      previousReturnStatus,
+      nextReturnStatus: returnStatus
+    }
+  });
+
   res.json(updated);
 });
 

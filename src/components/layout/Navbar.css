@@ -8,10 +8,10 @@
 }
 
 .navbar-inner {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   width: 100%;
-  padding: 10px 16px;
+  padding: 10px 24px;
   display: grid;
   grid-template-columns: max-content max-content minmax(260px, 1fr) max-content;
   align-items: center;

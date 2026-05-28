@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { generateInvoicePdf } from "../utils/invoicePdf";
-import { formatDateForFileName } from "../utils/date";
+import { formatDate, formatDateForFileName, formatTime } from "../utils/date";
 import { formatBaseCurrency, formatOrderDisplayCurrency } from "../utils/currency";
 import "./AdminOrders.css";
 
@@ -673,6 +673,12 @@ function AdminOrders() {
                           #{order._id.slice(-6).toUpperCase()}
                         </Link>
                         <span>{formatOrderDate(order.createdAt)}</span>
+                        {order.lastUpdatedAt ? (
+                          <small style={{ display: "block", marginTop: "6px", color: "var(--admin-muted)" }}>
+                            Last updated by {order.lastUpdatedByName || order.lastUpdatedByEmail || "Admin"} on{" "}
+                            {formatDate(order.lastUpdatedAt)} {formatTime(order.lastUpdatedAt)}
+                          </small>
+                        ) : null}
                       </td>
                       <td>
                         <div className="admin-order-customer">

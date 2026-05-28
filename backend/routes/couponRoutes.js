@@ -2,11 +2,15 @@ const express = require("express");
 const Coupon = require("../models/Coupon");
 const StoreSettings = require("../models/StoreSettings");
 const { convertCurrencyAmount, normalizeCurrencyCode } = require("../utils/currency");
+const protect = require("../middleware/authMiddleware");
+const admin = require("../middleware/adminMiddleware");
+const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post("/", protect, admin, async (req, res) => {
   try {
+    const actor = await getAdminActorSnapshot(req.user);
     const code = String(req.body?.code || "").trim().toUpperCase();
     const type = req.body?.type;
     const value = Number(req.body?.value || 0);
@@ -31,7 +35,24 @@ router.post("/", async (req, res) => {
       type,
       value,
       minOrder,
-      expiresAt
+      expiresAt,
+      lastUpdatedByName: actor.name,
+      lastUpdatedByEmail: actor.email,
+      lastUpdatedAt: new Date()
+    });
+
+    await logAdminAction({
+      req,
+      action: "coupon-created",
+      entityType: "coupon",
+      entityId: String(coupon._id || ""),
+      entityLabel: coupon.code,
+      summary: `Created coupon ${coupon.code}`,
+      details: {
+        type: coupon.type,
+        value: Number(coupon.value || 0),
+        minOrder: Number(coupon.minOrder || 0)
+      }
     });
 
     return res.json(coupon);
@@ -48,8 +69,24 @@ router.get("/", async (_req, res) => {
   res.json(coupons);
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", protect, admin, async (req, res) => {
+  const coupon = await Coupon.findById(req.params.id);
   await Coupon.findByIdAndDelete(req.params.id);
+
+  if (coupon) {
+    await logAdminAction({
+      req,
+      action: "coupon-deleted",
+      entityType: "coupon",
+      entityId: String(coupon._id || ""),
+      entityLabel: coupon.code,
+      summary: `Deleted coupon ${coupon.code}`,
+      details: {
+        type: coupon.type
+      }
+    });
+  }
+
   res.json({ message: "Coupon deleted" });
 });
 

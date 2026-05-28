@@ -159,7 +159,20 @@ const productSchema = new mongoose.Schema(
       default: 0
     },
 
-    reviews: [reviewSchema]
+    reviews: [reviewSchema],
+
+    lastUpdatedByName: {
+      type: String,
+      default: ""
+    },
+    lastUpdatedByEmail: {
+      type: String,
+      default: ""
+    },
+    lastUpdatedAt: {
+      type: Date,
+      default: null
+    }
   },
   { timestamps: true }
 );

@@ -2,8 +2,10 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const AdminAuditLog = require("../models/AdminAuditLog");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { logAdminAction } = require("../utils/adminAudit");
 
 const router = express.Router();
 
@@ -139,8 +141,27 @@ router.put("/make-admin", protect, admin, async (req, res) => {
     return res.json({ message: "User is already an admin" });
   }
 
+  const actor = await User.findById(req.user).select("name email").lean();
   user.isAdmin = true;
+  user.adminGrantedAt = new Date();
+  user.adminGrantedByName = String(actor?.name || "").trim();
+  user.adminGrantedByEmail = String(actor?.email || "").trim().toLowerCase();
   await user.save();
+
+  await logAdminAction({
+    req,
+    actorName: actor?.name,
+    actorEmail: actor?.email,
+    action: "admin-access-granted",
+    entityType: "user",
+    entityId: String(user._id || ""),
+    entityLabel: user.email,
+    summary: `Granted admin access to ${user.email}`,
+    details: {
+      targetUserName: String(user.name || "").trim(),
+      targetUserEmail: user.email
+    }
+  });
 
   res.json({ message: `${user.email} is now an admin` });
 });
@@ -163,6 +184,14 @@ router.post("/activity", protect, async (req, res) => {
 
 router.get("/admin/users-metrics", protect, admin, async (req, res) => {
   const users = await User.find().select("name email isAdmin lastActiveAt totalTimeSpentSec").lean();
+  const adminUsersRaw = await User.find({ isAdmin: true })
+    .select("name email isAdmin adminGrantedAt adminGrantedByName adminGrantedByEmail lastActiveAt")
+    .sort({ adminGrantedAt: -1, createdAt: -1 })
+    .lean();
+  const recentAdminActionsRaw = await AdminAuditLog.find()
+    .sort({ createdAt: -1 })
+    .limit(40)
+    .lean();
   const now = Date.now();
   const activeWindowMs = 5 * 60 * 1000;
 
@@ -189,12 +218,76 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
   const totalUsers = mappedUsers.length;
   const activeUsers = mappedUsers.filter((user) => user.isActive).length;
   const totalTimeSpentSec = mappedUsers.reduce((sum, user) => sum + Number(user.totalTimeSpentSec || 0), 0);
+  let recentAdminActions = recentAdminActionsRaw.map((entry) => ({
+    _id: String(entry?._id || ""),
+    actorUser: entry?.actorUser ? String(entry.actorUser) : "",
+    actorName: String(entry?.actorName || "").trim() || "Admin",
+    actorEmail: String(entry?.actorEmail || "").trim().toLowerCase(),
+    action: String(entry?.action || "").trim(),
+    entityType: String(entry?.entityType || "").trim(),
+    entityId: String(entry?.entityId || "").trim(),
+    entityLabel: String(entry?.entityLabel || "").trim(),
+    summary: String(entry?.summary || "").trim(),
+    details: entry?.details && typeof entry.details === "object" ? entry.details : {},
+    createdAt: entry?.createdAt || null
+  }));
+
+  if (recentAdminActions.length === 0) {
+    recentAdminActions = adminUsersRaw
+      .map((user) => ({
+        _id: `fallback-admin-${String(user?._id || "")}`,
+        actorUser: String(user?._id || ""),
+        actorName: String(user?.adminGrantedByName || user?.name || "").trim() || "Admin",
+        actorEmail: String(user?.adminGrantedByEmail || user?.email || "").trim().toLowerCase(),
+        action: "admin-access-existing",
+        entityType: "user",
+        entityId: String(user?._id || ""),
+        entityLabel: String(user?.email || "").trim(),
+        summary: `Admin access active for ${String(user?.email || user?.name || "admin").trim()}`,
+        details: {
+          fallback: true
+        },
+        createdAt: user?.adminGrantedAt || user?.lastActiveAt || null
+      }))
+      .sort((a, b) => {
+        const aTs = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTs = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTs - aTs;
+      });
+  }
+  const latestAdminActionByEmail = new Map();
+  recentAdminActions.forEach((entry) => {
+    const key = String(entry?.actorEmail || "").trim().toLowerCase();
+    if (key && !latestAdminActionByEmail.has(key)) {
+      latestAdminActionByEmail.set(key, entry);
+    }
+  });
+  const admins = adminUsersRaw.map((user) => {
+    const key = String(user?.email || "").trim().toLowerCase();
+    const latestAction = latestAdminActionByEmail.get(key) || null;
+    const lastActiveTs = user?.lastActiveAt ? new Date(user.lastActiveAt).getTime() : NaN;
+    return {
+      _id: String(user?._id || ""),
+      name: user?.name || "Admin",
+      email: user?.email || "",
+      isActive: !Number.isNaN(lastActiveTs) && now - lastActiveTs <= activeWindowMs,
+      lastActiveAt: user?.lastActiveAt || null,
+      adminGrantedAt: user?.adminGrantedAt || null,
+      adminGrantedByName: String(user?.adminGrantedByName || "").trim(),
+      adminGrantedByEmail: String(user?.adminGrantedByEmail || "").trim().toLowerCase(),
+      latestActionAt: latestAction?.createdAt || null,
+      latestActionSummary: latestAction?.summary || "",
+      latestActionType: latestAction?.action || ""
+    };
+  });
 
   res.json({
     totalUsers,
     activeUsers,
     totalTimeSpentSec,
-    users: mappedUsers.slice(0, 30)
+    users: mappedUsers.slice(0, 30),
+    admins,
+    recentAdminActions
   });
 });
 

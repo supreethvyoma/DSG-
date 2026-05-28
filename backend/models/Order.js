@@ -160,6 +160,18 @@ const orderSchema = new mongoose.Schema(
     cancelledAt: {
       type: Date,
       default: null
+    },
+    lastUpdatedByName: {
+      type: String,
+      default: ""
+    },
+    lastUpdatedByEmail: {
+      type: String,
+      default: ""
+    },
+    lastUpdatedAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }

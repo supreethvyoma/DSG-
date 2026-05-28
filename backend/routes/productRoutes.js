@@ -6,6 +6,7 @@ const User = require("../models/User");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { getProductPriceDetails } = require("../utils/productPricing");
+const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 
 const router = express.Router();
 
@@ -209,9 +210,49 @@ const getAverageRating = (product) => {
   return reviews.reduce((sum, review) => sum + Number(review?.rating || 0), 0) / reviews.length;
 };
 
+const getProductAuditFields = (product = {}) => ({
+  name: String(product?.name || "").trim(),
+  price: Number(product?.price || 0),
+  internationalPrice:
+    product?.internationalPrice === null || product?.internationalPrice === undefined
+      ? null
+      : Number(product.internationalPrice),
+  internationalCountryPrices: Array.isArray(product?.internationalCountryPrices) ? product.internationalCountryPrices : [],
+  marketPrices: Array.isArray(product?.marketPrices) ? product.marketPrices : [],
+  stock: Number(product?.stock || 0),
+  category: String(product?.category || "").trim(),
+  festiveOffer: product?.festiveOffer === true,
+  festiveDiscountPercent: Number(product?.festiveDiscountPercent || 0),
+  productType: String(product?.productType || "single").trim(),
+  bundleItems: Array.isArray(product?.bundleItems) ? product.bundleItems : [],
+  relatedProducts: Array.isArray(product?.relatedProducts) ? product.relatedProducts : [],
+  image: String(product?.image || "").trim(),
+  images: Array.isArray(product?.images) ? product.images : []
+});
+
+const summarizeProductChanges = (before = {}, after = {}) => {
+  const changes = [];
+  if (String(before.name || "") !== String(after.name || "")) changes.push("name");
+  if (Number(before.price || 0) !== Number(after.price || 0)) changes.push("price");
+  if (Number(before.internationalPrice ?? -1) !== Number(after.internationalPrice ?? -1)) changes.push("international price");
+  if (JSON.stringify(before.internationalCountryPrices || []) !== JSON.stringify(after.internationalCountryPrices || [])) changes.push("country prices");
+  if (JSON.stringify(before.marketPrices || []) !== JSON.stringify(after.marketPrices || [])) changes.push("market prices");
+  if (Number(before.stock || 0) !== Number(after.stock || 0)) changes.push("stock");
+  if (String(before.category || "") !== String(after.category || "")) changes.push("category");
+  if (Boolean(before.festiveOffer) !== Boolean(after.festiveOffer)) changes.push("festive offer");
+  if (Number(before.festiveDiscountPercent || 0) !== Number(after.festiveDiscountPercent || 0)) changes.push("festive discount");
+  if (String(before.productType || "") !== String(after.productType || "")) changes.push("product type");
+  if (JSON.stringify(before.bundleItems || []) !== JSON.stringify(after.bundleItems || [])) changes.push("bundle items");
+  if (JSON.stringify(before.relatedProducts || []) !== JSON.stringify(after.relatedProducts || [])) changes.push("related products");
+  if (String(before.image || "") !== String(after.image || "")) changes.push("primary image");
+  if (JSON.stringify(before.images || []) !== JSON.stringify(after.images || [])) changes.push("gallery");
+  return changes;
+};
+
 // Create product (ADMIN)
 router.post("/", protect, admin, async (req, res) => {
   try {
+    const actor = await getAdminActorSnapshot(req.user);
     const images = normalizeImages(req.body.images, req.body.image);
     const productType = String(req.body?.productType || "single").trim().toLowerCase() === "bundle" ? "bundle" : "single";
     const bundleItems = productType === "bundle" ? normalizeBundleItems(req.body.bundleItems) : [];
@@ -237,8 +278,26 @@ router.post("/", protect, admin, async (req, res) => {
       festiveDiscountPercent: festiveOffer ? normalizeFestiveDiscountPercent(req.body?.festiveDiscountPercent) : 0,
       productType,
       bundleItems,
-      relatedProducts
+      relatedProducts,
+      lastUpdatedByName: actor.name,
+      lastUpdatedByEmail: actor.email,
+      lastUpdatedAt: new Date()
     });
+
+    await logAdminAction({
+      req,
+      action: "product-created",
+      entityType: "product",
+      entityId: String(product._id || ""),
+      entityLabel: String(product.name || "").trim(),
+      summary: `Created product ${product.name}`,
+      details: {
+        productType,
+        category: String(product.category || "").trim(),
+        festiveOffer
+      }
+    });
+
     res.json(product);
   } catch (error) {
     res.status(500).json({ message: "Failed to create product", error: error.message });
@@ -248,11 +307,14 @@ router.post("/", protect, admin, async (req, res) => {
 // UPDATE product (ADMIN)
 router.put("/:id", protect, admin, async (req, res) => {
   try {
+    const actor = await getAdminActorSnapshot(req.user);
     const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
+
+    const previousFields = getProductAuditFields(product.toObject ? product.toObject() : product);
 
     product.name = req.body.name ?? product.name;
     product.price = req.body.price !== undefined ? normalizeProductPrice(req.body.price, product.price) : product.price;
@@ -295,8 +357,32 @@ router.put("/:id", protect, admin, async (req, res) => {
     const nextImages = normalizeImages(req.body.images ?? product.images, nextImageValue);
     product.image = nextImages[0] || String(nextImageValue || "").trim();
     product.images = nextImages;
+    product.lastUpdatedByName = actor.name;
+    product.lastUpdatedByEmail = actor.email;
+    product.lastUpdatedAt = new Date();
 
     const updatedProduct = await product.save();
+
+    const changedFields = summarizeProductChanges(
+      previousFields,
+      getProductAuditFields(updatedProduct.toObject ? updatedProduct.toObject() : updatedProduct)
+    );
+
+    await logAdminAction({
+      req,
+      action: "product-updated",
+      entityType: "product",
+      entityId: String(updatedProduct._id || ""),
+      entityLabel: String(updatedProduct.name || "").trim(),
+      summary:
+        changedFields.length > 0
+          ? `Updated product ${updatedProduct.name}: ${changedFields.slice(0, 4).join(", ")}`
+          : `Updated product ${updatedProduct.name}`,
+      details: {
+        changedFields
+      }
+    });
+
     res.json(updatedProduct);
   } catch (error) {
     res.status(500).json({ message: "Failed to update product", error: error.message });
@@ -546,7 +632,21 @@ router.delete("/:id", protect, admin, async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const productName = String(product.name || "").trim();
     await product.deleteOne();
+
+    await logAdminAction({
+      req,
+      action: "product-deleted",
+      entityType: "product",
+      entityId: String(product._id || ""),
+      entityLabel: productName,
+      summary: `Deleted product ${productName}`,
+      details: {
+        category: String(product.category || "").trim()
+      }
+    });
+
     res.json({ message: "Product deleted" });
   } catch (error) {
     res.status(500).json({ message: "Failed to delete product", error: error.message });

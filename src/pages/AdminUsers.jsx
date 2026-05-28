@@ -23,7 +23,9 @@ function AdminUsers() {
     totalUsers: 0,
     activeUsers: 0,
     totalTimeSpentSec: 0,
-    users: []
+    users: [],
+    admins: [],
+    recentAdminActions: []
   });
 
   useEffect(() => {
@@ -40,12 +42,21 @@ function AdminUsers() {
           totalUsers: Number(res?.data?.totalUsers || 0),
           activeUsers: Number(res?.data?.activeUsers || 0),
           totalTimeSpentSec: Number(res?.data?.totalTimeSpentSec || 0),
-          users: Array.isArray(res?.data?.users) ? res.data.users : []
+          users: Array.isArray(res?.data?.users) ? res.data.users : [],
+          admins: Array.isArray(res?.data?.admins) ? res.data.admins : [],
+          recentAdminActions: Array.isArray(res?.data?.recentAdminActions) ? res.data.recentAdminActions : []
         });
         setError("");
       } catch {
         if (!active) return;
-        setMetrics({ totalUsers: 0, activeUsers: 0, totalTimeSpentSec: 0, users: [] });
+        setMetrics({
+          totalUsers: 0,
+          activeUsers: 0,
+          totalTimeSpentSec: 0,
+          users: [],
+          admins: [],
+          recentAdminActions: []
+        });
         setError("Could not load user metrics.");
       } finally {
         if (active) setIsLoading(false);
@@ -66,15 +77,20 @@ function AdminUsers() {
     return metrics.totalTimeSpentSec / metrics.totalUsers;
   }, [metrics.totalTimeSpentSec, metrics.totalUsers]);
 
+  const activeAdmins = useMemo(
+    () => metrics.admins.filter((adminUser) => adminUser.isActive).length,
+    [metrics.admins]
+  );
+
   return (
     <div className="admin-layout">
       <AdminSidebar />
 
       <main className="admin-main">
         <div className="admin-header">
-          <h1>User Insights</h1>
+          <h1>User And Admin Insights</h1>
           <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--admin-muted)" }}>
-            Live user activity metrics updated every 15s.
+            Live user activity and admin change tracking updated every 15s.
           </p>
         </div>
 
@@ -97,6 +113,116 @@ function AdminUsers() {
             <span>Average Time/User</span>
             <strong>{formatTimeSpent(avgTimePerUser)}</strong>
           </div>
+          <div className="users-metric-card">
+            <span>Admins With Access</span>
+            <strong>{metrics.admins.length}</strong>
+          </div>
+          <div className="users-metric-card">
+            <span>Active Admins</span>
+            <strong>{activeAdmins}</strong>
+          </div>
+        </section>
+
+        <section className="card">
+          <h3>Current Admin Access</h3>
+          {isLoading ? (
+            <p>Loading admins...</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Admin</th>
+                    <th>Status</th>
+                    <th>Granted</th>
+                    <th>Granted By</th>
+                    <th>Last Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.admins.map((adminUser) => (
+                    <tr key={adminUser._id}>
+                      <td>
+                        <strong>{adminUser.name || "Admin"}</strong>
+                        <div style={{ color: "var(--admin-muted)", fontSize: "12px", marginTop: "4px" }}>
+                          {adminUser.email || "-"}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={adminUser.isActive ? "users-status active" : "users-status idle"}>
+                          {adminUser.isActive ? "Active" : "Idle"}
+                        </span>
+                      </td>
+                      <td>
+                        {adminUser.adminGrantedAt
+                          ? `${formatDate(adminUser.adminGrantedAt)} ${formatTime(adminUser.adminGrantedAt)}`
+                          : "-"}
+                      </td>
+                      <td>
+                        {adminUser.adminGrantedByEmail || adminUser.adminGrantedByName
+                          ? `${adminUser.adminGrantedByName || "Admin"}${adminUser.adminGrantedByEmail ? ` (${adminUser.adminGrantedByEmail})` : ""}`
+                          : "-"}
+                      </td>
+                      <td>
+                        {adminUser.latestActionAt ? (
+                          <>
+                            <div>{adminUser.latestActionSummary || "Change recorded"}</div>
+                            <div style={{ color: "var(--admin-muted)", fontSize: "12px", marginTop: "4px" }}>
+                              {formatDate(adminUser.latestActionAt)} {formatTime(adminUser.latestActionAt)}
+                            </div>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {metrics.admins.length === 0 && <p style={{ margin: "12px 0 0" }}>No admin users found.</p>}
+            </div>
+          )}
+        </section>
+
+        <section className="card">
+          <h3>Recent Admin Changes</h3>
+          {isLoading ? (
+            <p>Loading admin activity...</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Admin</th>
+                    <th>Action</th>
+                    <th>Target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {metrics.recentAdminActions.map((entry) => (
+                    <tr key={entry._id}>
+                      <td>{entry.createdAt ? `${formatDate(entry.createdAt)} ${formatTime(entry.createdAt)}` : "-"}</td>
+                      <td>
+                        <strong>{entry.actorName || "Admin"}</strong>
+                        <div style={{ color: "var(--admin-muted)", fontSize: "12px", marginTop: "4px" }}>
+                          {entry.actorEmail || "-"}
+                        </div>
+                      </td>
+                      <td>{entry.summary || entry.action || "-"}</td>
+                      <td>{entry.entityLabel || entry.entityType || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {metrics.recentAdminActions.length === 0 && (
+                <p style={{ margin: "12px 0 0" }}>
+                  No admin changes recorded yet. This list starts filling after the backend is running with audit logging
+                  and admins perform tracked actions.
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="card">

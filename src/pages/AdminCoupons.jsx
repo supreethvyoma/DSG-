@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import AdminSidebar from "../components/admin/AdminSidebar";
+import { useAuth } from "../hooks/useAuth";
+import { formatDate, formatTime } from "../utils/date";
 import "./AdminCoupons.css";
 
 function AdminCoupons() {
+  const { token } = useAuth();
   const [coupons, setCoupons] = useState([]);
   const [code, setCode] = useState("");
   const [type, setType] = useState("percentage");
@@ -64,6 +67,8 @@ function AdminCoupons() {
         value: couponValue,
         minOrder: Number.isNaN(couponMinOrder) ? 0 : couponMinOrder,
         expiresAt: expiresAt || undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       clearForm();
       setMessage("Coupon created successfully.");
@@ -81,7 +86,9 @@ function AdminCoupons() {
 
     setMessage("");
     try {
-      await axios.delete(`/api/coupons/${id}`);
+      await axios.delete(`/api/coupons/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setMessage("Coupon deleted.");
       await loadCoupons();
     } catch {
@@ -159,6 +166,7 @@ function AdminCoupons() {
                     <th>Discount</th>
                     <th>Min Order</th>
                     <th>Expiry</th>
+                    <th>Last Updated</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -172,6 +180,18 @@ function AdminCoupons() {
                       <td>{coupon.type === "percentage" ? `${coupon.value}%` : `Rs ${coupon.value}`}</td>
                       <td>Rs {Number(coupon.minOrder || 0)}</td>
                       <td>{coupon.expiresAt ? formatDate(coupon.expiresAt) : "No expiry"}</td>
+                      <td>
+                        {coupon.lastUpdatedAt ? (
+                          <>
+                            <div>{coupon.lastUpdatedByName || coupon.lastUpdatedByEmail || "Admin"}</div>
+                            <div style={{ color: "var(--admin-muted)", fontSize: "12px", marginTop: "4px" }}>
+                              {formatDate(coupon.lastUpdatedAt)} {formatTime(coupon.lastUpdatedAt)}
+                            </div>
+                          </>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
                       <td>
                         <button className="danger-btn" onClick={() => deleteCoupon(coupon._id)}>
                           Delete

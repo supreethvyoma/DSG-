@@ -90,7 +90,10 @@ function AdminDashboard() {
     },
     collectionFilterVisibility: {
       festiveOffers: true
-    }
+    },
+    lastUpdatedByName: "",
+    lastUpdatedByEmail: "",
+    lastUpdatedAt: null
   });
   const [isSavingPricing, setIsSavingPricing] = useState(false);
   const [isGettingWarehouseLocation, setIsGettingWarehouseLocation] = useState(false);
@@ -210,7 +213,10 @@ function AdminDashboard() {
           },
           collectionFilterVisibility: {
             festiveOffers: res.data?.collectionFilterVisibility?.festiveOffers !== false
-          }
+          },
+          lastUpdatedByName: String(res.data?.lastUpdatedByName || ""),
+          lastUpdatedByEmail: String(res.data?.lastUpdatedByEmail || ""),
+          lastUpdatedAt: res.data?.lastUpdatedAt || null
         });
       })
       .catch(() => {
@@ -233,7 +239,10 @@ function AdminDashboard() {
             AUD: "0.019"
           },
           homeSectionVisibility: { festiveOffers: true },
-          collectionFilterVisibility: { festiveOffers: true }
+          collectionFilterVisibility: { festiveOffers: true },
+          lastUpdatedByName: "",
+          lastUpdatedByEmail: "",
+          lastUpdatedAt: null
         });
       });
 
@@ -340,7 +349,10 @@ function AdminDashboard() {
         },
         collectionFilterVisibility: {
           festiveOffers: res.data?.collectionFilterVisibility?.festiveOffers !== false
-        }
+        },
+        lastUpdatedByName: String(res.data?.lastUpdatedByName || ""),
+        lastUpdatedByEmail: String(res.data?.lastUpdatedByEmail || ""),
+        lastUpdatedAt: res.data?.lastUpdatedAt || null
       });
       storePricingConfig({
         pricingMarkets: res.data?.pricingMarkets || [],
@@ -1215,7 +1227,11 @@ function AdminDashboard() {
             <button className="pricing-save-btn" onClick={savePricingSettings} disabled={isSavingPricing}>
               {isSavingPricing ? "Saving..." : "Save Charges"}
             </button>
-            <span>Changes apply to all new orders immediately.</span>
+            <span>
+              {pricingSettings.lastUpdatedAt
+                ? `Last updated by ${pricingSettings.lastUpdatedByName || pricingSettings.lastUpdatedByEmail || "Admin"} on ${formatDate(pricingSettings.lastUpdatedAt)} ${formatTime(pricingSettings.lastUpdatedAt)}`
+                : "Changes apply to all new orders immediately."}
+            </span>
           </div>
           {pricingMessage && (
             <p className={`pricing-message ${pricingMessage.includes("updated") ? "success" : "error"}`}>

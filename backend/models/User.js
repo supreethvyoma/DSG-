@@ -66,6 +66,18 @@ const userSchema = mongoose.Schema({
     type: Boolean,
     default: false
   },
+  adminGrantedAt: {
+    type: Date,
+    default: null
+  },
+  adminGrantedByName: {
+    type: String,
+    default: ""
+  },
+  adminGrantedByEmail: {
+    type: String,
+    default: ""
+  },
   lastActiveAt: {
     type: Date,
     default: null

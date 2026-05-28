@@ -22,6 +22,18 @@ const couponSchema = new mongoose.Schema(
     },
     expiresAt: {
       type: Date
+    },
+    lastUpdatedByName: {
+      type: String,
+      default: ""
+    },
+    lastUpdatedByEmail: {
+      type: String,
+      default: ""
+    },
+    lastUpdatedAt: {
+      type: Date,
+      default: null
     }
   },
   { timestamps: true }
