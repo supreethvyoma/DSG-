@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import "../../pages/AdminDashboard.css";
+import "../../pages/AdminShared.css";
 
 const adminNavItems = [
   { to: "/admin", label: "Dashboard" },

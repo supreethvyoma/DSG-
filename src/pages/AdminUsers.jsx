@@ -3,7 +3,8 @@ import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { formatDate, formatTime } from "../utils/date";
-import "./AdminDashboard.css";
+import "./AdminShared.css";
+import "./AdminUsers.css";
 
 function formatTimeSpent(totalSec) {
   const sec = Math.max(0, Math.floor(Number(totalSec) || 0));

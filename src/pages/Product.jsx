@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { useCart } from "../hooks/useCart";
@@ -109,19 +109,18 @@ function Product() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [productRes, allProductsRes, recRes] = await Promise.all([
-        axios.get(`/api/products/${id}`).catch(() => ({ data: null })),
-        axios.get("/api/products").catch(() => ({ data: [] })),
-        axios
-          .get(`/api/products/recommend/${id}`)
-          .catch(() => ({ data: [] }))
-      ]);
-      const allProducts = Array.isArray(allProductsRes.data) ? allProductsRes.data : [];
-      const recommended = Array.isArray(recRes.data) ? recRes.data : [];
-      const found =
-        productRes?.data && productRes.data?._id
-          ? productRes.data
-          : allProducts.find((p) => String(p?._id) === String(id)) || null;
+      setRelatedProducts([]);
+      let allProducts = [];
+
+      const productRes = await axios.get(`/api/products/${id}`).catch(() => ({ data: null }));
+      let found = productRes?.data && productRes.data?._id ? productRes.data : null;
+
+      if (!found) {
+        const allProductsRes = await axios.get("/api/products").catch(() => ({ data: [] }));
+        allProducts = Array.isArray(allProductsRes.data) ? allProductsRes.data : [];
+        found = allProducts.find((p) => String(p?._id) === String(id)) || null;
+      }
+
       const galleryImages = getGalleryImages(found);
 
       setProduct(found);
@@ -132,11 +131,28 @@ function Product() {
           ? found.relatedProducts.filter((p) => String(p?._id || "") !== String(id)).slice(0, 8)
           : []
       );
-      setRelatedProducts(
-        recommended.length > 0
-          ? recommended.filter((p) => p?._id !== id).slice(0, 4)
-          : allProducts.filter((p) => p._id !== id).slice(0, 4)
-      );
+
+      if (!found) {
+        setRelatedProducts([]);
+        return;
+      }
+
+      setLoading(false);
+
+      const recRes = await axios.get(`/api/products/recommend/${id}`).catch(() => ({ data: [] }));
+      const recommended = Array.isArray(recRes.data) ? recRes.data : [];
+
+      if (recommended.length > 0) {
+        setRelatedProducts(recommended.filter((p) => p?._id !== id).slice(0, 4));
+        return;
+      }
+
+      if (allProducts.length === 0) {
+        const allProductsRes = await axios.get("/api/products").catch(() => ({ data: [] }));
+        allProducts = Array.isArray(allProductsRes.data) ? allProductsRes.data : [];
+      }
+
+      setRelatedProducts(allProducts.filter((p) => p?._id !== id).slice(0, 4));
     } catch {
       setProduct(null);
       setManagedRelatedProducts([]);
@@ -269,7 +285,10 @@ function Product() {
                   className={`thumbnail ${mainImage === img ? "active" : ""}`}
                   onClick={() => setMainImage(img)}
                   alt={`${product.name} thumbnail ${i + 1}`}
+                  width="120"
+                  height="120"
                   loading="lazy"
+                  decoding="async"
                 />
               ))}
             </div>
@@ -279,6 +298,11 @@ function Product() {
                 src={mainImage || galleryImages[0] || product.image || "https://picsum.photos/500"}
                 alt={product.name}
                 className="product-main-image"
+                width="800"
+                height="800"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
               />
             </div>
           </div>
@@ -489,7 +513,14 @@ function Product() {
           {managedRelatedProducts.length > 0 ? (
             managedRelatedProducts.map((p) => (
               <div key={p._id} className="related-card">
-                <img src={p.image || "https://picsum.photos/200"} alt={p.name} />
+                <img
+                  src={p.image || "https://picsum.photos/200"}
+                  alt={p.name}
+                  width="200"
+                  height="200"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <h4>{p.name}</h4>
                 <p>{formatResolvedPrice(getProductPriceDetails(p, selectedAddress?.country))}</p>
                 <Link to={`/product/${p._id}`}>
@@ -509,7 +540,14 @@ function Product() {
           {relatedProducts.length > 0 ? (
             relatedProducts.map((p) => (
               <div key={p._id} className="related-card">
-                <img src={p.image || "https://picsum.photos/200"} alt={p.name} />
+                <img
+                  src={p.image || "https://picsum.photos/200"}
+                  alt={p.name}
+                  width="200"
+                  height="200"
+                  loading="lazy"
+                  decoding="async"
+                />
                 <h4>{p.name}</h4>
                 <p>{formatResolvedPrice(getProductPriceDetails(p, selectedAddress?.country))}</p>
                 <Link to={`/product/${p._id}`}>

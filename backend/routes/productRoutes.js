@@ -210,6 +210,54 @@ const getAverageRating = (product) => {
   return reviews.reduce((sum, review) => sum + Number(review?.rating || 0), 0) / reviews.length;
 };
 
+const HOME_PRODUCT_SELECT =
+  "_id name image images category price internationalPrice internationalCountryPrices marketPrices stock " +
+  "festiveOffer festiveDiscountPercent productType bundleItems rating reviews createdAt relatedProducts";
+
+const HOME_BUNDLE_PRODUCT_SELECT =
+  "name image price internationalPrice internationalCountryPrices marketPrices category stock";
+
+const sortByNewest = (a, b) =>
+  new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime();
+
+const getHomePricingConfig = (settings = {}) => ({
+  pricingMarkets: settings?.pricingMarkets || [],
+  internationalPricingDefaults: settings?.internationalPricingDefaults || {},
+  currencyConversionRates: settings?.currencyConversionRates || {}
+});
+
+const buildHomePayload = (products = [], settings = {}) => {
+  const pricingConfig = getHomePricingConfig(settings);
+  const topRatedProducts = [...products].sort((a, b) => getAverageRating(b) - getAverageRating(a)).slice(0, 5);
+  const newArrivals = [...products].sort(sortByNewest).slice(0, 4);
+  const budgetPicks = [...products]
+    .sort(
+      (a, b) =>
+        Number(getProductPriceDetails(a, null, pricingConfig).price || 0) -
+        Number(getProductPriceDetails(b, null, pricingConfig).price || 0)
+    )
+    .slice(0, 4);
+  const bundleProducts = products
+    .filter((product) => isBundleProduct(product))
+    .slice(0, 8);
+  const festiveOfferProducts = products
+    .filter((product) => product?.festiveOffer === true)
+    .slice(0, 8);
+  const catalogPreviewProducts = products.slice(0, 4);
+
+  return {
+    heroBanners: Array.isArray(settings?.heroBanners) ? settings.heroBanners : [],
+    showFestiveOffersSection: settings?.homeSectionVisibility?.festiveOffers !== false,
+    pricingConfig,
+    topRatedProducts,
+    newArrivals,
+    budgetPicks,
+    bundleProducts,
+    festiveOfferProducts,
+    catalogPreviewProducts
+  };
+};
+
 const getProductAuditFields = (product = {}) => ({
   name: String(product?.name || "").trim(),
   price: Number(product?.price || 0),
@@ -390,6 +438,22 @@ router.put("/:id", protect, admin, async (req, res) => {
 });
 
 // Get all products
+router.get("/home", async (req, res) => {
+  try {
+    const [products, settings] = await Promise.all([
+      Product.find()
+        .select(HOME_PRODUCT_SELECT)
+        .populate("bundleItems.product", HOME_BUNDLE_PRODUCT_SELECT)
+        .lean(),
+      StoreSettings.findOne().lean()
+    ]);
+
+    return res.json(buildHomePayload(Array.isArray(products) ? products : [], settings || {}));
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load home products", error: error.message });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
     const hasPaginationQuery =

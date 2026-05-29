@@ -4,7 +4,8 @@ import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { COUNTRY_OPTIONS } from "../utils/countryOptions";
 import { formatDate, formatTime } from "../utils/date";
-import "./AdminDashboard.css";
+import "./AdminShared.css";
+import "./AdminAddProducts.css";
 
 const DEFAULT_CATEGORY_OPTIONS = [
   "General",
@@ -63,18 +64,20 @@ function readFileAsDataUrl(file) {
 function loadImageElement(src) {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
+    if (!String(src || "").startsWith("data:")) {
+      image.crossOrigin = "anonymous";
+    }
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("Could not process banner image."));
+    image.onerror = () => reject(new Error("Could not process image."));
     image.src = src;
   });
 }
 
-async function optimizeHeroBannerFile(file) {
-  const source = await readFileAsDataUrl(file);
+async function optimizeImageSource(source, { maxWidth, maxHeight, quality = 0.82 } = {}) {
   const image = await loadImageElement(source);
-  const maxWidth = 1600;
-  const maxHeight = 700;
-  const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1);
+  const safeMaxWidth = Math.max(1, Number(maxWidth || image.width || 1));
+  const safeMaxHeight = Math.max(1, Number(maxHeight || image.height || 1));
+  const scale = Math.min(safeMaxWidth / image.width, safeMaxHeight / image.height, 1);
   const targetWidth = Math.max(1, Math.round(image.width * scale));
   const targetHeight = Math.max(1, Math.round(image.height * scale));
 
@@ -87,8 +90,25 @@ async function optimizeHeroBannerFile(file) {
     return source;
   }
 
-  context.drawImage(image, 0, 0, targetWidth, targetHeight);
-  return canvas.toDataURL("image/jpeg", 0.82);
+  try {
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+    return canvas.toDataURL("image/jpeg", quality);
+  } catch {
+    throw new Error("This image source does not allow optimization.");
+  }
+}
+
+async function optimizeImageFile(file, options) {
+  const source = await readFileAsDataUrl(file);
+  return optimizeImageSource(source, options);
+}
+
+async function optimizeHeroBannerFile(file) {
+  return optimizeImageFile(file, {
+    maxWidth: 1600,
+    maxHeight: 700,
+    quality: 0.82
+  });
 }
 
 function AdminAddProducts() {
@@ -128,6 +148,8 @@ function AdminAddProducts() {
   const [activeHeroBannerIndex, setActiveHeroBannerIndex] = useState(0);
   const [isSavingHeroBanner, setIsSavingHeroBanner] = useState(false);
   const [isUploadingHeroBanners, setIsUploadingHeroBanners] = useState(false);
+  const [isUploadingProductImages, setIsUploadingProductImages] = useState(false);
+  const [isOptimizingStoredImages, setIsOptimizingStoredImages] = useState(false);
   const [heroBannerMessage, setHeroBannerMessage] = useState("");
   const imagePreview = image.trim() || "https://picsum.photos/120";
   const imagePreviews = imagesInput
@@ -448,6 +470,210 @@ function AdminAddProducts() {
     } finally {
       setIsUploadingHeroBanners(false);
       event.target.value = "";
+    }
+  };
+
+  const handlePrimaryImageFileUpload = async (event) => {
+    const [file] = Array.from(event.target.files || []);
+    if (!file) return;
+
+    setIsUploadingProductImages(true);
+    setFormMessage("");
+
+    try {
+      if (!String(file.type || "").startsWith("image/")) {
+        setFormMessage("Please choose an image file for the primary product image.");
+        return;
+      }
+
+      const optimizedImage = await optimizeImageFile(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.8
+      });
+      setImage(optimizedImage);
+      setFormMessage("Primary product image optimized and attached.");
+    } catch {
+      setFormMessage("Could not process the primary product image.");
+    } finally {
+      setIsUploadingProductImages(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleGalleryImageFileUpload = async (event) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploadingProductImages(true);
+    setFormMessage("");
+
+    try {
+      const imageFiles = files.filter((file) => String(file.type || "").startsWith("image/"));
+      if (imageFiles.length === 0) {
+        setFormMessage("Please choose image files only for the gallery.");
+        return;
+      }
+
+      const optimizedImages = await Promise.all(
+        imageFiles.slice(0, 8).map((file) =>
+          optimizeImageFile(file, {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            quality: 0.78
+          })
+        )
+      );
+
+      setImagesInput((current) => {
+        const existing = current
+          .split(/\r?\n|,/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+        return [...existing, ...optimizedImages].slice(0, 8).join("\n");
+      });
+      setFormMessage(
+        `${optimizedImages.length} gallery image${optimizedImages.length === 1 ? "" : "s"} optimized and added.`
+      );
+    } catch {
+      setFormMessage("Could not process the gallery images.");
+    } finally {
+      setIsUploadingProductImages(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleOptimizeStoredImages = async () => {
+    if (isOptimizingStoredImages) return;
+
+    setIsOptimizingStoredImages(true);
+    setFormMessage("");
+    setHeroBannerMessage("");
+
+    let updatedProductsCount = 0;
+    let updatedBannerCount = 0;
+    let skippedCount = 0;
+
+    try {
+      const optimizedHeroBanners = [];
+
+      for (const banner of heroBanners) {
+        const source = String(banner?.image || "").trim();
+        if (!source) {
+          optimizedHeroBanners.push(banner);
+          continue;
+        }
+
+        try {
+          const optimizedImage = await optimizeImageSource(source, {
+            maxWidth: 1600,
+            maxHeight: 700,
+            quality: 0.82
+          });
+          if (optimizedImage !== source) {
+            updatedBannerCount += 1;
+          }
+          optimizedHeroBanners.push({
+            ...banner,
+            image: optimizedImage
+          });
+        } catch {
+          skippedCount += 1;
+          optimizedHeroBanners.push(banner);
+        }
+      }
+
+      if (updatedBannerCount > 0) {
+        const { data } = await axios.put(
+          "/api/settings",
+          {
+            heroBanners: optimizedHeroBanners.map((item) => ({
+              image: String(item?.image || "").trim(),
+              productId: String(item?.productId || "").trim()
+            }))
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const savedHeroBanners =
+          Array.isArray(data?.heroBanners) && data.heroBanners.length > 0
+            ? data.heroBanners.map((item) => ({
+                image: String(item?.image || "").trim(),
+                productId: String(item?.productId || "").trim()
+              }))
+            : [createEmptyHeroBanner()];
+        setHeroBanners(savedHeroBanners);
+      }
+
+      for (const product of products) {
+        const primaryImage = String(product?.image || "").trim();
+        const existingImages = Array.isArray(product?.images)
+          ? product.images.map((item) => String(item || "").trim()).filter(Boolean)
+          : primaryImage
+            ? [primaryImage]
+            : [];
+
+        if (existingImages.length === 0) continue;
+
+        const optimizedImages = [];
+        let productChanged = false;
+
+        for (const imageSource of existingImages) {
+          try {
+            const optimizedImage = await optimizeImageSource(imageSource, {
+              maxWidth: 1200,
+              maxHeight: 1200,
+              quality: 0.8
+            });
+            optimizedImages.push(optimizedImage);
+            if (optimizedImage !== imageSource) {
+              productChanged = true;
+            }
+          } catch {
+            skippedCount += 1;
+            optimizedImages.push(imageSource);
+          }
+        }
+
+        if (!productChanged) continue;
+
+        await axios.put(
+          `/api/products/${product._id}`,
+          {
+            image: optimizedImages[0] || primaryImage,
+            images: optimizedImages
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        updatedProductsCount += 1;
+      }
+
+      if (updatedProductsCount > 0) {
+        await loadProducts();
+      }
+
+      const messageParts = [];
+      if (updatedProductsCount > 0) {
+        messageParts.push(`${updatedProductsCount} product${updatedProductsCount === 1 ? "" : "s"} optimized`);
+      }
+      if (updatedBannerCount > 0) {
+        messageParts.push(`${updatedBannerCount} banner${updatedBannerCount === 1 ? "" : "s"} optimized`);
+      }
+      if (skippedCount > 0) {
+        messageParts.push(`${skippedCount} image${skippedCount === 1 ? "" : "s"} skipped`);
+      }
+
+      const summary = messageParts.length > 0
+        ? `${messageParts.join(", ")}.`
+        : "No existing images needed optimization.";
+      setFormMessage(summary);
+      setHeroBannerMessage(summary);
+    } catch (err) {
+      const message = err?.response?.data?.message || "Could not optimize existing stored images.";
+      setFormMessage(message);
+      setHeroBannerMessage(message);
+    } finally {
+      setIsOptimizingStoredImages(false);
     }
   };
 
@@ -1378,6 +1604,18 @@ function AdminAddProducts() {
                     <span>Primary Image URL</span>
                     <input placeholder="Paste the main image URL" value={image} onChange={(e) => setImage(e.target.value)} />
                   </label>
+                  <div className="admin-field">
+                    <span>Upload Primary Image</span>
+                    <label className="hero-banner-admin-upload-btn">
+                      {isUploadingProductImages ? "Optimizing..." : "Choose Image"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePrimaryImageFileUpload}
+                        disabled={isUploadingProductImages}
+                      />
+                    </label>
+                  </div>
                   <label className="admin-field admin-field-wide">
                     <span>Additional Image URLs</span>
                     <textarea
@@ -1388,6 +1626,19 @@ function AdminAddProducts() {
                       rows={4}
                     />
                   </label>
+                  <div className="admin-field admin-field-wide">
+                    <span>Upload Gallery Images</span>
+                    <label className="hero-banner-admin-upload-btn">
+                      {isUploadingProductImages ? "Optimizing..." : "Choose Multiple Images"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleGalleryImageFileUpload}
+                        disabled={isUploadingProductImages}
+                      />
+                    </label>
+                  </div>
                 </div>
               </section>
             </div>
@@ -1575,6 +1826,14 @@ function AdminAddProducts() {
               <div className="pricing-actions-row">
                 <button className="pricing-save-btn" onClick={saveHeroBanner} disabled={isSavingHeroBanner}>
                   {isSavingHeroBanner ? "Saving..." : "Save Hero Banners"}
+                </button>
+                <button
+                  type="button"
+                  className="hero-banner-admin-link-btn"
+                  onClick={handleOptimizeStoredImages}
+                  disabled={isOptimizingStoredImages}
+                >
+                  {isOptimizingStoredImages ? "Optimizing Stored Images..." : "Optimize Existing Stored Images"}
                 </button>
                 <span>Clicking each live banner will open its selected product page.</span>
               </div>

@@ -13,6 +13,7 @@ import {
 } from "../utils/deliveryPricing";
 import { COUNTRY_OPTIONS } from "../utils/countryOptions";
 import { storePricingConfig, SUPPORTED_PRICING_CURRENCIES } from "../utils/productPricing";
+import "./AdminShared.css";
 import "./AdminDashboard.css";
 
 const LOW_STOCK_THRESHOLD = 5;

@@ -1,13 +1,15 @@
-import { useEffect, useState } from "react";
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { generateInvoicePdf } from "../utils/invoicePdf";
 import { formatCurrencyExact, formatOrderDisplayCurrency } from "../utils/currency";
 import { formatDate } from "../utils/date";
+import { useToast } from "../hooks/useToast";
+import { loadRazorpayCheckout } from "../utils/loadRazorpay";
 import "./MyOrders.css";
 
 const RETURN_WINDOW_DAYS = 7;
+const INITIAL_VISIBLE_ORDERS = 8;
 
 function getEffectivePaymentStatus(order) {
   const raw = String(order?.paymentStatus || "").trim();
@@ -49,14 +51,19 @@ function getReturnWindowInfo(order, item) {
 function MyOrders() {
   const { token } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [orders, setOrders] = useState([]);
   const [retryingOrderId, setRetryingOrderId] = useState("");
   const [requestingReturnOrderId, setRequestingReturnOrderId] = useState("");
+  const [generatingInvoiceOrderId, setGeneratingInvoiceOrderId] = useState("");
   const [pageMessage, setPageMessage] = useState("");
   const [selectedView, setSelectedView] = useState("All");
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ORDERS);
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
   const isDummyPaymentEnabled =
     String(import.meta.env.VITE_ENABLE_DUMMY_PAYMENT || "").toLowerCase() === "true";
+  const deferredSelectedView = useDeferredValue(selectedView);
 
   const getAuthHeaders = () => ({
     headers: { Authorization: `Bearer ${token}` }
@@ -79,9 +86,23 @@ function MyOrders() {
   useEffect(() => {
     const incomingMessage = String(location.state?.message || "").trim();
     if (incomingMessage) {
-      setPageMessage(incomingMessage);
+      showToast(incomingMessage, incomingMessage.toLowerCase().includes("success") ? "success" : "info");
+      navigate(
+        {
+          pathname: location.pathname,
+          search: location.search
+        },
+        {
+          replace: true,
+          state: {}
+        }
+      );
     }
-  }, [location.state]);
+  }, [location.pathname, location.search, location.state, navigate, showToast]);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_ORDERS);
+  }, [selectedView, orders.length]);
 
   const updateOrderPaymentStatus = async (orderId, payload) => {
     await axios.put(`/api/orders/${orderId}/payment-status`, payload, getAuthHeaders());
@@ -127,15 +148,15 @@ function MyOrders() {
       setPageMessage("Payment gateway key is missing. Please contact support.");
       return;
     }
-    if (!isDummyPaymentEnabled && !window.Razorpay) {
-      setPageMessage("Payment gateway failed to load. Please refresh and try again.");
-      return;
-    }
-
     setRetryingOrderId(order._id);
     setPageMessage("");
 
     try {
+      let RazorpayConstructor = window.Razorpay;
+      if (!isDummyPaymentEnabled) {
+        RazorpayConstructor = await loadRazorpayCheckout();
+      }
+
       const { data } = await axios.post("/api/payment/create-order", {
         amount: Number(order.total || 0)
       });
@@ -170,11 +191,11 @@ function MyOrders() {
           razorpayPaymentId: response.razorpay_payment_id
         });
         await loadOrders();
-        setPageMessage("Payment successful. Order is now confirmed.");
+        showToast("Payment successful. Order is now confirmed.");
         return;
       }
 
-      const rzp = new window.Razorpay({
+      const rzp = new RazorpayConstructor({
         key: razorpayKey,
         amount: data.amount,
         currency: data.currency,
@@ -203,7 +224,7 @@ function MyOrders() {
               razorpayPaymentId: response.razorpay_payment_id
             });
             await loadOrders();
-            setPageMessage("Payment successful. Order is now confirmed.");
+            showToast("Payment successful. Order is now confirmed.");
           } catch {
             setPageMessage("Unable to finalize payment. Please try again.");
           }
@@ -225,40 +246,72 @@ function MyOrders() {
 
       rzp.open();
     } catch (err) {
-      setPageMessage(err?.response?.data?.message || "Unable to continue payment right now.");
+      setPageMessage(err?.response?.data?.message || err?.message || "Unable to continue payment right now.");
     } finally {
       setRetryingOrderId("");
     }
   };
 
-  const generateInvoice = (order) => {
-    generateInvoicePdf(order, {
-      customerName: order?.shipping?.name || "Customer",
-      customerEmail: "N/A",
-      filePrefix: "invoice"
-    });
+  const generateInvoice = async (order) => {
+    setGeneratingInvoiceOrderId(String(order?._id || ""));
+    setPageMessage("");
+
+    try {
+      const { generateInvoicePdf } = await import("../utils/invoicePdf");
+      generateInvoicePdf(order, {
+        customerName: order?.shipping?.name || "Customer",
+        customerEmail: "N/A",
+        filePrefix: "invoice"
+      });
+    } catch {
+      setPageMessage("Unable to generate invoice right now.");
+    } finally {
+      setGeneratingInvoiceOrderId("");
+    }
   };
 
-  const viewCounts = orders.reduce(
-    (acc, order) => {
+  const orderBuckets = useMemo(() => {
+    const buckets = {
+      All: [],
+      ActionRequired: [],
+      Completed: []
+    };
+
+    for (const order of orders) {
       const paymentStatus = getEffectivePaymentStatus(order);
-      acc.All += 1;
+      buckets.All.push(order);
       if (paymentStatus !== "Paid") {
-        acc.ActionRequired += 1;
+        buckets.ActionRequired.push(order);
       } else {
-        acc.Completed += 1;
+        buckets.Completed.push(order);
       }
-      return acc;
-    },
-    { All: 0, ActionRequired: 0, Completed: 0 }
+    }
+
+    return buckets;
+  }, [orders]);
+
+  const viewCounts = useMemo(
+    () => ({
+      All: orderBuckets.All.length,
+      ActionRequired: orderBuckets.ActionRequired.length,
+      Completed: orderBuckets.Completed.length
+    }),
+    [orderBuckets]
   );
 
-  const visibleOrders = orders.filter((order) => {
-    if (selectedView === "All") return true;
-    const paymentStatus = getEffectivePaymentStatus(order);
-    if (selectedView === "ActionRequired") return paymentStatus !== "Paid";
-    return paymentStatus === "Paid";
-  });
+  const filteredOrders = orderBuckets[deferredSelectedView] || orderBuckets.All;
+  const visibleOrders = useMemo(
+    () => filteredOrders.slice(0, visibleCount),
+    [filteredOrders, visibleCount]
+  );
+  const hasMoreOrders = filteredOrders.length > visibleOrders.length;
+
+  const selectView = (nextView) => {
+    if (nextView === selectedView) return;
+    startTransition(() => {
+      setSelectedView(nextView);
+    });
+  };
 
   return (
     <div className="my-orders-page">
@@ -269,25 +322,29 @@ function MyOrders() {
         <button
           type="button"
           className={selectedView === "All" ? "my-orders-filter active" : "my-orders-filter"}
-          onClick={() => setSelectedView("All")}
+          onClick={() => selectView("All")}
         >
           All ({viewCounts.All})
         </button>
         <button
           type="button"
           className={selectedView === "ActionRequired" ? "my-orders-filter active" : "my-orders-filter"}
-          onClick={() => setSelectedView("ActionRequired")}
+          onClick={() => selectView("ActionRequired")}
         >
           Action Required ({viewCounts.ActionRequired})
         </button>
         <button
           type="button"
           className={selectedView === "Completed" ? "my-orders-filter active" : "my-orders-filter"}
-          onClick={() => setSelectedView("Completed")}
+          onClick={() => selectView("Completed")}
         >
           Completed ({viewCounts.Completed})
         </button>
       </div>
+
+      {deferredSelectedView !== selectedView ? (
+        <p className="my-orders-updating">Updating orders view...</p>
+      ) : null}
 
       {pageMessage ? <p className="my-orders-banner">{pageMessage}</p> : null}
 
@@ -400,13 +457,17 @@ function MyOrders() {
               <div className="my-order-actions">
                 <button
                   className="my-order-invoice-btn"
-                  disabled={!canDownloadInvoice}
+                  disabled={!canDownloadInvoice || generatingInvoiceOrderId === order._id}
                   onClick={() => {
                     if (!canDownloadInvoice) return;
-                    generateInvoice(order);
+                    void generateInvoice(order);
                   }}
                 >
-                  {canDownloadInvoice ? "Download invoice" : "Invoice after shipping"}
+                  {generatingInvoiceOrderId === order._id
+                    ? "Generating invoice..."
+                    : canDownloadInvoice
+                      ? "Download invoice"
+                      : "Invoice after shipping"}
                 </button>
 
                 <p className="my-order-invoice-note">
@@ -444,6 +505,21 @@ function MyOrders() {
           </div>
         );
       })}
+
+      {hasMoreOrders ? (
+        <div className="my-orders-load-more-wrap">
+          <p className="my-orders-load-more-note">
+            Showing {visibleOrders.length} of {filteredOrders.length} orders
+          </p>
+          <button
+            type="button"
+            className="my-orders-load-more-btn"
+            onClick={() => setVisibleCount((current) => current + INITIAL_VISIBLE_ORDERS)}
+          >
+            Show more orders
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import ProductCard from "../components/ProductCard";
@@ -7,7 +7,44 @@ import { formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
 import "./Home.css";
 
-const CATALOG_PREVIEW_LIMIT = 4;
+const HOME_REQUEST_RETRY_DELAYS = [800, 1800];
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function DeferredHomeSection({ isReady, children, skeletonCount = 4, label = "Loading section" }) {
+  if (isReady) {
+    return children;
+  }
+
+  return (
+    <section className="home-section home-deferred-placeholder" aria-label={label}>
+      <div className="home-section-head home-section-head-catalog">
+        <div>
+          <span className="home-section-kicker">Loading</span>
+          <h2>Preparing more products</h2>
+          <p>More recommendations will appear in a moment.</p>
+        </div>
+      </div>
+
+      <div className="home-catalog-preview-row">
+        {Array.from({ length: skeletonCount }).map((_, index) => (
+          <div key={`deferred-skeleton-${label}-${index}`} className="home-catalog-preview-item">
+            <div className="home-skeleton-card">
+              <span className="home-skeleton home-skeleton-image" />
+              <span className="home-skeleton home-skeleton-line short" />
+              <span className="home-skeleton home-skeleton-line" />
+              <span className="home-skeleton home-skeleton-line medium" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function getCategoryLabel(product) {
   const raw = String(product?.category || "").trim();
@@ -39,11 +76,20 @@ function getDisplayPrice(product) {
 }
 
 function Home() {
-  const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [isRetryingHomeData, setIsRetryingHomeData] = useState(false);
+  const [homeLoadFailed, setHomeLoadFailed] = useState(false);
+  const [topRatedProducts, setTopRatedProducts] = useState([]);
+  const [newArrivals, setNewArrivals] = useState([]);
+  const [budgetPicks, setBudgetPicks] = useState([]);
+  const [bundleProducts, setBundleProducts] = useState([]);
+  const [festiveOfferProducts, setFestiveOfferProducts] = useState([]);
+  const [catalogPreviewProducts, setCatalogPreviewProducts] = useState([]);
   const [heroBanners, setHeroBanners] = useState([]);
+  const [isLoadingHeroBanners, setIsLoadingHeroBanners] = useState(true);
   const [showFestiveOffersSection, setShowFestiveOffersSection] = useState(true);
   const [activeHeroBannerIndex, setActiveHeroBannerIndex] = useState(0);
+  const [showSecondarySections, setShowSecondarySections] = useState(false);
   const spotlightRef = useRef(null);
   const catalogRef = useRef(null);
   const topRatedSectionRef = useRef(null);
@@ -51,77 +97,77 @@ function Home() {
   const budgetPicksSectionRef = useRef(null);
 
   useEffect(() => {
-    axios
-      .get("/api/settings")
-      .then((res) => {
+    let active = true;
+
+    setIsLoadingProducts(true);
+    setIsLoadingHeroBanners(true);
+    setIsRetryingHomeData(false);
+    setHomeLoadFailed(false);
+
+    const loadHomeData = async () => {
+      try {
+        let response = null;
+
+        for (let attempt = 0; attempt <= HOME_REQUEST_RETRY_DELAYS.length; attempt += 1) {
+          try {
+            response = await axios.get("/api/products/home");
+            break;
+          } catch (error) {
+            if (attempt === HOME_REQUEST_RETRY_DELAYS.length) {
+              throw error;
+            }
+
+            if (!active) return;
+            setIsRetryingHomeData(true);
+            await wait(HOME_REQUEST_RETRY_DELAYS[attempt]);
+          }
+        }
+
+        if (!active || !response) return;
+
         storePricingConfig({
-          pricingMarkets: res.data?.pricingMarkets || [],
-          internationalPricingDefaults: res.data?.internationalPricingDefaults || {},
-          currencyConversionRates: res.data?.currencyConversionRates || {}
+          pricingMarkets: response.data?.pricingConfig?.pricingMarkets || [],
+          internationalPricingDefaults: response.data?.pricingConfig?.internationalPricingDefaults || {},
+          currencyConversionRates: response.data?.pricingConfig?.currencyConversionRates || {}
         });
-        const nextHeroBanners =
-          Array.isArray(res.data?.heroBanners) && res.data.heroBanners.length > 0
-            ? res.data.heroBanners
-            : String(res.data?.heroBannerImage || "").trim()
-              ? [{ image: String(res.data?.heroBannerImage || "").trim(), productId: String(res.data?.heroBannerProductId || "").trim() }]
-              : [];
+        const nextHeroBanners = Array.isArray(response.data?.heroBanners) ? response.data.heroBanners : [];
         setHeroBanners(nextHeroBanners);
-        setShowFestiveOffersSection(res.data?.homeSectionVisibility?.festiveOffers !== false);
+        setShowFestiveOffersSection(response.data?.showFestiveOffersSection !== false);
         setActiveHeroBannerIndex(0);
-      })
-      .catch(() => {
+        setTopRatedProducts(Array.isArray(response.data?.topRatedProducts) ? response.data.topRatedProducts : []);
+        setNewArrivals(Array.isArray(response.data?.newArrivals) ? response.data.newArrivals : []);
+        setBudgetPicks(Array.isArray(response.data?.budgetPicks) ? response.data.budgetPicks : []);
+        setBundleProducts(Array.isArray(response.data?.bundleProducts) ? response.data.bundleProducts : []);
+        setFestiveOfferProducts(Array.isArray(response.data?.festiveOfferProducts) ? response.data.festiveOfferProducts : []);
+        setCatalogPreviewProducts(
+          Array.isArray(response.data?.catalogPreviewProducts) ? response.data.catalogPreviewProducts : []
+        );
+      } catch {
+        if (!active) return;
+        setHomeLoadFailed(true);
         setHeroBanners([]);
         setShowFestiveOffersSection(true);
         setActiveHeroBannerIndex(0);
-      });
+        setTopRatedProducts([]);
+        setNewArrivals([]);
+        setBudgetPicks([]);
+        setBundleProducts([]);
+        setFestiveOfferProducts([]);
+        setCatalogPreviewProducts([]);
+      } finally {
+        if (!active) return;
+        setIsRetryingHomeData(false);
+        setIsLoadingHeroBanners(false);
+        setIsLoadingProducts(false);
+      }
+    };
 
-    setIsLoadingProducts(true);
-    axios
-      .get("/api/products")
-      .then((res) => setProducts(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setProducts([]))
-      .finally(() => setIsLoadingProducts(false));
+    void loadHomeData();
+
+    return () => {
+      active = false;
+    };
   }, []);
-
-  const topRatedProducts = useMemo(() => {
-    return [...products]
-      .sort((a, b) => getAverageRating(b) - getAverageRating(a))
-      .slice(0, 5);
-  }, [products]);
-
-  const newArrivals = useMemo(() => {
-    return [...products]
-      .sort((a, b) => new Date(b?.createdAt || 0).getTime() - new Date(a?.createdAt || 0).getTime())
-      .slice(0, 4);
-  }, [products]);
-
-  const budgetPicks = useMemo(() => {
-    return [...products]
-      .sort((a, b) => Number(getDisplayPrice(a).price || 0) - Number(getDisplayPrice(b).price || 0))
-      .slice(0, 4);
-  }, [products]);
-
-  const bundleProducts = useMemo(() => {
-    return products
-      .filter((product) => {
-        const isMarkedBundle = String(product?.productType || "single") === "bundle";
-        const hasBundleItems = Array.isArray(product?.bundleItems) && product.bundleItems.length > 0;
-        return isMarkedBundle || hasBundleItems;
-      })
-      .slice(0, 8);
-  }, [products]);
-
-  const festiveOfferProducts = useMemo(() => {
-    return products.filter((product) => product?.festiveOffer === true).slice(0, 8);
-  }, [products]);
-
-  const featuredProduct = topRatedProducts[0] || newArrivals[0] || budgetPicks[0] || null;
-
-  const catalogProducts = products;
-  const catalogPreviewProducts = useMemo(
-    () => catalogProducts.slice(0, CATALOG_PREVIEW_LIMIT),
-    [catalogProducts]
-  );
 
   const scrollSpotlight = (direction) => {
     spotlightRef.current?.scrollBy({ left: direction * 320, behavior: "smooth" });
@@ -141,7 +187,50 @@ function Home() {
     return () => window.clearInterval(intervalId);
   }, [heroBanners]);
 
+  useEffect(() => {
+    if (isLoadingProducts) {
+      setShowSecondarySections(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const revealSections = () => {
+      if (!cancelled) {
+        setShowSecondarySections(true);
+      }
+    };
+
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(revealSections, { timeout: 900 });
+      return () => {
+        cancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    }
+
+    const timeoutId = window.setTimeout(revealSections, 180);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoadingProducts]);
+
   const activeHeroBanner = heroBanners[activeHeroBannerIndex] || null;
+
+  useEffect(() => {
+    const heroImage = String(heroBanners[0]?.image || "").trim();
+    if (!heroImage || typeof document === "undefined") return undefined;
+
+    const preloadLink = document.createElement("link");
+    preloadLink.rel = "preload";
+    preloadLink.as = "image";
+    preloadLink.href = heroImage;
+    document.head.appendChild(preloadLink);
+
+    return () => {
+      preloadLink.remove();
+    };
+  }, [heroBanners]);
 
   const showPreviousHeroBanner = () => {
     setActiveHeroBannerIndex((current) => (current - 1 + heroBanners.length) % heroBanners.length);
@@ -153,18 +242,31 @@ function Home() {
 
   return (
     <div className="home-page">
-      {activeHeroBanner ? (
+      {isLoadingHeroBanners ? (
+        <section className="home-banner home-banner-loading" aria-label="Loading homepage banner">
+          <span className="home-skeleton home-banner-skeleton" />
+        </section>
+      ) : activeHeroBanner ? (
         activeHeroBanner.productId ? (
           <Link to={`/product/${activeHeroBanner.productId}`} className="home-banner home-banner-has-media">
-            <img src={activeHeroBanner.image} alt="Homepage banner" className="home-banner-image" />
+            <img
+              src={activeHeroBanner.image}
+              alt="Homepage banner"
+              className="home-banner-image"
+              width="1600"
+              height="520"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+            />
             {heroBanners.length > 1 ? (
               <>
                 <button type="button" className="home-banner-nav prev" onClick={(e) => { e.preventDefault(); showPreviousHeroBanner(); }}>
-                  <span aria-hidden="true">‹</span>
+                  <span aria-hidden="true">{"\u2039"}</span>
                   <span className="sr-only">Previous banner</span>
                 </button>
                 <button type="button" className="home-banner-nav next" onClick={(e) => { e.preventDefault(); showNextHeroBanner(); }}>
-                  <span aria-hidden="true">›</span>
+                  <span aria-hidden="true">{"\u203A"}</span>
                   <span className="sr-only">Next banner</span>
                 </button>
                 <div className="home-banner-dots">
@@ -177,15 +279,24 @@ function Home() {
           </Link>
         ) : (
           <section className="home-banner home-banner-has-media">
-            <img src={activeHeroBanner.image} alt="Homepage banner" className="home-banner-image" />
+            <img
+              src={activeHeroBanner.image}
+              alt="Homepage banner"
+              className="home-banner-image"
+              width="1600"
+              height="520"
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+            />
             {heroBanners.length > 1 ? (
               <>
                 <button type="button" className="home-banner-nav prev" onClick={showPreviousHeroBanner}>
-                  <span aria-hidden="true">‹</span>
+                  <span aria-hidden="true">{"\u2039"}</span>
                   <span className="sr-only">Previous banner</span>
                 </button>
                 <button type="button" className="home-banner-nav next" onClick={showNextHeroBanner}>
-                  <span aria-hidden="true">›</span>
+                  <span aria-hidden="true">{"\u203A"}</span>
                   <span className="sr-only">Next banner</span>
                 </button>
                 <div className="home-banner-dots">
@@ -200,6 +311,14 @@ function Home() {
       ) : null}
 
       <section className="home-feature-shell">
+        {isRetryingHomeData ? (
+          <p className="home-status-banner">Refreshing homepage content...</p>
+        ) : null}
+        {homeLoadFailed ? (
+          <p className="home-status-banner home-status-banner-warning">
+            Homepage content took too long to load. Refresh once if products are missing.
+          </p>
+        ) : null}
         <div className="home-strip">
           <button
             type="button"
@@ -237,10 +356,10 @@ function Home() {
           </div>
           <div className="home-slider-controls">
             <button type="button" onClick={() => scrollSpotlight(-1)} aria-label="Scroll top rated left">
-              <span aria-hidden="true">‹</span>
+              <span aria-hidden="true">{"\u2039"}</span>
             </button>
             <button type="button" onClick={() => scrollSpotlight(1)} aria-label="Scroll top rated right">
-              <span aria-hidden="true">›</span>
+              <span aria-hidden="true">{"\u203A"}</span>
             </button>
           </div>
         </div>
@@ -282,7 +401,14 @@ function Home() {
                 ))
               : newArrivals.map((product) => (
                   <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
-                    <img src={product.image || "https://picsum.photos/220"} alt={product.name} />
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      width="220"
+                      height="130"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <div className="home-mini-card-meta">
                       <span>{getCategoryLabel(product)}</span>
                       <span>{formatPrice(getDisplayPrice(product))}</span>
@@ -302,7 +428,14 @@ function Home() {
                 ))
               : newArrivals.map((product) => (
                   <Link key={product._id} to={`/product/${product._id}`} className="home-mobile-image-card">
-                    <img src={product.image || "https://picsum.photos/220"} alt={product.name} />
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      width="220"
+                      height="142"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </Link>
                 ))}
           </div>
@@ -326,7 +459,14 @@ function Home() {
                 ))
               : budgetPicks.map((product) => (
                   <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
-                    <img src={product.image || "https://picsum.photos/220"} alt={product.name} />
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      width="220"
+                      height="130"
+                      loading="lazy"
+                      decoding="async"
+                    />
                     <div className="home-mini-card-meta">
                       <span>{getCategoryLabel(product)}</span>
                       <span>{formatPrice(getDisplayPrice(product))}</span>
@@ -346,7 +486,14 @@ function Home() {
                 ))
               : budgetPicks.map((product) => (
                   <Link key={product._id} to={`/product/${product._id}`} className="home-mobile-image-card">
-                    <img src={product.image || "https://picsum.photos/220"} alt={product.name} />
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      width="220"
+                      height="142"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </Link>
                 ))}
           </div>
@@ -354,7 +501,8 @@ function Home() {
       </section>
 
       {showFestiveOffersSection ? (
-        <section className="home-section">
+        <DeferredHomeSection isReady={showSecondarySections} label="Loading festive offers">
+        <section className="home-section home-deferred-section">
           <div className="home-section-head home-section-head-catalog">
             <div>
               <span className="home-section-kicker">Seasonal picks</span>
@@ -390,9 +538,11 @@ function Home() {
             )}
           </div>
         </section>
+        </DeferredHomeSection>
       ) : null}
 
-      <section className="home-section">
+      <DeferredHomeSection isReady={showSecondarySections} label="Loading bundle products">
+      <section className="home-section home-deferred-section">
         <div className="home-section-head home-section-head-catalog">
           <div>
             <span className="home-section-kicker">Bundle deals</span>
@@ -428,10 +578,14 @@ function Home() {
           )}
         </div>
       </section>
+      </DeferredHomeSection>
 
-      <RecentlyViewed className="home-recently-viewed" />
+      <DeferredHomeSection isReady={showSecondarySections} skeletonCount={3} label="Loading recently viewed">
+        <RecentlyViewed className="home-recently-viewed home-deferred-section" />
+      </DeferredHomeSection>
 
-      <section ref={catalogRef} className="home-section">
+      <DeferredHomeSection isReady={showSecondarySections} skeletonCount={5} label="Loading catalog preview">
+      <section ref={catalogRef} className="home-section home-deferred-section">
         <div className="home-section-head home-section-head-catalog">
           <div>
             <span className="home-section-kicker">Catalog</span>
@@ -474,6 +628,7 @@ function Home() {
           )}
         </div>
       </section>
+      </DeferredHomeSection>
     </div>
   );
 }

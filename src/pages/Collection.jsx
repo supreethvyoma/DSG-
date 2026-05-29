@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import ProductCard from "../components/ProductCard";
@@ -181,7 +181,7 @@ function Collection() {
               <div className="collection-mobile-filter-head">
                 <h3>Filters</h3>
                 <button type="button" onClick={() => setIsMobileFilterOpen(false)} aria-label="Close filters">
-                  ×
+                  {"\u00D7"}
                 </button>
               </div>
 
@@ -254,7 +254,7 @@ function Collection() {
                       className="collection-filter-chip"
                       onClick={() => setSelectedCategory("All")}
                     >
-                      {selectedCategory} ×
+                      {selectedCategory} {"\u00D7"}
                     </button>
                   </div>
                 ) : null}

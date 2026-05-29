@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
-import "./AdminDashboard.css";
+import "./AdminShared.css";
+import "./AdminProducts.css";
 
 function AdminProducts() {
   const { token } = useAuth();

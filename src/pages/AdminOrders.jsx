@@ -3,7 +3,6 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
-import { generateInvoicePdf } from "../utils/invoicePdf";
 import { formatDate, formatDateForFileName, formatTime } from "../utils/date";
 import { formatBaseCurrency, formatOrderDisplayCurrency } from "../utils/currency";
 import "./AdminOrders.css";
@@ -42,6 +41,7 @@ function AdminOrders() {
   const [searchText, setSearchText] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
   const [updatingOrderId, setUpdatingOrderId] = useState("");
+  const [generatingInvoiceOrderId, setGeneratingInvoiceOrderId] = useState("");
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [pageMessage, setPageMessage] = useState("");
   const statusStep = {
@@ -331,11 +331,21 @@ function AdminOrders() {
   };
 
   const generateInvoice = async (order) => {
-    await generateInvoicePdf(order, {
-      customerName: order?.user?.name || order?.shipping?.name || "Customer",
-      customerEmail: order?.user?.email || "N/A",
-      filePrefix: "invoice"
-    });
+    setGeneratingInvoiceOrderId(String(order?._id || ""));
+    setPageMessage("");
+
+    try {
+      const { generateInvoicePdf } = await import("../utils/invoicePdf");
+      await generateInvoicePdf(order, {
+        customerName: order?.user?.name || order?.shipping?.name || "Customer",
+        customerEmail: order?.user?.email || "N/A",
+        filePrefix: "invoice"
+      });
+    } catch {
+      setPageMessage("Unable to generate invoice right now.");
+    } finally {
+      setGeneratingInvoiceOrderId("");
+    }
   };
 
   const formatMoney = (value) => {
@@ -859,9 +869,10 @@ function AdminOrders() {
                         </Link>
                         <button
                           className="admin-order-icon-btn"
+                          disabled={generatingInvoiceOrderId === order._id}
                           onClick={() => void generateInvoice(order)}
-                          title="Generate invoice"
-                          aria-label="Generate invoice"
+                          title={generatingInvoiceOrderId === order._id ? "Generating invoice" : "Generate invoice"}
+                          aria-label={generatingInvoiceOrderId === order._id ? "Generating invoice" : "Generate invoice"}
                         >
                           <Icon name="invoice" />
                         </button>

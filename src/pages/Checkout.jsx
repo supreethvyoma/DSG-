@@ -6,6 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { convertCurrencyAmount, formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
 import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
+import { loadRazorpayCheckout } from "../utils/loadRazorpay";
 import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
 import "./Checkout.css";
 
@@ -52,7 +53,7 @@ function Checkout() {
     let active = true;
 
     axios
-      .get("/api/settings")
+      .get("/api/settings/public")
       .then((res) => {
         if (!active) return;
         storePricingConfig({
@@ -248,11 +249,6 @@ function Checkout() {
       return;
     }
 
-    if (!isDummyPaymentEnabled && !window.Razorpay) {
-      setCheckoutMessage("Payment gateway failed to load. Please refresh and try again.");
-      return;
-    }
-
     setCheckoutMessage("");
     setIsPaying(true);
     let checkoutOpened = false;
@@ -265,6 +261,11 @@ function Checkout() {
     };
 
     try {
+      let RazorpayConstructor = window.Razorpay;
+      if (!isDummyPaymentEnabled) {
+        RazorpayConstructor = await loadRazorpayCheckout();
+      }
+
       const { data } = await axios.post("/api/payment/create-order", {
         amount: roundMoney(
           convertCurrencyAmount(finalTotal, {
@@ -313,7 +314,7 @@ function Checkout() {
         return;
       }
 
-      const rzp = new window.Razorpay({
+      const rzp = new RazorpayConstructor({
         key: razorpayKey,
         amount: data.amount,
         currency: data.currency,
@@ -372,7 +373,7 @@ function Checkout() {
       rzp.open();
     } catch (err) {
       setIsPaying(false);
-      setCheckoutMessage(err?.response?.data?.message || "Unable to start payment.");
+      setCheckoutMessage(err?.response?.data?.message || err?.message || "Unable to start payment.");
     } finally {
       if (!checkoutOpened) {
         setIsPaying(false);

@@ -4,7 +4,8 @@ import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { applySiteTheme, DEFAULT_SITE_THEME, getSiteThemeOptions } from "../utils/siteTheme";
-import "./AdminDashboard.css";
+import "./AdminShared.css";
+import "./AdminThemeSettings.css";
 
 const EMPTY_THEME_FORM = {
   name: "",

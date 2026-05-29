@@ -48,7 +48,7 @@ function Cart() {
   useEffect(() => {
     let active = true;
     axios
-      .get("/api/settings")
+      .get("/api/settings/public")
       .then((res) => {
         if (!active) return;
         storePricingConfig({

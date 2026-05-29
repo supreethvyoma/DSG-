@@ -268,6 +268,22 @@ function normalizeSettings(settings) {
   };
 }
 
+function buildPublicSettingsPayload(settings) {
+  const normalized = normalizeSettings(settings);
+  return {
+    gstPercent: normalized.gstPercent,
+    deliveryCharge: normalized.deliveryCharge,
+    warehouseLocation: normalized.warehouseLocation,
+    distancePricing: normalized.distancePricing,
+    internationalDelivery: normalized.internationalDelivery,
+    pricingMarkets: normalized.pricingMarkets,
+    internationalPricingDefaults: normalized.internationalPricingDefaults,
+    currencyConversionRates: normalized.currencyConversionRates,
+    siteTheme: normalized.siteTheme,
+    customThemes: normalized.customThemes
+  };
+}
+
 function summarizeSettingsChanges(previousSettings = {}, nextSettings = {}) {
   const changes = [];
 
@@ -300,6 +316,11 @@ async function getOrCreateSettings() {
 router.get("/", async (req, res) => {
   const settings = await getOrCreateSettings();
   res.json(normalizeSettings(settings));
+});
+
+router.get("/public", async (req, res) => {
+  const settings = await getOrCreateSettings();
+  res.json(buildPublicSettingsPayload(settings));
 });
 
 router.put("/", protect, admin, async (req, res) => {

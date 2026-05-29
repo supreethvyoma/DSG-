@@ -1,5 +1,5 @@
 ﻿import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
@@ -27,6 +27,7 @@ function Navbar() {
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [locationStatusMessage, setLocationStatusMessage] = useState("");
   const [collectionCategories, setCollectionCategories] = useState(["All"]);
+  const hasLoadedCollectionCategories = useRef(false);
   const isAdminRoute = location.pathname.startsWith("/admin");
 
   const handleSearchSubmit = (e) => {
@@ -53,6 +54,10 @@ function Navbar() {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
+    if (isAdminRoute || !isCollectionFilterMenuOpen || hasLoadedCollectionCategories.current) {
+      return undefined;
+    }
+
     let active = true;
 
     axios
@@ -66,6 +71,7 @@ function Navbar() {
       })
       .then((res) => {
         if (!active) return;
+        hasLoadedCollectionCategories.current = true;
         setCollectionCategories(
           Array.isArray(res.data?.categories) && res.data.categories.length > 0
             ? res.data.categories
@@ -74,13 +80,14 @@ function Navbar() {
       })
       .catch(() => {
         if (!active) return;
+        hasLoadedCollectionCategories.current = true;
         setCollectionCategories(["All"]);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [isAdminRoute, isCollectionFilterMenuOpen]);
 
   useEffect(() => {
     if (isAddressModalOpen) return;

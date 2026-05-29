@@ -1,7 +1,7 @@
 ﻿.my-account-page{
-  max-width:1240px;
+  max-width:1500px;
   margin:0 auto;
-  padding:16px 14px 26px;
+  padding:16px 24px 26px;
   display:grid;
   gap:14px;
   background:#eaeded;

@@ -3,7 +3,6 @@ import { Link, useParams } from "react-router-dom";
 import axios from "axios";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { useAuth } from "../hooks/useAuth";
-import { generateInvoicePdf } from "../utils/invoicePdf";
 import { formatCurrencyExact, formatOrderDisplayCurrency } from "../utils/currency";
 import { formatDateTime } from "../utils/date";
 import "./AdminOrderDetails.css";
@@ -13,6 +12,7 @@ function AdminOrderDetails() {
   const { token } = useAuth();
   const [order, setOrder] = useState(null);
   const [isLoadingOrder, setIsLoadingOrder] = useState(true);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
   const [pageMessage, setPageMessage] = useState("");
 
   useEffect(() => {
@@ -55,13 +55,23 @@ function AdminOrderDetails() {
   const displayOrderStatus = String(order?.status || "").trim() || "Pending";
   const displayRefundStatus = String(order?.refundStatus || "Not Applicable").trim() || "Not Applicable";
 
-  const generateInvoice = () => {
+  const generateInvoice = async () => {
     if (!order) return;
-    generateInvoicePdf(order, {
-      customerName: order?.user?.name || order?.shipping?.name || "Customer",
-      customerEmail: order?.user?.email || "N/A",
-      filePrefix: "invoice"
-    });
+    setIsGeneratingInvoice(true);
+    setPageMessage("");
+
+    try {
+      const { generateInvoicePdf } = await import("../utils/invoicePdf");
+      generateInvoicePdf(order, {
+        customerName: order?.user?.name || order?.shipping?.name || "Customer",
+        customerEmail: order?.user?.email || "N/A",
+        filePrefix: "invoice"
+      });
+    } catch {
+      setPageMessage("Unable to generate invoice right now.");
+    } finally {
+      setIsGeneratingInvoice(false);
+    }
   };
 
   return (
@@ -82,8 +92,13 @@ function AdminOrderDetails() {
               Back to orders
             </Link>
             {order ? (
-              <button type="button" className="admin-order-details-btn" onClick={generateInvoice}>
-                Generate invoice
+              <button
+                type="button"
+                className="admin-order-details-btn"
+                onClick={() => void generateInvoice()}
+                disabled={isGeneratingInvoice}
+              >
+                {isGeneratingInvoice ? "Generating invoice..." : "Generate invoice"}
               </button>
             ) : null}
           </div>
