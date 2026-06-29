@@ -129,13 +129,25 @@ function htmlWrapper(title, bodyHtml, headerBgColor, accentColor, headerText, he
 
 function buildOrderItemsTable(items = []) {
   if (!items.length) return "";
-  const rows = items.map((item) =>
-    `<tr>
-      <td>${String(item.name || "Product")}</td>
+  const rows = items.map((item) => {
+    let bundleHtml = "";
+    if (item.productType === "bundle" && Array.isArray(item.bundleItems) && item.bundleItems.length > 0) {
+      bundleHtml = `<div style="margin-top: 4px; padding-left: 8px; border-left: 2px solid #ccc; font-size: 12px; color: #555;">
+        <strong>Pack Includes:</strong>
+        <ul style="margin: 2px 0 0 0; padding: 0 0 0 12px;">
+          ${item.bundleItems.map(bi => `<li>${bi.name} (Qty: ${bi.quantity * (item.quantity || 1)})</li>`).join("")}
+        </ul>
+      </div>`;
+    }
+    return `<tr>
+      <td>
+        <strong>${String(item.name || "Product")}</strong>
+        ${bundleHtml}
+      </td>
       <td style="text-align:center">${Number(item.quantity || 1)}</td>
       <td style="text-align:right">${item.currency || "INR"} ${Number(item.price || 0).toFixed(2)}</td>
-    </tr>`
-  ).join("");
+    </tr>`;
+  }).join("");
   return `
     <table>
       <thead><tr><th>Product</th><th style="text-align:center">Qty</th><th style="text-align:right">Price</th></tr></thead>

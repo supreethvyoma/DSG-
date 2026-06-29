@@ -750,6 +750,11 @@ function AdminOrders() {
                             <span className={`admin-order-status status-${statusKey}`}>
                               {displayStatus}
                             </span>
+                            {displayStatus === "Delivered" && order.deliveredAt && (
+                              <small style={{ display: "block", marginTop: "4px", color: "#16a34a", fontWeight: "600" }}>
+                                Delivered: {formatDate(order.deliveredAt)}
+                              </small>
+                            )}
                             {canUpdateOrders && displayStatus === "On Hold" && (
                               <button
                                 className="status-action-btn"

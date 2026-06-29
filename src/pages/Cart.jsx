@@ -8,6 +8,48 @@ import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
 import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
 import "./Cart.css";
 
+const getItemHsnSac = (item) => {
+  if (item?.hsnSac) return String(item.hsnSac).trim();
+  const name = String(item?.name || item?.product?.name || "").trim().toLowerCase();
+  const category = String(item?.category || item?.product?.category || "").trim().toLowerCase();
+  
+  // E-books, Kindle books, Web versions, and Digital formats are taxed at 18% GST
+  const isDigital = 
+    category.includes("ebook") ||
+    category.includes("e-book") ||
+    category.includes("kindle") ||
+    category.includes("web version") ||
+    category.includes("web-version") ||
+    name.includes("ebook") ||
+    name.includes("e-book") ||
+    name.includes("kindle") ||
+    name.includes("web version") ||
+    name.includes("web-version") ||
+    name.includes("epub") ||
+    name.includes("pdf");
+    
+  if (isDigital) {
+    return "9973"; // Digital products/services (18% GST)
+  }
+
+  // Exempt printed books: category or name based check (HSN Chapter 49)
+  const isPrintedBook = 
+    category.includes("book") ||
+    category.includes("sanskrit") ||
+    category.includes("gita") ||
+    category.includes("scriptures") ||
+    category.includes("grammar") ||
+    category.includes("dharma") ||
+    category.includes("paperback") ||
+    name.includes("book") ||
+    name.includes("volume") ||
+    name.includes("vol.") ||
+    name.includes("hardcover") ||
+    name.includes("paperback");
+    
+  return isPrintedBook ? "4901" : "8523";
+};
+
 function Cart() {
   const {
     cartItems,
@@ -78,7 +120,19 @@ function Cart() {
   );
 
   const totals = useMemo(() => {
-    const gstAmount = roundMoney((subtotal * Number(charges.gstPercent || 0)) / 100);
+    const defaultGstPercent = Number(charges.gstPercent || 0);
+    let totalItemGst = 0;
+    cartItems.forEach((item) => {
+      const qty = Math.max(1, Number(item.quantity || 1));
+      const price = getItemUnitPrice(item);
+      const lineTotal = qty * price;
+      const hsnSac = getItemHsnSac(item);
+      const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
+      const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
+      totalItemGst += itemGst;
+    });
+
+    const gstAmount = roundMoney(totalItemGst);
     const deliveryCharge = roundMoney(
       convertCurrencyAmount(Number(deliveryDetails.deliveryCharge || 0), {
         sourceCurrency: "INR",
@@ -91,7 +145,7 @@ function Cart() {
       deliveryCharge,
       grandTotal: roundMoney(subtotal + gstAmount + deliveryCharge)
     };
-  }, [subtotal, charges.gstPercent, deliveryDetails.deliveryCharge, displayCurrency]);
+  }, [cartItems, subtotal, charges.gstPercent, deliveryDetails.deliveryCharge, displayCurrency, selectedAddress?.country]);
 
   if (cartItems.length === 0 && savedForLaterItems.length === 0) {
     return (

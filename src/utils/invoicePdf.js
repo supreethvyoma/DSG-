@@ -59,21 +59,41 @@ export function generateInvoicePdf(order, options = {}) {
     const name = String(item?.name || item?.product?.name || "").trim().toLowerCase();
     const category = String(item?.category || item?.product?.category || "").trim().toLowerCase();
     
-    // Exempt printed books: category or name based check
-    const isBook = 
-      category === "books" ||
-      category === "sanskrit" ||
-      category === "gita" ||
-      category === "scriptures" ||
-      category === "grammar" ||
-      category === "dharma" ||
+    // E-books, Kindle books, Web versions, and Digital formats are taxed at 18% GST
+    const isDigital = 
+      category.includes("ebook") ||
+      category.includes("e-book") ||
+      category.includes("kindle") ||
+      category.includes("web version") ||
+      category.includes("web-version") ||
+      name.includes("ebook") ||
+      name.includes("e-book") ||
+      name.includes("kindle") ||
+      name.includes("web version") ||
+      name.includes("web-version") ||
+      name.includes("epub") ||
+      name.includes("pdf");
+      
+    if (isDigital) {
+      return "9973"; // Digital products/services (18% GST)
+    }
+
+    // Exempt printed books: category or name based check (HSN Chapter 49)
+    const isPrintedBook = 
+      category.includes("book") ||
+      category.includes("sanskrit") ||
+      category.includes("gita") ||
+      category.includes("scriptures") ||
+      category.includes("grammar") ||
+      category.includes("dharma") ||
+      category.includes("paperback") ||
       name.includes("book") ||
       name.includes("volume") ||
       name.includes("vol.") ||
       name.includes("hardcover") ||
       name.includes("paperback");
       
-    return isBook ? "4901" : "8523";
+    return isPrintedBook ? "4901" : "8523";
   }
 
   // Calculate items HSN/SAC and dynamic GST
@@ -97,7 +117,9 @@ export function generateInvoicePdf(order, options = {}) {
       lineTotal,
       hsnSac,
       gstRate,
-      gstAmount
+      gstAmount,
+      productType: item?.productType || "single",
+      bundleItems: item?.bundleItems || []
     };
   });
 
@@ -244,7 +266,14 @@ export function generateInvoicePdf(order, options = {}) {
     y += 22;
   } else {
     enrichedItems.forEach((item, index) => {
-      const wrappedName = doc.splitTextToSize(item.name, 200);
+      let nameLines = [item.name];
+      if (item.productType === "bundle" && Array.isArray(item.bundleItems) && item.bundleItems.length > 0) {
+        nameLines.push("Pack Includes:");
+        item.bundleItems.forEach((bi) => {
+          nameLines.push(`  • ${bi.name} (Qty: ${bi.quantity * item.qty})`);
+        });
+      }
+      const wrappedName = doc.splitTextToSize(nameLines.join("\n"), 200);
       const rowHeight = Math.max(22, wrappedName.length * 12 + 10);
       
       // Zebra striping alternating colors

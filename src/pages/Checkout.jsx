@@ -14,6 +14,88 @@ const getAddressLocationText = (item) => {
   return [item?.city, item?.state, item?.pincode, item?.country].filter(Boolean).join(", ");
 };
 
+const getItemHsnSac = (item) => {
+  if (item?.hsnSac) return String(item.hsnSac).trim();
+  const name = String(item?.name || item?.product?.name || "").trim().toLowerCase();
+  const category = String(item?.category || item?.product?.category || "").trim().toLowerCase();
+  
+  // E-books, Kindle books, Web versions, and Digital formats are taxed at 18% GST
+  const isDigital = 
+    category.includes("ebook") ||
+    category.includes("e-book") ||
+    category.includes("kindle") ||
+    category.includes("web version") ||
+    category.includes("web-version") ||
+    name.includes("ebook") ||
+    name.includes("e-book") ||
+    name.includes("kindle") ||
+    name.includes("web version") ||
+    name.includes("web-version") ||
+    name.includes("epub") ||
+    name.includes("pdf");
+    
+  if (isDigital) {
+    return "9973"; // Digital products/services (18% GST)
+  }
+
+  // Exempt printed books: category or name based check (HSN Chapter 49)
+  const isPrintedBook = 
+    category.includes("book") ||
+    category.includes("sanskrit") ||
+    category.includes("gita") ||
+    category.includes("scriptures") ||
+    category.includes("grammar") ||
+    category.includes("dharma") ||
+    category.includes("paperback") ||
+    name.includes("book") ||
+    name.includes("volume") ||
+    name.includes("vol.") ||
+    name.includes("hardcover") ||
+    name.includes("paperback");
+    
+  return isPrintedBook ? "4901" : "8523";
+};
+
+const itemStyles = {
+  itemWrapper: {
+    padding: "8px 0",
+    borderBottom: "1px solid var(--site-border)"
+  },
+  summaryItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "4px"
+  },
+  itemName: {
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "var(--site-text)"
+  },
+  itemTotal: {
+    fontSize: "13.5px",
+    color: "var(--site-text-soft)",
+    textAlign: "right",
+    whiteSpace: "nowrap"
+  },
+  taxDetails: {
+    display: "flex",
+    gap: "16px",
+    fontSize: "11.5px",
+    color: "var(--site-text-soft)",
+    marginTop: "2px"
+  },
+  taxDetailLabel: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px"
+  },
+  taxDetailValue: {
+    color: "var(--site-text)",
+    fontWeight: "600"
+  }
+};
+
 function Checkout() {
   const { cartItems, clearCart } = useCart();
   const { token } = useAuth();
@@ -124,7 +206,20 @@ function Checkout() {
       (sum, item) => sum + getItemUnitPrice(item) * Number(item.quantity || 1),
       0
     ));
-    const gstAmount = roundMoney((subtotal * Number(charges.gstPercent || 0)) / 100);
+    
+    const defaultGstPercent = Number(charges.gstPercent || 0);
+    let totalItemGst = 0;
+    cartItems.forEach((item) => {
+      const qty = Math.max(1, Number(item.quantity || 1));
+      const price = getItemUnitPrice(item);
+      const lineTotal = qty * price;
+      const hsnSac = getItemHsnSac(item);
+      const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
+      const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
+      totalItemGst += itemGst;
+    });
+
+    const gstAmount = roundMoney(totalItemGst);
     const deliveryCharge = roundMoney(
       convertCurrencyAmount(Number(deliveryDetails.deliveryCharge || 0), {
         sourceCurrency: "INR",
@@ -486,21 +581,38 @@ function Checkout() {
           {couponMessage && <p className="coupon-message">{couponMessage}</p>}
 
           <div className="summary-products">
-            {cartItems.map((item, index) => (
-              <div key={index} className="summary-item">
-                <span>{item.name}</span>
-                <span>
-                  {Math.max(1, Number(item.quantity || 1))} x {formatResolvedPrice(getProductPriceDetails(item, selectedAddress?.country))} = {" "}
-                  {formatCurrencyExact(
-                    roundMoney(
-                      Number(getProductPriceDetails(item, selectedAddress?.country).price || 0) *
-                        Math.max(1, Number(item.quantity || 1))
-                    ),
-                    displayCurrency
-                  )}
-                </span>
-              </div>
-            ))}
+            {cartItems.map((item, index) => {
+              const qty = Math.max(1, Number(item.quantity || 1));
+              const unitPrice = Number(getProductPriceDetails(item, selectedAddress?.country).price || 0);
+              const lineTotal = roundMoney(unitPrice * qty);
+              const hsnSac = getItemHsnSac(item);
+              const defaultGstPercent = Number(charges.gstPercent || 0);
+              const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
+              const gstAmount = roundMoney((lineTotal * gstRate) / 100);
+
+              return (
+                <div key={index} className="summary-item-wrapper" style={itemStyles.itemWrapper}>
+                  <div className="summary-item" style={itemStyles.summaryItem}>
+                    <span style={itemStyles.itemName}>{item.name}</span>
+                    <span style={itemStyles.itemTotal}>
+                      {qty} x {formatResolvedPrice(getProductPriceDetails(item, selectedAddress?.country))} = {" "}
+                      {formatCurrencyExact(lineTotal, displayCurrency)}
+                    </span>
+                  </div>
+                  <div className="itemized-tax-details" style={itemStyles.taxDetails}>
+                    <span style={itemStyles.taxDetailLabel}>
+                      HSN: <strong style={itemStyles.taxDetailValue}>{hsnSac}</strong>
+                    </span>
+                    <span style={itemStyles.taxDetailLabel}>
+                      GST Rate: <strong style={itemStyles.taxDetailValue}>{gstRate}%</strong>
+                    </span>
+                    <span style={itemStyles.taxDetailLabel}>
+                      Tax: <strong style={itemStyles.taxDetailValue}>{formatCurrencyExact(gstAmount, displayCurrency)}</strong>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <hr />

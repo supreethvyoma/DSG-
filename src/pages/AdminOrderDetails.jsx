@@ -126,6 +126,11 @@ function AdminOrderDetails() {
                   {displayOrderStatus}
                 </strong>
                 <p>Placed on {formatDateTime(order.createdAt)}</p>
+                {displayOrderStatus === "Delivered" && order.deliveredAt && (
+                  <p style={{ marginTop: '4px', fontWeight: '600', color: '#16a34a' }}>
+                    Delivered on {formatDateTime(order.deliveredAt)}
+                  </p>
+                )}
                 <p>{itemCount} item{itemCount === 1 ? "" : "s"} in this order</p>
               </article>
 
@@ -160,6 +165,22 @@ function AdminOrderDetails() {
                       <div key={`${item?.name || "item"}-${index}`} className="admin-order-item-row">
                         <div>
                           <strong>{item?.name || "Product"}</strong>
+                          {item.productType === "bundle" && Array.isArray(item.bundleItems) && item.bundleItems.length > 0 && (
+                            <div className="admin-order-item-bundle-details" style={{ marginTop: '6px', paddingLeft: '10px', borderLeft: '2px solid #cbd5e1' }}>
+                              <p style={{ margin: '0 0 2px 0', fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>
+                                Pack Includes:
+                              </p>
+                              <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                                {item.bundleItems.map((bi, idx) => (
+                                  <li key={idx} style={{ fontSize: '11.5px', color: '#334155', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                    <span style={{ color: '#94a3b8' }}>•</span>
+                                    <span>{bi.name}</span>
+                                    <span style={{ color: '#64748b' }}>(Qty: {bi.quantity * (item.quantity || 1)})</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                           <p>Qty: {Math.max(1, Number(item?.quantity || 1))}</p>
                         </div>
                         <span>{formatCurrencyExact(Number(item?.price || 0), item?.currency || order?.currencyDisplay?.currency || "INR")}</span>

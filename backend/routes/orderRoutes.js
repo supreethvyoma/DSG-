@@ -198,7 +198,9 @@ router.post("/", protect, async (req, res) => {
     items.map((item) => String(item?._id || item?.id || item?.product || "").trim()).filter(Boolean)
   )];
 
-  const products = await Product.find({ _id: { $in: requestedProductIds } }).lean();
+  const products = await Product.find({ _id: { $in: requestedProductIds } })
+    .populate("bundleItems.product")
+    .lean();
   const productsById = new Map(products.map((product) => [String(product._id), product]));
   const settings =
     (await StoreSettings.findOne()) || {
@@ -256,6 +258,15 @@ router.post("/", protect, async (req, res) => {
         : [],
       appliedPriceType: pricing.priceType,
       matchedMarket: pricing.matchedMarket || "",
+      productType: String(product?.productType || "single"),
+      bundleItems: Array.isArray(product?.bundleItems)
+        ? product.bundleItems.map((bi) => ({
+            product: bi.product?._id ? String(bi.product._id) : String(bi.product),
+            name: bi.product?.name || "Product",
+            image: bi.product?.image || "",
+            quantity: Number(bi.quantity || 1)
+          }))
+        : [],
       deliveredAt: null,
       returnRequest: {
         status: "Not Requested",
@@ -304,7 +315,62 @@ router.post("/", protect, async (req, res) => {
       rates: settings?.currencyConversionRates || {}
     })
   );
-  const gstAmount = roundMoney((subtotal * gstPercent) / 100);
+
+  // Helper to determine HSN/SAC based on product classification (matching invoicePdf.js)
+  function getItemHsnSac(item) {
+    if (item?.hsnSac) return String(item.hsnSac).trim();
+    const name = String(item?.name || "").trim().toLowerCase();
+    const category = String(item?.category || "").trim().toLowerCase();
+    
+    // E-books, Kindle books, Web versions, and Digital formats are taxed at 18% GST
+    const isDigital = 
+      category.includes("ebook") ||
+      category.includes("e-book") ||
+      category.includes("kindle") ||
+      category.includes("web version") ||
+      category.includes("web-version") ||
+      name.includes("ebook") ||
+      name.includes("e-book") ||
+      name.includes("kindle") ||
+      name.includes("web version") ||
+      name.includes("web-version") ||
+      name.includes("epub") ||
+      name.includes("pdf");
+      
+    if (isDigital) {
+      return "9973"; // Digital products/services (18% GST)
+    }
+
+    // Exempt printed books: category or name based check (HSN Chapter 49)
+    const isPrintedBook = 
+      category.includes("book") ||
+      category.includes("sanskrit") ||
+      category.includes("gita") ||
+      category.includes("scriptures") ||
+      category.includes("grammar") ||
+      category.includes("dharma") ||
+      category.includes("paperback") ||
+      name.includes("book") ||
+      name.includes("volume") ||
+      name.includes("vol.") ||
+      name.includes("hardcover") ||
+      name.includes("paperback");
+      
+    return isPrintedBook ? "4901" : "8523";
+  }
+
+  let totalItemGst = 0;
+  normalizedItems.forEach((item) => {
+    const qty = Math.max(1, Number(item.quantity || 1));
+    const price = Number(item.price || 0);
+    const lineTotal = qty * price;
+    const hsnSac = getItemHsnSac(item);
+    const gstRate = hsnSac === "4901" ? 0 : gstPercent;
+    const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
+    totalItemGst += itemGst;
+  });
+
+  const gstAmount = roundMoney(totalItemGst);
   const grossTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
 
   let discount = 0;
