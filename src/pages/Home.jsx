@@ -407,7 +407,7 @@ function Home() {
           <div>
             <span className="home-section-kicker">Most trusted</span>
             <h2>Top Rated Picks</h2>
-            <p>Start with the items other customers already rate highly.</p>
+            {/* <p>Start with the items other customers already rate highly.</p> */}
           </div>
           <div className="home-slider-controls">
             <button type="button" onClick={() => scrollSpotlight(-1)} aria-label="Scroll top rated left">
@@ -422,18 +422,18 @@ function Home() {
         <div ref={spotlightRef} className="home-spotlight-row">
           {isLoadingProducts
             ? Array.from({ length: 4 }).map((_, index) => (
-                <div key={`spotlight-skeleton-${index}`} className="home-skeleton-card">
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                  <span className="home-skeleton home-skeleton-line" />
-                  <span className="home-skeleton home-skeleton-line medium" />
-                </div>
-              ))
+              <div key={`spotlight-skeleton-${index}`} className="home-skeleton-card">
+                <span className="home-skeleton home-skeleton-image" />
+                <span className="home-skeleton home-skeleton-line short" />
+                <span className="home-skeleton home-skeleton-line" />
+                <span className="home-skeleton home-skeleton-line medium" />
+              </div>
+            ))
             : topRatedProducts.map((product) => (
-                <div key={product._id} className="home-spotlight-item">
-                  <ProductCard product={product} showDescription={false} variant="home" />
-                </div>
-              ))}
+              <div key={product._id} className="home-spotlight-item">
+                <ProductCard product={product} showDescription={false} variant="home" />
+              </div>
+            ))}
         </div>
       </section>
 
@@ -446,10 +446,38 @@ function Home() {
             </div>
             <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
-          <div className="home-spotlight-row">
+          <div className="home-mini-grid home-desktop-only">
             {isLoadingProducts
               ? Array.from({ length: 4 }).map((_, index) => (
-                  <div key={`arrival-skeleton-${index}`} className="home-skeleton-card home-spotlight-item">
+                  <div className="home-mini-skeleton" key={`arrival-skeleton-${index}`}>
+                    <span className="home-skeleton home-skeleton-image" />
+                    <span className="home-skeleton home-skeleton-line short" />
+                  </div>
+                ))
+              : newArrivals.map((product) => (
+                  <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      width="220"
+                      height="130"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="home-mini-card-meta">
+                      <span>{getCategoryLabel(product)}</span>
+                      <span>{formatPrice(getDisplayPrice(product))}</span>
+                    </div>
+                    <strong>{product.name}</strong>
+                    <span>{getAverageRating(product).toFixed(1)} rated by readers</span>
+                  </Link>
+                ))}
+          </div>
+
+          <div className="home-mobile-image-strip">
+            {isLoadingProducts
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <div key={`arrival-mobile-skeleton-${index}`} className="home-skeleton-card home-spotlight-item">
                     <span className="home-skeleton home-skeleton-image" />
                     <span className="home-skeleton home-skeleton-line short" />
                     <span className="home-skeleton home-skeleton-line" />
@@ -472,10 +500,38 @@ function Home() {
             </div>
             <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
-          <div className="home-spotlight-row">
+          <div className="home-mini-grid home-desktop-only">
             {isLoadingProducts
               ? Array.from({ length: 4 }).map((_, index) => (
-                  <div key={`budget-skeleton-${index}`} className="home-skeleton-card home-spotlight-item">
+                  <div className="home-mini-skeleton" key={`budget-skeleton-${index}`}>
+                    <span className="home-skeleton home-skeleton-image" />
+                    <span className="home-skeleton home-skeleton-line short" />
+                  </div>
+                ))
+              : budgetPicks.map((product) => (
+                  <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      width="220"
+                      height="130"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <div className="home-mini-card-meta">
+                      <span>{getCategoryLabel(product)}</span>
+                      <span>{formatPrice(getDisplayPrice(product))}</span>
+                    </div>
+                    <strong>{product.name}</strong>
+                    <span>{Number(product?.stock || 0) > 0 ? "In stock now" : "Currently unavailable"}</span>
+                  </Link>
+                ))}
+          </div>
+
+          <div className="home-mobile-image-strip">
+            {isLoadingProducts
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <div key={`budget-mobile-skeleton-${index}`} className="home-skeleton-card home-spotlight-item">
                     <span className="home-skeleton home-skeleton-image" />
                     <span className="home-skeleton home-skeleton-line short" />
                     <span className="home-skeleton home-skeleton-line" />
@@ -493,12 +549,52 @@ function Home() {
 
       {showFestiveOffersSection ? (
         <DeferredHomeSection isReady={showSecondarySections} label="Loading festive offers">
+          <section className="home-section home-deferred-section">
+            <div className="home-section-head home-section-head-catalog">
+              <div>
+                <span className="home-section-kicker">Seasonal picks</span>
+                <h2>Festive Offers</h2>
+                {/* <p>Shop festive offer products highlighted by admin.</p> */}
+              </div>
+              <Link to="/collection" className="home-inline-link">View all</Link>
+            </div>
+
+            <div className="home-catalog-preview-row">
+              {isLoadingProducts ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={`festive-skeleton-${index}`} className="home-catalog-preview-item">
+                    <div className="home-skeleton-card">
+                      <span className="home-skeleton home-skeleton-image" />
+                      <span className="home-skeleton home-skeleton-line short" />
+                      <span className="home-skeleton home-skeleton-line" />
+                      <span className="home-skeleton home-skeleton-line medium" />
+                    </div>
+                  </div>
+                ))
+              ) : festiveOfferProducts.length > 0 ? (
+                festiveOfferProducts.map((product) => (
+                  <div key={product._id} className="home-catalog-preview-item">
+                    <ProductCard product={product} showDescription={false} variant="home" />
+                  </div>
+                ))
+              ) : (
+                <div className="home-empty-state">
+                  <strong>No festive offers yet</strong>
+                  <p>Products marked as festive offers by admin will appear here automatically.</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </DeferredHomeSection>
+      ) : null}
+
+      <DeferredHomeSection isReady={showSecondarySections} label="Loading bundle products">
         <section className="home-section home-deferred-section">
           <div className="home-section-head home-section-head-catalog">
             <div>
-              <span className="home-section-kicker">Seasonal picks</span>
-              <h2>Festive Offers</h2>
-              <p>Shop festive offer products highlighted by admin.</p>
+              <span className="home-section-kicker">Bundle deals</span>
+              <h2>Bundle Products</h2>
+              {/* <p>Explore curated bundles created by admin from existing products.</p> */}
             </div>
             <Link to="/collection" className="home-inline-link">View all</Link>
           </div>
@@ -506,7 +602,7 @@ function Home() {
           <div className="home-catalog-preview-row">
             {isLoadingProducts ? (
               Array.from({ length: 4 }).map((_, index) => (
-                <div key={`festive-skeleton-${index}`} className="home-catalog-preview-item">
+                <div key={`bundle-skeleton-${index}`} className="home-catalog-preview-item">
                   <div className="home-skeleton-card">
                     <span className="home-skeleton home-skeleton-image" />
                     <span className="home-skeleton home-skeleton-line short" />
@@ -515,60 +611,20 @@ function Home() {
                   </div>
                 </div>
               ))
-            ) : festiveOfferProducts.length > 0 ? (
-              festiveOfferProducts.map((product) => (
+            ) : bundleProducts.length > 0 ? (
+              bundleProducts.map((product) => (
                 <div key={product._id} className="home-catalog-preview-item">
                   <ProductCard product={product} showDescription={false} variant="home" />
                 </div>
               ))
             ) : (
               <div className="home-empty-state">
-                <strong>No festive offers yet</strong>
-                <p>Products marked as festive offers by admin will appear here automatically.</p>
+                <strong>No bundle products yet</strong>
+                <p>Bundle products created by admin will appear here automatically.</p>
               </div>
             )}
           </div>
         </section>
-        </DeferredHomeSection>
-      ) : null}
-
-      <DeferredHomeSection isReady={showSecondarySections} label="Loading bundle products">
-      <section className="home-section home-deferred-section">
-        <div className="home-section-head home-section-head-catalog">
-          <div>
-            <span className="home-section-kicker">Bundle deals</span>
-            <h2>Bundle Products</h2>
-            <p>Explore curated bundles created by admin from existing products.</p>
-          </div>
-          <Link to="/collection" className="home-inline-link">View all</Link>
-        </div>
-
-        <div className="home-catalog-preview-row">
-          {isLoadingProducts ? (
-            Array.from({ length: 4 }).map((_, index) => (
-              <div key={`bundle-skeleton-${index}`} className="home-catalog-preview-item">
-                <div className="home-skeleton-card">
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                  <span className="home-skeleton home-skeleton-line" />
-                  <span className="home-skeleton home-skeleton-line medium" />
-                </div>
-              </div>
-            ))
-          ) : bundleProducts.length > 0 ? (
-            bundleProducts.map((product) => (
-              <div key={product._id} className="home-catalog-preview-item">
-                <ProductCard product={product} showDescription={false} variant="home" />
-              </div>
-            ))
-          ) : (
-            <div className="home-empty-state">
-              <strong>No bundle products yet</strong>
-              <p>Bundle products created by admin will appear here automatically.</p>
-            </div>
-          )}
-        </div>
-      </section>
       </DeferredHomeSection>
 
       <DeferredHomeSection isReady={showSecondarySections} skeletonCount={3} label="Loading recently viewed">
@@ -576,49 +632,49 @@ function Home() {
       </DeferredHomeSection>
 
       <DeferredHomeSection isReady={showSecondarySections} skeletonCount={5} label="Loading catalog preview">
-      <section ref={catalogRef} className="home-section home-deferred-section">
-        <div className="home-section-head home-section-head-catalog">
-          <div>
-            <span className="home-section-kicker">Catalog</span>
-            <h2>Browse the Collection</h2>
-            <p>Swipe horizontally to explore products across the full collection.</p>
-          </div>
-          <Link to="/collection" className="home-inline-link">see all products</Link>
-        </div>
-
-        <div className="home-catalog-preview-row">
-          {isLoadingProducts ? (
-            Array.from({ length: 6 }).map((_, index) => (
-              <div key={`catalog-skeleton-${index}`} className="home-catalog-preview-item">
-                <div className="home-skeleton-card">
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                  <span className="home-skeleton home-skeleton-line" />
-                  <span className="home-skeleton home-skeleton-line medium" />
-                </div>
-              </div>
-            ))
-          ) : catalogPreviewProducts.length > 0 ? (
-            <>
-              {catalogPreviewProducts.map((product) => (
-                <div key={product._id} className="home-catalog-preview-item">
-                  <ProductCard product={product} showDescription={false} variant="home" />
-                </div>
-              ))}
-              <Link to="/collection" className="home-catalog-see-more-card">
-                <span>See more</span>
-                <strong>Open full collection</strong>
-                <p>View all products on a dedicated page.</p>
-              </Link>
-            </>
-          ) : (
-            <div className="home-empty-state">
-              <strong>No products found</strong>
-              <p>Try another category to see more products.</p>
+        <section ref={catalogRef} className="home-section home-deferred-section">
+          <div className="home-section-head home-section-head-catalog">
+            <div>
+              <span className="home-section-kicker">Catalog</span>
+              <h2>Browse the Collection</h2>
+              {/* <p>Swipe horizontally to explore products across the full collection.</p> */}
             </div>
-          )}
-        </div>
-      </section>
+            <Link to="/collection" className="home-inline-link">see all products</Link>
+          </div>
+
+          <div className="home-catalog-preview-row">
+            {isLoadingProducts ? (
+              Array.from({ length: 6 }).map((_, index) => (
+                <div key={`catalog-skeleton-${index}`} className="home-catalog-preview-item">
+                  <div className="home-skeleton-card">
+                    <span className="home-skeleton home-skeleton-image" />
+                    <span className="home-skeleton home-skeleton-line short" />
+                    <span className="home-skeleton home-skeleton-line" />
+                    <span className="home-skeleton home-skeleton-line medium" />
+                  </div>
+                </div>
+              ))
+            ) : catalogPreviewProducts.length > 0 ? (
+              <>
+                {catalogPreviewProducts.map((product) => (
+                  <div key={product._id} className="home-catalog-preview-item">
+                    <ProductCard product={product} showDescription={false} variant="home" />
+                  </div>
+                ))}
+                <Link to="/collection" className="home-catalog-see-more-card">
+                  <span>See more</span>
+                  <strong>Open full collection</strong>
+                  {/* <p>View all products on a dedicated page.</p> */}
+                </Link>
+              </>
+            ) : (
+              <div className="home-empty-state">
+                <strong>No products found</strong>
+                <p>Try another category to see more products.</p>
+              </div>
+            )}
+          </div>
+        </section>
       </DeferredHomeSection>
 
       <DeferredHomeSection isReady={showSecondarySections} skeletonCount={5} label="Loading sponsors">
@@ -634,7 +690,7 @@ function Home() {
           <div className="home-sponsors-grid">
             {(sponsorsList.length > 0 ? sponsorsList : SPONSORS).map((sponsor, idx) => {
               const hasLogoImage = sponsor.logoUrl && sponsor.logoUrl.trim() !== "";
-              
+
               const sponsorNameLower = String(sponsor.name || "").toLowerCase();
               const matchedPreset = SPONSORS.find(
                 (preset) =>
