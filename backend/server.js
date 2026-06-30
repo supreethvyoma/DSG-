@@ -33,6 +33,11 @@ if (IS_PRODUCTION && cluster.isPrimary) {
 
 } else {
   // ── Worker process ──────────────────────────────────────────────────────────
+  const dns = require("dns");
+  if (typeof dns.setDefaultResultOrder === "function") {
+    dns.setDefaultResultOrder("ipv4first");
+  }
+
   const path = require("path");
   const dotenv = require("dotenv");
   dotenv.config({ path: path.join(__dirname, ".env") });
@@ -55,6 +60,8 @@ if (IS_PRODUCTION && cluster.isPrimary) {
   const { initVapid } = require("./utils/webPush");
 
   const app = express();
+  app.set("trust proxy", 1); // Trust Render's load balancer for rate limiting client IPs
+
   const PORT = process.env.PORT || 5001;
   const DIST_DIR = path.join(__dirname, "..", "dist");
   let dbConnected = false;
