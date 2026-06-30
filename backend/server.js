@@ -98,6 +98,8 @@ if (IS_PRODUCTION && cluster.isPrimary) {
   app.get("/api/health", (req, res) => {
     res.json({
       api: "ok",
+      node: process.version,
+      ipv4FirstSupport: typeof dns.setDefaultResultOrder === "function",
       worker: process.pid,
       db: dbConnected ? "connected" : "disconnected",
       dbName: mongoose.connection?.name || null,
