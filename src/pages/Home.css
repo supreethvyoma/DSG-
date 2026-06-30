@@ -633,6 +633,12 @@
     height: auto;
   }
 
+  .home-banner-image {
+    height: 180px;
+    object-fit: cover;
+    object-position: center;
+  }
+
   .home-banner-loading {
     height: clamp(130px, 38vw, 240px);
   }
@@ -759,6 +765,12 @@
 
   .home-banner {
     height: auto;
+  }
+
+  .home-banner-image {
+    height: 160px;
+    object-fit: cover;
+    object-position: center;
   }
 
   .home-banner-loading {
