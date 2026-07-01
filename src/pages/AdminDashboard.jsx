@@ -707,6 +707,48 @@ function AdminDashboard() {
     };
   }, [orders]);
 
+  const weeklyStats = useMemo(() => {
+    const weeklyStatsMap = orders.reduce((acc, order) => {
+      const date = new Date(order.createdAt);
+      if (Number.isNaN(date.getTime())) return acc;
+
+      const day = date.getDay();
+      const diff = date.getDate() - day;
+      const sunday = new Date(date);
+      sunday.setDate(diff);
+      sunday.setHours(0, 0, 0, 0);
+
+      const key = sunday.toISOString().split("T")[0];
+      const weekLabel = sunday.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+      if (!acc[key]) {
+        acc[key] = {
+          weekStart: key,
+          label: `Week of ${weekLabel}`,
+          revenue: 0,
+          ordersCount: 0,
+          purchasingUsers: new Set()
+        };
+      }
+
+      acc[key].revenue += Number(order.total || 0);
+      acc[key].ordersCount += 1;
+
+      const userKey = order.user?._id || order.user?.email || order.shipping?.phone || order.shipping?.name || "Guest";
+      acc[key].purchasingUsers.add(String(userKey));
+
+      return acc;
+    }, {});
+
+    return Object.values(weeklyStatsMap)
+      .map((w) => ({
+        ...w,
+        uniqueUsersCount: w.purchasingUsers.size
+      }))
+      .sort((a, b) => b.weekStart.localeCompare(a.weekStart))
+      .slice(0, 8);
+  }, [orders]);
+
   const advancedAnalytics = useMemo(() => {
     const now = new Date();
     const last30Start = now.getTime() - 30 * 24 * 60 * 60 * 1000;
@@ -1500,6 +1542,47 @@ function AdminDashboard() {
                 })
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="card weekly-stats-card">
+          <div className="weekly-stats-header">
+            <h3>Weekly User Purchase Stats</h3>
+            <p>Order volume, active purchasing users, and weekly revenue metrics.</p>
+          </div>
+          <div className="weekly-stats-table-wrapper">
+            <table className="weekly-stats-table">
+              <thead>
+                <tr>
+                  <th>Week</th>
+                  <th style={{ textAlign: "right" }}>Unique Buyers</th>
+                  <th style={{ textAlign: "right" }}>Orders Count</th>
+                  <th style={{ textAlign: "right" }}>Weekly Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeklyStats.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: "center", color: "var(--site-text-soft)", padding: "20px 0" }}>
+                      No purchase statistics available.
+                    </td>
+                  </tr>
+                ) : (
+                  weeklyStats.map((week) => (
+                    <tr key={week.weekStart}>
+                      <td>
+                        <strong>{week.label}</strong>
+                      </td>
+                      <td style={{ textAlign: "right" }}>{week.uniqueUsersCount}</td>
+                      <td style={{ textAlign: "right" }}>{week.ordersCount}</td>
+                      <td style={{ textAlign: "right", fontWeight: "600", color: "var(--site-link)" }}>
+                        {formatCurrency(week.revenue)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 

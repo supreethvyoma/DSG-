@@ -690,3 +690,64 @@ to{transform:scaleX(1);}
     grid-template-columns:1fr;
   }
 }
+
+/* Weekly Stats Panel */
+.weekly-stats-card {
+  margin-top: 24px;
+}
+
+.weekly-stats-header {
+  margin-bottom: 20px;
+}
+
+.weekly-stats-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.weekly-stats-header p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--admin-muted);
+}
+
+.weekly-stats-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--admin-border);
+}
+
+.weekly-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: var(--admin-surface);
+  text-align: left;
+}
+
+.weekly-stats-table th {
+  background: var(--admin-surface-muted, #f8fafc);
+  padding: 12px 16px;
+  font-weight: 700;
+  color: var(--admin-text-soft);
+  border-bottom: 2px solid var(--admin-border);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.weekly-stats-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text);
+}
+
+.weekly-stats-table tr:last-child td {
+  border-bottom: none;
+}
+
+.weekly-stats-table tr:hover td {
+  background: var(--admin-surface-muted, #f8fafc);
+}
