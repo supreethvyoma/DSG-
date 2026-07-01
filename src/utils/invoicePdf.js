@@ -5,10 +5,35 @@ function toSafeNumber(value) {
   return Number.isNaN(num) ? 0 : num;
 }
 
-function formatCurrency(value) {
+const CURRENCY_SYMBOLS = {
+  INR: "Rs",
+  USD: "$",
+  GBP: "£",
+  EUR: "€",
+  CAD: "C$",
+  AUD: "A$",
+  NZD: "NZ$",
+  JPY: "¥",
+  CNY: "¥",
+  SGD: "S$",
+  AED: "AED",
+  SAR: "SAR",
+  QAR: "QAR",
+  KWD: "KWD",
+  OMR: "OMR",
+  BHD: "BHD",
+  PKR: "PKR",
+  BDT: "BDT",
+  NPR: "NPR",
+  LKR: "LKR"
+};
+
+function formatCurrency(value, currency = "INR") {
   const num = toSafeNumber(value);
-  // Format with exactly two decimal places and Indian numbering formatting
-  return `Rs ${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+  const formattedNum = num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+  const hasSpace = symbol.length > 1;
+  return hasSpace ? `${symbol} ${formattedNum}` : `${symbol}${formattedNum}`;
 }
 
 function formatDateTime(value) {
@@ -44,6 +69,15 @@ export function generateInvoicePdf(order, options = {}) {
   const shippingAddress = order?.shipping?.address || "N/A";
   const shippingPhone = order?.shipping?.phone || "N/A";
   const customerState = String(order?.shipping?.state || "").trim();
+  
+  const currency = String(
+    order?.currencyDisplay?.currency ||
+      order?.displayCurrency ||
+      order?.currency ||
+      "INR"
+  )
+    .trim()
+    .toUpperCase();
 
   // --- GST Compliance Calculations ---
   
@@ -290,8 +324,8 @@ export function generateInvoicePdf(order, options = {}) {
       doc.text(wrappedName, marginX + 8, y + 14);
       doc.text(item.hsnSac, 260, y + 14);
       doc.text(String(item.qty), 350, y + 14, { align: "right" });
-      doc.text(formatCurrency(item.price), 440, y + 14, { align: "right" });
-      doc.text(formatCurrency(item.lineTotal), 545, y + 14, { align: "right" });
+      doc.text(formatCurrency(item.price, currency), 440, y + 14, { align: "right" });
+      doc.text(formatCurrency(item.lineTotal, currency), 545, y + 14, { align: "right" });
       
       y += rowHeight;
 
@@ -316,32 +350,32 @@ export function generateInvoicePdf(order, options = {}) {
   doc.setTextColor(71, 85, 105);
 
   doc.text("Subtotal:", summaryLeftX, y);
-  doc.text(formatCurrency(subtotalValue), 545, y, { align: "right" });
+  doc.text(formatCurrency(subtotalValue, currency), 545, y, { align: "right" });
   y += 16;
   
   if (discount > 0) {
     doc.text("Discount:", summaryLeftX, y);
-    doc.text(`-${formatCurrency(discount)}`, 545, y, { align: "right" });
+    doc.text(`-${formatCurrency(discount, currency)}`, 545, y, { align: "right" });
     y += 16;
   }
 
   doc.text("Delivery Charges (Base):", summaryLeftX, y);
-  doc.text(formatCurrency(deliveryBase), 545, y, { align: "right" });
+  doc.text(formatCurrency(deliveryBase, currency), 545, y, { align: "right" });
   y += 16;
 
   if (isIntrastate) {
     // Intrastate tax splitting (CGST + SGST)
     const halfGst = totalGst / 2;
     doc.text("CGST (9% / 0% Split):", summaryLeftX, y);
-    doc.text(formatCurrency(halfGst), 545, y, { align: "right" });
+    doc.text(formatCurrency(halfGst, currency), 545, y, { align: "right" });
     y += 16;
     doc.text("SGST (9% / 0% Split):", summaryLeftX, y);
-    doc.text(formatCurrency(halfGst), 545, y, { align: "right" });
+    doc.text(formatCurrency(halfGst, currency), 545, y, { align: "right" });
     y += 16;
   } else {
     // Interstate integrated tax (IGST)
     doc.text("IGST (Integrated Tax):", summaryLeftX, y);
-    doc.text(formatCurrency(totalGst), 545, y, { align: "right" });
+    doc.text(formatCurrency(totalGst, currency), 545, y, { align: "right" });
     y += 16;
   }
 
@@ -353,7 +387,7 @@ export function generateInvoicePdf(order, options = {}) {
   doc.setFontSize(11);
   doc.setTextColor(255, 255, 255);
   doc.text("Grand Total:", summaryLeftX + 10, y + 6);
-  doc.text(formatCurrency(compliantTotal), 535, y + 6, { align: "right" });
+  doc.text(formatCurrency(compliantTotal, currency), 535, y + 6, { align: "right" });
 
   // Footer notes at the bottom of page
   const footerY = 810;
