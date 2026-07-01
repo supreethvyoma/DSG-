@@ -127,17 +127,31 @@ function AdminOrders() {
       return;
     }
 
-    const reason =
-      apiStatus === "Cancelled"
-        ? window.prompt("Reason for cancelling this order?", "Cancelled by admin")
-        : "";
-    if (apiStatus === "Cancelled" && reason === null) return;
+    let reason = "";
+    let trackingId = "";
+    let courierPartner = "";
+
+    if (apiStatus === "Cancelled") {
+      const cancellationReason = window.prompt("Reason for cancelling this order?", "Cancelled by admin");
+      if (cancellationReason === null) return;
+      reason = cancellationReason;
+    }
+
+    if (apiStatus === "Shipped") {
+      const partner = window.prompt("Enter Courier Partner (Delhivery / India Post / Other):", "Delhivery");
+      if (partner === null) return; // user cancelled
+      const tracking = window.prompt("Enter Tracking ID / Waybill Number:");
+      if (tracking === null) return; // user cancelled
+
+      courierPartner = partner.trim();
+      trackingId = tracking.trim();
+    }
 
     setUpdatingOrderId(orderId);
     try {
       await axios.put(
         `/api/orders/${orderId}/status`,
-        { status: apiStatus, reason },
+        { status: apiStatus, reason, trackingId, courierPartner },
         {
           headers: { Authorization: `Bearer ${token}` }
         }

@@ -475,3 +475,148 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Tracking details stepper styling */
+.my-order-track-btn {
+  border: 1px solid var(--site-border);
+  background: var(--site-surface);
+  color: var(--site-text);
+  border-radius: var(--radius-full);
+  min-height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.my-order-track-btn:hover {
+  background: var(--site-surface-muted);
+  border-color: var(--site-text-soft);
+}
+
+.my-order-tracking-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--site-border);
+}
+
+.my-order-tracking-info-grid {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--site-surface-muted);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+}
+
+.my-order-tracking-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.my-order-tracking-info-item span {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--site-text-soft);
+  letter-spacing: 0.5px;
+}
+
+.my-order-tracking-info-item strong {
+  font-size: 13px;
+  color: var(--site-text);
+}
+
+.my-order-tracking-stepper {
+  position: relative;
+  padding-left: 28px;
+  margin: 12px 0 8px 8px;
+  border-left: 2px solid var(--site-border);
+}
+
+.my-order-tracking-step {
+  position: relative;
+  padding-bottom: 24px;
+}
+
+.my-order-tracking-step:last-child {
+  padding-bottom: 8px;
+}
+
+.my-order-tracking-bullet {
+  position: absolute;
+  left: -35px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--site-surface);
+  border: 3px solid var(--site-border);
+  box-shadow: 0 0 0 3px var(--site-surface);
+  transition: all 0.2s ease;
+}
+
+.my-order-tracking-step.active .my-order-tracking-bullet {
+  background: var(--site-link);
+  border-color: var(--site-link);
+}
+
+.my-order-tracking-step.latest .my-order-tracking-bullet {
+  background: var(--site-link);
+  border-color: var(--site-link);
+  animation: pulse-dot 2s infinite;
+}
+
+.my-order-tracking-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.my-order-tracking-status {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--site-text-soft);
+}
+
+.my-order-tracking-step.active .my-order-tracking-status {
+  color: var(--site-text);
+}
+
+.my-order-tracking-step.latest .my-order-tracking-status {
+  color: var(--site-link);
+}
+
+.my-order-tracking-desc {
+  font-size: 12.5px;
+  color: var(--site-text-soft);
+  line-height: 1.4;
+}
+
+.my-order-tracking-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--site-text-soft);
+}
+
+.my-order-tracking-location {
+  font-weight: 600;
+  color: var(--site-text);
+}
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(217, 119, 6, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0);
+  }
+}

@@ -204,6 +204,22 @@ function AdminOrderDetails() {
                   </div>
                 </article>
 
+                {order.trackingId ? (
+                  <article className="admin-order-details-card">
+                    <h2>Tracking Details</h2>
+                    <div className="admin-order-reference-list" style={{ marginTop: '8px' }}>
+                      <div>
+                        <span>Courier Partner</span>
+                        <strong>{order.courierPartner || "Delhivery"}</strong>
+                      </div>
+                      <div>
+                        <span>Tracking ID</span>
+                        <strong>{order.trackingId}</strong>
+                      </div>
+                    </div>
+                  </article>
+                ) : null}
+
                 <article className="admin-order-details-card">
                   <h2>Payment summary</h2>
                   <div className="admin-order-summary-row">

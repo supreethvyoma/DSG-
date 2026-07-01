@@ -25,6 +25,8 @@ const {
   wishlistLowStockPayload
 } = require("../utils/webPush");
 
+const { getTrackingDetails } = require("../utils/trackingService");
+
 const router = express.Router();
 
 const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
@@ -611,6 +613,19 @@ router.put("/:id/status", protect, admin, async (req, res) => {
   // Stock-holding states: Pending and Shipped (goods not yet returned)
   const stockHoldingStates = new Set(["Pending", "Shipped"]);
 
+  // If status is updated to Shipped, or if the order is already in a state that supports tracking, update tracking details.
+  if (normalizedStatus === "Shipped" || order.status === "Shipped" || order.status === "Delivered") {
+    if (req.body.trackingId !== undefined) {
+      order.trackingId = String(req.body.trackingId || "").trim();
+    }
+    if (req.body.courierPartner !== undefined) {
+      order.courierPartner = String(req.body.courierPartner || "").trim();
+    }
+    if (normalizedStatus === "Shipped") {
+      order.shippedAt = order.shippedAt || new Date();
+    }
+  }
+
   order.status = normalizedStatus;
   if (normalizedStatus === "Cancelled") {
     order.cancelledAt = order.cancelledAt || new Date();
@@ -897,6 +912,28 @@ router.get("/:id", protect, admin, async (req, res) => {
   }
 
   res.json(order);
+});
+
+// Get tracking details for a specific order (customer who placed it OR admin)
+router.get("/:id/tracking", protect, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Check permissions: either admin or the user who placed the order
+    const user = await User.findById(req.user);
+    if (!user.isAdmin && String(order.user) !== String(req.user)) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const trackingData = await getTrackingDetails(order);
+    res.json(trackingData);
+  } catch (err) {
+    console.error("[OrderRoutes] Error fetching tracking:", err.message);
+    res.status(500).json({ message: "Failed to load tracking details" });
+  }
 });
 
 module.exports = router;

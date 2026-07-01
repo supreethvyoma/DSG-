@@ -60,6 +60,7 @@ function MyOrders() {
   const [pageMessage, setPageMessage] = useState("");
   const [selectedView, setSelectedView] = useState("All");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ORDERS);
+  const [activeTracking, setActiveTracking] = useState({});
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
   const isDummyPaymentEnabled =
     String(import.meta.env.VITE_ENABLE_DUMMY_PAYMENT || "").toLowerCase() === "true";
@@ -68,6 +69,20 @@ function MyOrders() {
   const getAuthHeaders = () => ({
     headers: { Authorization: `Bearer ${token}` }
   });
+
+  const toggleTracking = async (orderId) => {
+    if (activeTracking[orderId] !== undefined && activeTracking[orderId] !== false) {
+      setActiveTracking((prev) => ({ ...prev, [orderId]: false }));
+      return;
+    }
+    setActiveTracking((prev) => ({ ...prev, [orderId]: null }));
+    try {
+      const res = await axios.get(`/api/orders/${orderId}/tracking`, getAuthHeaders());
+      setActiveTracking((prev) => ({ ...prev, [orderId]: res.data }));
+    } catch {
+      setActiveTracking((prev) => ({ ...prev, [orderId]: { error: true } }));
+    }
+  };
 
   const loadOrders = async () => {
     if (!token) return;
@@ -475,7 +490,7 @@ function MyOrders() {
                 )}
               </div>
 
-              <div className="my-order-actions">
+               <div className="my-order-actions">
                 <button
                   className="my-order-invoice-btn"
                   disabled={!canDownloadInvoice || generatingInvoiceOrderId === order._id}
@@ -490,6 +505,15 @@ function MyOrders() {
                       ? "Download invoice"
                       : "Invoice after shipping"}
                 </button>
+
+                {order.trackingId ? (
+                  <button
+                    className="my-order-track-btn"
+                    onClick={() => void toggleTracking(order._id)}
+                  >
+                    {activeTracking[order._id] ? "Hide Tracking" : "Track Package"}
+                  </button>
+                ) : null}
 
                 <p className="my-order-invoice-note">
                   {status === "Cancelled"
@@ -522,6 +546,64 @@ function MyOrders() {
                   </button>
                 ) : null}
               </div>
+
+              {activeTracking[order._id] !== undefined && activeTracking[order._id] !== false && (
+                <div className="my-order-tracking-panel">
+                  {activeTracking[order._id] === null ? (
+                    <p style={{ fontSize: '13px', color: 'var(--site-text-soft)', padding: '12px' }}>
+                      Fetching live tracking details...
+                    </p>
+                  ) : activeTracking[order._id].error ? (
+                    <p style={{ fontSize: '13px', color: '#ef4444', padding: '12px' }}>
+                      Unable to load tracking details at the moment.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="my-order-tracking-info-grid">
+                        <div className="my-order-tracking-info-item">
+                          <span>Courier Partner</span>
+                          <strong>{activeTracking[order._id].courier || "Delhivery"}</strong>
+                        </div>
+                        <div className="my-order-tracking-info-item">
+                          <span>Tracking ID</span>
+                          <strong>{activeTracking[order._id].trackingId}</strong>
+                        </div>
+                        <div className="my-order-tracking-info-item">
+                          <span>Status</span>
+                          <strong>{activeTracking[order._id].status}</strong>
+                        </div>
+                      </div>
+
+                      <div className="my-order-tracking-stepper">
+                        {activeTracking[order._id].checkpoints && activeTracking[order._id].checkpoints.length > 0 ? (
+                          activeTracking[order._id].checkpoints.map((cp, idx, arr) => {
+                            const isLatest = idx === arr.length - 1;
+                            const stepClass = `my-order-tracking-step active ${isLatest ? 'latest' : ''}`;
+                            return (
+                              <div key={idx} className={stepClass}>
+                                <div className="my-order-tracking-bullet" />
+                                <div className="my-order-tracking-content">
+                                  <span className="my-order-tracking-status">{cp.status}</span>
+                                  <p className="my-order-tracking-desc">{cp.description}</p>
+                                  <div className="my-order-tracking-meta">
+                                    <span className="my-order-tracking-location">{cp.location}</span>
+                                    <span>•</span>
+                                    <span>{new Date(cp.time).toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <p style={{ fontSize: '12.5px', color: 'var(--site-text-soft)' }}>
+                            No tracking checkpoints logged yet.
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );

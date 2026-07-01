@@ -136,6 +136,19 @@ const orderSchema = new mongoose.Schema(
       default: "Pending",
       enum: ["Pending", "Shipped", "Delivered", "Cancelled"]
     },
+    trackingId: {
+      type: String,
+      default: ""
+    },
+    courierPartner: {
+      type: String,
+      default: "",
+      enum: ["", "Delhivery", "India Post", "Other"]
+    },
+    shippedAt: {
+      type: Date,
+      default: null
+    },
     paymentStatus: {
       type: String,
       default: "Pending",
