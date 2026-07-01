@@ -35,6 +35,14 @@ function AdminMarketing() {
   const [testEmailTo, setTestEmailTo] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
 
+  // ── Customer Targeting states ──────────────────────────────────────────────
+  const [targetingOptions, setTargetingOptions] = useState({ categories: [], products: [] });
+  const [filterType, setFilterType] = useState("all");
+  const [filterValue, setFilterValue] = useState("");
+  const [recipientCount, setRecipientCount] = useState(0);
+  const [recipientPreview, setRecipientPreview] = useState([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+
   // ── Push notification state ────────────────────────────────────────────────
   const [pushTitle, setPushTitle] = useState("");
   const [pushBody, setPushBody] = useState("");
@@ -129,7 +137,44 @@ function AdminMarketing() {
     }
   };
 
-  useEffect(() => { loadStats(); loadLowStock(); loadOrderEmailSettings(); }, []);
+  const loadTargetingOptions = async () => {
+    try {
+      const res = await axios.get("/api/marketing/targeting-options", { headers });
+      setTargetingOptions(res.data);
+    } catch (err) {
+      console.error("Failed to load targeting options", err);
+    }
+  };
+
+  const loadRecipientPreview = async () => {
+    setIsLoadingPreview(true);
+    try {
+      const res = await axios.post("/api/marketing/recipient-preview", {
+        filterType,
+        filterValue
+      }, { headers });
+      setRecipientCount(res.data.count);
+      setRecipientPreview(res.data.recipients || []);
+    } catch (err) {
+      console.error("Failed to load recipient preview", err);
+      setRecipientCount(0);
+      setRecipientPreview([]);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStats();
+    loadLowStock();
+    loadOrderEmailSettings();
+    loadTargetingOptions();
+  }, []);
+
+  useEffect(() => {
+    loadRecipientPreview();
+  }, [filterType, filterValue]);
+
   useEffect(() => { if (activeTab === 1) loadEmailLog(); }, [activeTab]);
 
   // ── Push permission ───────────────────────────────────────────────────────
@@ -173,7 +218,9 @@ function AdminMarketing() {
     try {
       const res = await axios.post("/api/marketing/broadcast/email", {
         subject: emailSubject,
-        html: `<p style="line-height:1.7;color:#555">${emailBody.replace(/\n/g, "<br/>")}</p>`
+        html: `<p style="line-height:1.7;color:#555">${emailBody.replace(/\n/g, "<br/>")}</p>`,
+        filterType,
+        filterValue
       }, { headers });
       setEmailMsg(res.data.message || "Sending...");
       setEmailSubject("");
@@ -475,6 +522,78 @@ function AdminMarketing() {
               <h3>Send Email Campaign</h3>
               <p className="mkt-hint">Sends to all registered users. Email must be configured in backend/.env first.</p>
               <div className="mkt-field">
+                <label>Target Audience Group</label>
+                <select
+                  value={filterType}
+                  onChange={(e) => {
+                    setFilterType(e.target.value);
+                    setFilterValue("");
+                  }}
+                >
+                  <option value="all">All Registered Users</option>
+                  <option value="category">Users who purchased a Category</option>
+                  <option value="product">Users who purchased a specific Product</option>
+                  <option value="minSpend">Users who spent at least (Minimum Spend)</option>
+                </select>
+              </div>
+
+              {filterType === "category" && (
+                <div className="mkt-field">
+                  <label>Select Product Category</label>
+                  <select
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                  >
+                    <option value="">-- Choose Category --</option>
+                    {targetingOptions.categories?.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {filterType === "product" && (
+                <div className="mkt-field">
+                  <label>Select Purchased Product</label>
+                  <select
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                  >
+                    <option value="">-- Choose Product --</option>
+                    {targetingOptions.products?.map(prod => (
+                      <option key={prod._id} value={prod._id}>{prod.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {filterType === "minSpend" && (
+                <div className="mkt-field">
+                  <label>Minimum Total Spend amount (INR)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Enter amount (e.g. 500)"
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="mkt-preview-box">
+                <p>
+                  Targeting: <strong>{isLoadingPreview ? "..." : recipientCount}</strong> matching customer(s).
+                </p>
+                {recipientPreview.length > 0 && (
+                  <div className="mkt-preview-list">
+                    <span>Matches: </span>
+                    {recipientPreview.map((r, i) => r.name || r.email || "User").join(", ")}
+                    {recipientCount > 10 ? "..." : ""}
+                  </div>
+                )}
+              </div>
+
+              <div className="mkt-field">
                 <label>Subject</label>
                 <input
                   placeholder="Your email subject..."
@@ -494,7 +613,7 @@ function AdminMarketing() {
               {emailMsg && <p className="mkt-msg">{emailMsg}</p>}
               <div className="mkt-actions">
                 <button className="primary-btn" onClick={sendEmailCampaign} disabled={isSendingEmail}>
-                  {isSendingEmail ? "Sending..." : `Send to All Users (${stats?.emailSubscribers ?? "?"})`}
+                  {isSendingEmail ? "Sending..." : `Send Email Campaign (${isLoadingPreview ? "..." : recipientCount} recipients)`}
                 </button>
               </div>
             </div>

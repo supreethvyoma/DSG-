@@ -5,6 +5,7 @@ const PushSubscription = require("../models/PushSubscription");
 const Wishlist = require("../models/Wishlist");
 const EmailLog = require("../models/EmailLog");
 const StoreSettings = require("../models/StoreSettings");
+const Order = require("../models/Order");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { sendBroadcastEmail, sendTestEmail, sendLowStockAdminAlert } = require("../utils/email");
@@ -39,6 +40,73 @@ router.get("/subscribers", async (_req, res) => {
     });
   } catch {
     res.status(500).json({ message: "Failed to load subscriber stats." });
+  }
+});
+
+// Helper to resolve recipients list based on category/product/spend filter
+async function resolveRecipientsList(filterType, filterValue) {
+  let userIds = null;
+
+  if (filterType === "category") {
+    const orders = await Order.find({
+      status: { $ne: "Cancelled" },
+      "items.category": filterValue
+    }).select("user").lean();
+    userIds = orders.map((o) => String(o.user)).filter(Boolean);
+  } else if (filterType === "product") {
+    const orders = await Order.find({
+      status: { $ne: "Cancelled" },
+      $or: [
+        { "items._id": filterValue },
+        { "items.product": filterValue }
+      ]
+    }).select("user").lean();
+    userIds = orders.map((o) => String(o.user)).filter(Boolean);
+  } else if (filterType === "minSpend") {
+    const spendAgg = await Order.aggregate([
+      { $match: { status: { $ne: "Cancelled" } } },
+      { $group: { _id: "$user", totalSpent: { $sum: "$total" } } },
+      { $match: { totalSpent: { $gte: Number(filterValue || 0) } } }
+    ]);
+    userIds = spendAgg.map((s) => String(s._id)).filter(Boolean);
+  }
+
+  const query = { deletedAt: null };
+  if (userIds !== null) {
+    query._id = { $in: userIds };
+  }
+
+  return await User.find(query).select("email name").lean();
+}
+
+// ── GET /api/marketing/targeting-options ─────────────────────────────────────
+// Retrieve all unique product categories and active products list
+router.get("/targeting-options", async (_req, res) => {
+  try {
+    const [categories, products] = await Promise.all([
+      Product.distinct("category", { deletedAt: null }),
+      Product.find({ deletedAt: null }).select("_id name").sort({ name: 1 }).lean()
+    ]);
+    res.json({ categories, products });
+  } catch {
+    res.status(500).json({ message: "Failed to load targeting options." });
+  }
+});
+
+// ── POST /api/marketing/recipient-preview ────────────────────────────────────
+// Preview the matching recipients for a given targeting configuration
+router.post("/recipient-preview", async (req, res) => {
+  try {
+    const filterType = String(req.body?.filterType || "all").trim();
+    const filterValue = String(req.body?.filterValue || "").trim();
+
+    const recipients = await resolveRecipientsList(filterType, filterValue);
+    res.json({
+      count: recipients.length,
+      recipients: recipients.slice(0, 10).map(r => ({ name: r.name, email: r.email })) // Limit preview list for UI performance
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to load preview." });
   }
 });
 
@@ -158,18 +226,24 @@ router.post("/alert/low-stock", async (_req, res) => {
 });
 
 // ── POST /api/marketing/broadcast/email ──────────────────────────────────────
-// Send a bulk email campaign to all registered users
+// Send a bulk email campaign to registered users (supporting targeting filters)
 router.post("/broadcast/email", async (req, res) => {
   try {
     const subject = String(req.body?.subject || "").trim();
     const html = String(req.body?.html || "").trim();
+    const filterType = String(req.body?.filterType || "all").trim();
+    const filterValue = String(req.body?.filterValue || "").trim();
 
     if (!subject || !html) {
       return res.status(400).json({ message: "Subject and HTML body are required." });
     }
 
-    const users = await User.find({ deletedAt: null }).select("email name").lean();
-    const recipients = users.filter((u) => u.email);
+    const matchedUsers = await resolveRecipientsList(filterType, filterValue);
+    const recipients = matchedUsers.filter((u) => u.email);
+
+    if (recipients.length === 0) {
+      return res.status(400).json({ message: "No recipients match the selected criteria." });
+    }
 
     // Fire-and-forget — respond immediately
     res.json({ message: `Sending to ${recipients.length} users...`, total: recipients.length });
@@ -178,8 +252,8 @@ router.post("/broadcast/email", async (req, res) => {
     sendBroadcastEmail({ subject, html, recipients }).catch((err) => {
       console.error("[Marketing] Broadcast email error:", err.message);
     });
-  } catch {
-    res.status(500).json({ message: "Failed to start broadcast." });
+  } catch (err) {
+    res.status(500).json({ message: err.message || "Failed to start broadcast." });
   }
 });
 
