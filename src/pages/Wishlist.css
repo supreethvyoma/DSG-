@@ -63,4 +63,9 @@
   .wishlist-shell {
     padding: var(--space-5);
   }
+
+  .wishlist-grid {
+    grid-template-columns: repeat(auto-fill, 180px);
+    gap: var(--space-3);
+  }
 }
