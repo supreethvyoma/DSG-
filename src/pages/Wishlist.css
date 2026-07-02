@@ -65,7 +65,27 @@
   }
 
   .wishlist-grid {
-    grid-template-columns: repeat(auto-fill, 180px);
+    display: flex;
+    flex-direction: row;
     gap: var(--space-3);
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    justify-content: flex-start;
+  }
+
+  .wishlist-grid > * {
+    flex: 0 0 180px;
+    min-width: 180px;
+  }
+
+  .wishlist-grid::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .wishlist-grid::-webkit-scrollbar-thumb {
+    background: var(--site-border);
+    border-radius: var(--radius-full);
   }
 }
