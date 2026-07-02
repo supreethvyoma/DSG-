@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { House, Grid, Heart, ShoppingCart, User, Search } from "lucide-react";
+import { House, Grid, Heart, ShoppingCart, User, Search, Menu, X } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
 import { useWishlist } from "../../hooks/useWishlist";
@@ -381,10 +381,8 @@ function Navbar({ bannerActive = false }) {
               aria-label={isMenuOpen ? "Close menu" : "Open menu"}
               onClick={() => setIsMenuOpen((current) => !current)}
             >
-              <span className="navbar-menu-icon" aria-hidden="true">
-                <span />
-                <span />
-                <span />
+              <span className="navbar-menu-icon" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                {isMenuOpen ? <X size={20} className="lucide-icon" /> : <Menu size={20} className="lucide-icon" />}
               </span>
               <span className="navbar-menu-text">{isMenuOpen ? "Close" : "Menu"}</span>
             </button>

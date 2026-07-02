@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Share2, Heart } from "lucide-react";
 import { useWishlist } from "../hooks/useWishlist";
 import { formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails } from "../utils/productPricing";
@@ -97,22 +98,18 @@ function ProductCard({ product, showDescription = true, variant = "default" }) {
         onClick={handleShare}
         aria-label="Share product"
         title="Share Product"
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
       >
-        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-          <polyline points="16 6 12 2 8 6" />
-          <line x1="12" y1="2" x2="12" y2="15" />
-        </svg>
+        <Share2 size={15} strokeWidth={2.5} />
       </button>
       <button
         type="button"
         className={`wishlist-heart-btn ${isWishlisted ? "active" : ""}`}
         onClick={handleWishlistToggle}
         aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}
       >
-        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" strokeWidth="2.5" fill={isWishlisted ? "currentColor" : "none"} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-        </svg>
+        <Heart size={15} strokeWidth={2.5} fill={isWishlisted ? "currentColor" : "none"} />
       </button>
       {copied && <span className="share-tooltip">Link copied!</span>}
 

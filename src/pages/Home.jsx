@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import RecentlyViewed from "../components/RecentlyViewed";
 import { formatResolvedPrice } from "../utils/currency";
@@ -342,12 +343,12 @@ function Home() {
             />
             {heroBanners.length > 1 ? (
               <>
-                <button type="button" className="home-banner-nav prev" onClick={(e) => { e.preventDefault(); showPreviousHeroBanner(); }}>
-                  <span aria-hidden="true">{"\u2039"}</span>
+                <button type="button" className="home-banner-nav prev" onClick={(e) => { e.preventDefault(); showPreviousHeroBanner(); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChevronLeft size={24} />
                   <span className="sr-only">Previous banner</span>
                 </button>
-                <button type="button" className="home-banner-nav next" onClick={(e) => { e.preventDefault(); showNextHeroBanner(); }}>
-                  <span aria-hidden="true">{"\u203A"}</span>
+                <button type="button" className="home-banner-nav next" onClick={(e) => { e.preventDefault(); showNextHeroBanner(); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChevronRight size={24} />
                   <span className="sr-only">Next banner</span>
                 </button>
                 <div className="home-banner-dots">
@@ -372,12 +373,12 @@ function Home() {
             />
             {heroBanners.length > 1 ? (
               <>
-                <button type="button" className="home-banner-nav prev" onClick={showPreviousHeroBanner}>
-                  <span aria-hidden="true">{"\u2039"}</span>
+                <button type="button" className="home-banner-nav prev" onClick={showPreviousHeroBanner} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChevronLeft size={24} />
                   <span className="sr-only">Previous banner</span>
                 </button>
-                <button type="button" className="home-banner-nav next" onClick={showNextHeroBanner}>
-                  <span aria-hidden="true">{"\u203A"}</span>
+                <button type="button" className="home-banner-nav next" onClick={showNextHeroBanner} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <ChevronRight size={24} />
                   <span className="sr-only">Next banner</span>
                 </button>
                 <div className="home-banner-dots">
