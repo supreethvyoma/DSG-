@@ -401,12 +401,9 @@ function Navbar({ bannerActive = false }) {
                   aria-label="Open collection filters"
                   aria-expanded={isCollectionFilterMenuOpen}
                   onClick={() => setIsCollectionFilterMenuOpen((current) => !current)}
+                  style={{ display: "inline-flex", alignItems: "center" }}
                 >
-                  <div className="hamburger-icon">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                  <Menu size={16} className="lucide-icon" style={{ marginRight: "6px" }} />
                   <span className="navbar-collection-menu-text">All</span>
                 </button>
                 <button
