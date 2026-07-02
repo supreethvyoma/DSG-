@@ -422,7 +422,7 @@ html.banner-active .navbar {
   color: var(--site-text);
   padding: 13px 18px;
   outline: none;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 400;
   box-sizing: border-box;
 }
@@ -1060,7 +1060,7 @@ html.banner-active .navbar {
 
   .navbar-search {
     padding: 10px 12px;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .navbar-search-btn {
