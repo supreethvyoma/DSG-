@@ -254,8 +254,11 @@ function Navbar({ bannerActive = false }) {
       <div className="navbar-top">
         <div className="navbar-inner">
           <Link to="/" className="navbar-logo navbar-outline">
-            <span className="navbar-logo-line1">digital</span>
-            <span className="navbar-logo-line2">sanskrit guru</span>
+            <img
+              src="/logo.png"
+              alt="Digital Sanskrit Guru"
+              className="navbar-logo-img"
+            />
           </Link>
 
           <button
