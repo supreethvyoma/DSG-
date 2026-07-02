@@ -586,30 +586,16 @@ function Navbar({ bannerActive = false }) {
           <span className="mobile-bottom-icon">📚</span>
           <span className="mobile-bottom-label">Categories</span>
         </button>
-        <button
-          type="button"
-          className="mobile-bottom-item"
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            const searchInput = document.querySelector(".navbar-search");
-            if (searchInput) {
-              searchInput.focus();
-            }
-          }}
-        >
-          <span className="mobile-bottom-icon">🔍</span>
-          <span className="mobile-bottom-label">Search</span>
-        </button>
-        <NavLink to="/cart" className={({ isActive }) => `mobile-bottom-item${isActive ? " active" : ""}`}>
+        <NavLink to="/wishlist" className={({ isActive }) => `mobile-bottom-item${isActive ? " active" : ""}`}>
           <div className="mobile-bottom-cart-wrap">
-            <span className="mobile-bottom-icon">🛒</span>
-            {cartItems.length > 0 ? (
+            <span className="mobile-bottom-icon">❤️</span>
+            {wishlist.length > 0 ? (
               <span className="mobile-bottom-badge">
-                {cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)}
+                {wishlist.length}
               </span>
             ) : null}
           </div>
-          <span className="mobile-bottom-label">Cart</span>
+          <span className="mobile-bottom-label">Wishlist</span>
         </NavLink>
         <NavLink to={user ? "/account" : "/login"} className={({ isActive }) => `mobile-bottom-item${isActive ? " active" : ""}`}>
           <span className="mobile-bottom-icon">👤</span>
