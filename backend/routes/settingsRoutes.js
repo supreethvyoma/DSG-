@@ -394,9 +394,9 @@ async function getOrCreateSettings() {
   return settings;
 }
 
-// Admin: full settings (60s cache)
+// Admin: full settings (no cache for admin panel to prevent config lag)
 router.get("/", async (req, res) => {
-  const settings = await cacheAside("settings:full", 60, getOrCreateSettings);
+  const settings = await getOrCreateSettings();
   res.json(normalizeSettings(settings));
 });
 
@@ -487,6 +487,7 @@ router.put("/", protect, admin, async (req, res) => {
       profile: String(req.body.storeIcons.profile || "👤").trim(),
       search: String(req.body.storeIcons.search || "🔍").trim()
     };
+    settings.markModified("storeIcons");
   }
   const allowedThemeIds = new Set([
     ...StoreSettings.SITE_THEMES,
