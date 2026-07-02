@@ -23,7 +23,7 @@ export function WishlistProvider({ children }) {
     localStorage.setItem("wishlist", JSON.stringify(wishlist));
   }, [wishlist]);
 
-  // On login: sync local wishlist → server (merge)
+  // On login: sync local wishlist ↔ server (bidirectional merge)
   useEffect(() => {
     if (!token) {
       syncedRef.current = false;
@@ -32,15 +32,42 @@ export function WishlistProvider({ children }) {
     if (syncedRef.current) return;
     syncedRef.current = true;
 
-    const localIds = wishlist.map((p) => p._id).filter(Boolean);
-    if (localIds.length === 0) return;
-
+    // Fetch user's wishlist from the database
     axios
-      .post("/api/wishlist/sync", { productIds: localIds }, {
+      .get("/api/wishlist", {
         headers: { Authorization: `Bearer ${token}` }
       })
+      .then((res) => {
+        const serverProducts = Array.isArray(res.data?.products) ? res.data.products : [];
+        
+        setWishlist((prevLocal) => {
+          // Merge local and server items, prioritizing local items
+          const merged = [...prevLocal];
+          
+          serverProducts.forEach((sp) => {
+            if (sp && sp._id) {
+              const exists = merged.some((lp) => lp._id === sp._id);
+              if (!exists) {
+                merged.push(sp);
+              }
+            }
+          });
+
+          // If the merged list is larger than the server's list, sync the updates back to the database
+          const mergedIds = merged.map((p) => p._id).filter(Boolean);
+          if (mergedIds.length > serverProducts.length) {
+            axios
+              .post("/api/wishlist/sync", { productIds: mergedIds }, {
+                headers: { Authorization: `Bearer ${token}` }
+              })
+              .catch(() => {});
+          }
+
+          return merged;
+        });
+      })
       .catch(() => {
-        // Sync failure is non-critical — local data is still intact
+        // Sync failure is non-critical — local data remains intact
       });
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 

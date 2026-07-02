@@ -4,12 +4,15 @@ const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
-// GET /api/wishlist — get the logged-in user's server-side wishlist product IDs
+// GET /api/wishlist — get the logged-in user's server-side wishlist populated with Product details
 router.get("/", protect, async (req, res) => {
   try {
-    const wishlist = await Wishlist.findOne({ user: req.user }).lean();
-    res.json({ productIds: wishlist ? wishlist.productIds.map(String) : [] });
-  } catch {
+    const wishlist = await Wishlist.findOne({ user: req.user }).populate("productIds").lean();
+    const products = wishlist && Array.isArray(wishlist.productIds)
+      ? wishlist.productIds.filter(Boolean)
+      : [];
+    res.json({ products });
+  } catch (error) {
     res.status(500).json({ message: "Failed to load wishlist." });
   }
 });
@@ -25,10 +28,13 @@ router.post("/sync", protect, async (req, res) => {
       { user: req.user },
       { $set: { productIds } },
       { upsert: true, new: true }
-    );
+    ).populate("productIds");
 
-    res.json({ productIds: wishlist.productIds.map(String) });
-  } catch {
+    const products = wishlist && Array.isArray(wishlist.productIds)
+      ? wishlist.productIds.filter(Boolean)
+      : [];
+    res.json({ products });
+  } catch (error) {
     res.status(500).json({ message: "Failed to sync wishlist." });
   }
 });
@@ -43,10 +49,13 @@ router.post("/add", protect, async (req, res) => {
       { user: req.user },
       { $addToSet: { productIds: productId } },
       { upsert: true, new: true }
-    );
+    ).populate("productIds");
 
-    res.json({ productIds: wishlist.productIds.map(String) });
-  } catch {
+    const products = wishlist && Array.isArray(wishlist.productIds)
+      ? wishlist.productIds.filter(Boolean)
+      : [];
+    res.json({ products });
+  } catch (error) {
     res.status(500).json({ message: "Failed to add to wishlist." });
   }
 });
@@ -61,10 +70,13 @@ router.delete("/:productId", protect, async (req, res) => {
       { user: req.user },
       { $pull: { productIds: productId } },
       { new: true }
-    );
+    ).populate("productIds");
 
-    res.json({ productIds: wishlist ? wishlist.productIds.map(String) : [] });
-  } catch {
+    const products = wishlist && Array.isArray(wishlist.productIds)
+      ? wishlist.productIds.filter(Boolean)
+      : [];
+    res.json({ products });
+  } catch (error) {
     res.status(500).json({ message: "Failed to remove from wishlist." });
   }
 });
