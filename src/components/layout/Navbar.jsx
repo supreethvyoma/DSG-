@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { House, Grid, Heart, ShoppingCart, User, Search, Menu, X } from "lucide-react";
+import { House, Grid, Heart, ShoppingCart, User, Search, Menu, X, MapPin } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
 import { useWishlist } from "../../hooks/useWishlist";
@@ -319,9 +319,10 @@ function Navbar({ bannerActive = false }) {
             type="button"
             className="navbar-location navbar-location-btn navbar-outline"
             onClick={() => setIsAddressModalOpen(true)}
+            style={{ display: "inline-flex", alignItems: "center" }}
           >
-            <span className="navbar-location-icon" aria-hidden="true">
-              📍
+            <span className="navbar-location-icon" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <MapPin size={18} className="lucide-icon" />
             </span>
             <span className="navbar-location-text">
               <span className="navbar-location-label">{deliveryLine1}</span>
