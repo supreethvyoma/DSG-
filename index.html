@@ -9,7 +9,20 @@
     <!-- Google Fonts — Inter (primary) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <!-- Widescreen Hero Banner image preload for instant paint (LCP reduction) -->
-    <link rel="preload" href="/assets/main-hero.webp" as="image" fetchpriority="high" />
+    <script>
+      (function() {
+        const hash = window.location.hash;
+        const path = window.location.pathname;
+        if (hash === "" || hash === "#/" || path === "/") {
+          const link = document.createElement("link");
+          link.rel = "preload";
+          link.as = "image";
+          link.href = "/assets/main-hero.webp";
+          link.fetchPriority = "high";
+          document.head.appendChild(link);
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Digital Sanskrit Guru</title>
   </head>
