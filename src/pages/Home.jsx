@@ -330,7 +330,14 @@ function Home() {
         </section>
       ) : activeHeroBanner ? (
         activeHeroBanner.productId ? (
-          <Link to={`/product/${activeHeroBanner.productId}`} className="home-banner home-banner-has-media">
+          <Link
+            to={
+              activeHeroBanner.productId.startsWith("/")
+                ? activeHeroBanner.productId
+                : `/product/${activeHeroBanner.productId}`
+            }
+            className="home-banner home-banner-has-media"
+          >
             <img
               src={activeHeroBanner.image}
               alt="Homepage banner"

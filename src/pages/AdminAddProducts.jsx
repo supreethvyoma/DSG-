@@ -1847,16 +1847,28 @@ function AdminAddProducts() {
               <label className="admin-field admin-field-wide">
                 <span>Banner Opens Product</span>
                 <select
-                  value={activeHeroBanner.productId}
+                  value={products.some(p => p._id === activeHeroBanner.productId) ? activeHeroBanner.productId : ""}
                   onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "productId", e.target.value)}
                 >
-                  <option value="">No linked product</option>
+                  <option value="">No linked product (or custom link below)</option>
                   {products.map((product) => (
                     <option key={product._id} value={product._id}>
                       {product.name}
                     </option>
                   ))}
                 </select>
+              </label>
+
+              <label className="admin-field admin-field-wide">
+                <span>Or Custom Target Link (e.g. /collection, /cart)</span>
+                <input
+                  type="text"
+                  placeholder="e.g. /collection"
+                  value={products.some(p => p._id === activeHeroBanner.productId) ? "" : activeHeroBanner.productId}
+                  onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "productId", e.target.value)}
+                  className="admin-input-text"
+                  style={{ width: "100%", padding: "10px", marginTop: "4px", boxSizing: "border-box" }}
+                />
               </label>
 
               {editingProduct?._id ? (
