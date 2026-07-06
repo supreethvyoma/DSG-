@@ -400,9 +400,9 @@ router.get("/", async (req, res) => {
   res.json(normalizeSettings(settings));
 });
 
-// Public: checkout/pricing settings (5 min cache — rarely changes)
+// Public: checkout/pricing settings (no browser cache to prevent configuration lag)
 router.get("/public", async (req, res) => {
-  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300, stale-while-revalidate=60");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   const settings = await cacheAside("settings:public", TTL.SETTINGS_PUBLIC, getOrCreateSettings);
   res.json(buildPublicSettingsPayload(settings));
 });

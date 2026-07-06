@@ -84,11 +84,10 @@ router.post("/", protect, admin, async (req, res) => {
     return res.status(500).json({ message: "Failed to create coupon" });
   }
 });
-
-// Public: returns coupon details
+// Public: returns coupon details (no browser cache to prevent coupon configuration lag)
 router.get("/", async (_req, res) => {
   try {
-    res.setHeader("Cache-Control", "public, max-age=120, s-maxage=120, stale-while-revalidate=30");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     const publicCoupons = await cacheAside("coupons:public", TTL.COUPONS_PUBLIC, async () => {
       const coupons = await Coupon.find().sort({ createdAt: -1 });
       return coupons.map((c) => ({
