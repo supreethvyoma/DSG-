@@ -12,8 +12,9 @@
     <script>
       (function() {
         const hash = window.location.hash;
-        const path = window.location.pathname;
-        if (hash === "" || hash === "#/" || path === "/") {
+        // In a HashRouter SPA, pathname is always "/" on all pages. 
+        // We must only check the hash to identify the homepage.
+        if (hash === "" || hash === "#" || hash === "#/") {
           const link = document.createElement("link");
           link.rel = "preload";
           link.as = "image";
