@@ -118,7 +118,7 @@ export function generateInvoicePdf(order, options = {}) {
   const isIntrastate = customerState.toLowerCase() === "karnataka" || customerState.toLowerCase() === "ka";
 
   // 2. Default GST percentage for taxable items (usually 18%)
-  const defaultGstPercent = toSafeNumber(order?.gstPercent || 18);
+  const defaultGstPercent = order?.gstPercent !== undefined && order?.gstPercent !== null ? toSafeNumber(order.gstPercent) : 18;
 
   // Helper to determine HSN/SAC based on product classification
   function getItemHsnSac(item) {
@@ -201,8 +201,16 @@ export function generateInvoicePdf(order, options = {}) {
 
   // 4. Totals and Tax Splitting
   const discount = toSafeNumber(order?.discount || 0);
-  const totalGst = totalItemGst + deliveryTax;
-  const compliantTotal = subtotalValue + deliveryBase + totalGst - discount;
+  const expectedTotal = toSafeNumber(order?.currencyDisplay?.amount || order?.total || 0);
+  let totalGst = totalItemGst + deliveryTax;
+
+  // Self-heal any rounding differences (from floating point additions or currency conversion roundings)
+  const calculatedTotal = subtotalValue + deliveryBase + totalGst - discount;
+  const diff = expectedTotal - calculatedTotal;
+  if (Math.abs(diff) < 5) {
+    totalGst = Math.round((totalGst + diff) * 100) / 100;
+  }
+  const compliantTotal = expectedTotal;
 
   // --- PDF Render ---
 
