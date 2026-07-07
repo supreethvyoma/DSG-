@@ -2,6 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google Tag Manager and Consent Mode v2 Setup (GDPR & DPDP Act 2023 Compliant) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+
+      // Fetch stored consent preferences or default to denied
+      let consentSettings = { analytics: false, marketing: false };
+      try {
+        const storedConsent = localStorage.getItem("dsg-cookie-consent");
+        if (storedConsent) {
+          consentSettings = JSON.parse(storedConsent);
+        }
+      } catch (e) {}
+
+      gtag('consent', 'default', {
+        'analytics_storage': consentSettings.analytics ? 'granted' : 'denied',
+        'ad_storage': consentSettings.marketing ? 'granted' : 'denied',
+        'ad_user_data': consentSettings.marketing ? 'granted' : 'denied',
+        'ad_personalization': consentSettings.marketing ? 'granted' : 'denied',
+        'security_storage': 'granted' // Necessary cookies are always granted
+      });
+    </script>
+    <!-- Google Tag Manager Container -->
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','GTM-W3V5K29D');
+    </script>
+    <!-- End Google Tag Manager -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <!-- Google Fonts — Inter (primary) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

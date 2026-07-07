@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
+import CookieConsent from "./components/layout/CookieConsent";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import FestiveAnimation from "./components/FestiveAnimation";
@@ -343,6 +344,7 @@ function App() {
       </Suspense>
 
       <Footer />
+      <CookieConsent />
     </HashRouter>
   );
 }
