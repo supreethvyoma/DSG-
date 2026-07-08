@@ -45,10 +45,12 @@ function RecentlyViewed({ className = "" }) {
             </Link>
             <h4>{p.name}</h4>
             <span className="recent-caption">Viewed recently</span>
-            <p>{formatResolvedPrice(getProductPriceDetails(p))}</p>
-            <Link to={`/product/${p._id}`}>
-              <button className="view-btn">View</button>
-            </Link>
+            <div className="recent-card-footer">
+              <p>{formatResolvedPrice(getProductPriceDetails(p))}</p>
+              <Link to={`/product/${p._id}`} className="recent-action-link">
+                <button className="view-btn">View</button>
+              </Link>
+            </div>
           </div>
         ))}
       </div>

@@ -190,6 +190,244 @@ async function restoreStockForOrder(order) {
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 
+// Helper to determine HSN/SAC based on product classification (matching invoicePdf.js)
+function getItemHsnSac(item) {
+  if (item?.hsnSac) return String(item.hsnSac).trim();
+  const name = String(item?.name || "").trim().toLowerCase();
+  const category = String(item?.category || "").trim().toLowerCase();
+  
+  // E-books, Kindle books, Web versions, and Digital formats are taxed at 18% GST
+  const isDigital = 
+    category.includes("ebook") ||
+    category.includes("e-book") ||
+    category.includes("kindle") ||
+    category.includes("web version") ||
+    category.includes("web-version") ||
+    name.includes("ebook") ||
+    name.includes("e-book") ||
+    name.includes("kindle") ||
+    name.includes("web version") ||
+    name.includes("web-version") ||
+    name.includes("epub") ||
+    name.includes("pdf");
+    
+  if (isDigital) {
+    return "9973"; // Digital products/services (18% GST)
+  }
+
+  // Exempt printed books: category or name based check (HSN Chapter 49)
+  const isPrintedBook = 
+    category.includes("book") ||
+    category.includes("sanskrit") ||
+    category.includes("gita") ||
+    category.includes("scriptures") ||
+    category.includes("grammar") ||
+    category.includes("dharma") ||
+    category.includes("paperback") ||
+    name.includes("book") ||
+    name.includes("volume") ||
+    name.includes("vol.") ||
+    name.includes("hardcover") ||
+    name.includes("paperback");
+    
+  return isPrintedBook ? "4901" : "8523";
+}
+
+// Calculate order totals (logged-in user)
+router.post("/calculate-totals", protect, async (req, res) => {
+  try {
+    const shipping = req.body.shipping || {};
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+    const couponCode = String(req.body?.couponCode || "").trim().toUpperCase();
+    const shippingCountry = String(shipping?.country || "").trim();
+    const requestedProductIds = [...new Set(
+      items.map((item) => String(item?._id || item?.id || item?.product || "").trim()).filter(Boolean)
+    )];
+
+    const products = await Product.find({ _id: { $in: requestedProductIds } })
+      .populate("bundleItems.product")
+      .lean();
+    const productsById = new Map(products.map((product) => [String(product._id), product]));
+    const settings =
+      (await StoreSettings.findOne()) || {
+        gstPercent: 0,
+        deliveryCharge: 0,
+        pricingMarkets: [],
+        internationalPricingDefaults: { currency: "USD" },
+        currencyConversionRates: {}
+      };
+    const pricingConfig = {
+      pricingMarkets: settings?.pricingMarkets || [],
+      internationalPricingDefaults: settings?.internationalPricingDefaults || {},
+      currencyConversionRates: settings?.currencyConversionRates || {}
+    };
+
+    const normalizedItems = items.reduce((acc, item) => {
+      const productId = String(item?._id || item?.id || item?.product || "").trim();
+      const product = productsById.get(productId);
+      if (!product) {
+        return acc;
+      }
+
+      const quantity = Math.max(1, Number(item?.quantity || 1));
+      const pricing = getProductPriceDetails(product, shippingCountry, pricingConfig);
+
+      acc.push({
+        product: productId,
+        _id: productId,
+        id: productId,
+        name: String(product?.name || item?.name || "").trim(),
+        image: String(product?.image || item?.image || "").trim(),
+        category: String(product?.category || item?.category || "General").trim() || "General",
+        quantity,
+        price: roundMoney(pricing.price),
+        currency: String(pricing.currency || "INR").trim().toUpperCase()
+      });
+      return acc;
+    }, []);
+
+    if (normalizedItems.length === 0) {
+      return res.status(400).json({ message: "No valid products found for this calculation." });
+    }
+
+    const subtotal = roundMoney(
+      normalizedItems.reduce((sum, item) => sum + Number(item?.price || 0) * Math.max(1, Number(item?.quantity || 1)), 0)
+    );
+    const orderCurrency = normalizeCurrencyCode(
+      req.body?.currencyDisplay?.currency || normalizedItems[0]?.currency || "INR",
+      "INR"
+    );
+
+    const gstPercent = Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
+    const deliveryCharge = roundMoney(
+      convertCurrencyAmount(resolveDeliveryCharge(settings, shipping, normalizedItems), {
+        sourceCurrency: "INR",
+        currency: orderCurrency,
+        rates: settings?.currencyConversionRates || {}
+      })
+    );
+
+    let totalItemGst = 0;
+    normalizedItems.forEach((item) => {
+      const qty = Math.max(1, Number(item.quantity || 1));
+      const price = Number(item.price || 0);
+      const lineTotal = qty * price;
+      const hsnSac = getItemHsnSac(item);
+      const gstRate = hsnSac === "4901" ? 0 : gstPercent;
+      const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
+      totalItemGst += itemGst;
+    });
+
+    const gstAmount = roundMoney(totalItemGst);
+    const grossTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
+
+    let discount = 0;
+    let appliedCouponCode = "";
+    if (couponCode) {
+      const coupon = await Coupon.findOne({ code: couponCode });
+      if (coupon && (!coupon.expiresAt || new Date() <= coupon.expiresAt)) {
+        if (coupon.usedBy && coupon.usedBy.some((uId) => String(uId) === String(req.user))) {
+          return res.status(400).json({ message: "You have already used this coupon code." });
+        }
+
+        if (coupon.assignedUserEmail) {
+          const user = await User.findById(req.user).select("email").lean();
+          if (String(coupon.assignedUserEmail).toLowerCase() !== String(user?.email || "").toLowerCase()) {
+            return res.status(400).json({ message: "This coupon is gifted/assigned to another user's account." });
+          }
+        }
+
+        if (Array.isArray(coupon.applicableProducts) && coupon.applicableProducts.length > 0) {
+          const matchingItems = normalizedItems.filter((item) => {
+            const itemId = String(item.product || item._id || item.id || "");
+            return coupon.applicableProducts.some((pId) => String(pId) === itemId);
+          });
+
+          if (matchingItems.length === 0) {
+            return res.status(400).json({ message: "This coupon code is not applicable to the products in your order." });
+          }
+
+          const matchingTotal = matchingItems.reduce(
+            (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1),
+            0
+          );
+          const minOrder = roundMoney(
+            convertCurrencyAmount(Number(coupon.minOrder || 0), {
+              sourceCurrency: "INR",
+              currency: orderCurrency,
+              rates: settings?.currencyConversionRates || {}
+            })
+          );
+
+          if (matchingTotal < minOrder) {
+            return res.status(400).json({
+              message: `Minimum order for qualifying products is ${minOrder} ${orderCurrency}`
+            });
+          }
+
+          if (coupon.type === "percentage") {
+            discount = roundMoney((matchingTotal * Number(coupon.value || 0)) / 100);
+          } else if (coupon.type === "fixed") {
+            discount = roundMoney(
+              convertCurrencyAmount(Number(coupon.value || 0), {
+                sourceCurrency: "INR",
+                currency: orderCurrency,
+                rates: settings?.currencyConversionRates || {}
+              })
+            );
+          }
+
+          discount = Math.max(0, Math.min(matchingTotal, discount));
+          appliedCouponCode = couponCode;
+        } else {
+          const minOrder = roundMoney(
+            convertCurrencyAmount(Number(coupon.minOrder || 0), {
+              sourceCurrency: "INR",
+              currency: orderCurrency,
+              rates: settings?.currencyConversionRates || {}
+            })
+          );
+          if (grossTotal >= minOrder) {
+            if (coupon.type === "percentage") {
+              discount = roundMoney((grossTotal * Number(coupon.value || 0)) / 100);
+            } else if (coupon.type === "fixed") {
+              discount = roundMoney(
+                convertCurrencyAmount(Number(coupon.value || 0), {
+                  sourceCurrency: "INR",
+                  currency: orderCurrency,
+                  rates: settings?.currencyConversionRates || {}
+                })
+              );
+            }
+            discount = Math.max(0, Math.min(grossTotal, discount));
+            appliedCouponCode = couponCode;
+          } else {
+            return res.status(400).json({ message: `Minimum order ${minOrder} ${orderCurrency}` });
+          }
+        }
+      } else {
+        return res.status(400).json({ message: "Invalid or expired coupon code." });
+      }
+    }
+
+    const total = roundMoney(Math.max(0, grossTotal - discount));
+
+    return res.json({
+      subtotal,
+      gstPercent,
+      gstAmount,
+      deliveryCharge,
+      discount,
+      total,
+      currency: orderCurrency,
+      couponCode: appliedCouponCode
+    });
+  } catch (error) {
+    console.error("calculate-totals error:", error);
+    return res.status(500).json({ message: error.message || "Failed to calculate totals." });
+  }
+});
+
 // Create order (logged-in user)
 router.post("/", protect, async (req, res) => {
   const shipping = req.body.shipping || {};
@@ -322,48 +560,7 @@ router.post("/", protect, async (req, res) => {
     })
   );
 
-  // Helper to determine HSN/SAC based on product classification (matching invoicePdf.js)
-  function getItemHsnSac(item) {
-    if (item?.hsnSac) return String(item.hsnSac).trim();
-    const name = String(item?.name || "").trim().toLowerCase();
-    const category = String(item?.category || "").trim().toLowerCase();
-    
-    // E-books, Kindle books, Web versions, and Digital formats are taxed at 18% GST
-    const isDigital = 
-      category.includes("ebook") ||
-      category.includes("e-book") ||
-      category.includes("kindle") ||
-      category.includes("web version") ||
-      category.includes("web-version") ||
-      name.includes("ebook") ||
-      name.includes("e-book") ||
-      name.includes("kindle") ||
-      name.includes("web version") ||
-      name.includes("web-version") ||
-      name.includes("epub") ||
-      name.includes("pdf");
-      
-    if (isDigital) {
-      return "9973"; // Digital products/services (18% GST)
-    }
 
-    // Exempt printed books: category or name based check (HSN Chapter 49)
-    const isPrintedBook = 
-      category.includes("book") ||
-      category.includes("sanskrit") ||
-      category.includes("gita") ||
-      category.includes("scriptures") ||
-      category.includes("grammar") ||
-      category.includes("dharma") ||
-      category.includes("paperback") ||
-      name.includes("book") ||
-      name.includes("volume") ||
-      name.includes("vol.") ||
-      name.includes("hardcover") ||
-      name.includes("paperback");
-      
-    return isPrintedBook ? "4901" : "8523";
-  }
 
   let totalItemGst = 0;
   normalizedItems.forEach((item) => {
@@ -478,6 +675,15 @@ router.post("/", protect, async (req, res) => {
   }
 
   const total = roundMoney(Math.max(0, grossTotal - discount));
+
+  if (req.body.total !== undefined && Math.abs(total - Number(req.body.total)) > 0.05) {
+    // Roll back stock since we already decremented it
+    await restoreStockForOrder({ items: normalizedItems });
+    return res.status(400).json({
+      message: `Order total mismatch. Server calculated: ${total}, Client provided: ${req.body.total}`
+    });
+  }
+
   const rawPaymentStatus = rawPaymentStatusEarly;
 
   const razorpayOrderId = String(req.body?.razorpayOrderId || "").trim();

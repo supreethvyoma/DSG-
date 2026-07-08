@@ -67,12 +67,24 @@ border:1px solid var(--site-border);
 border-radius:8px;
 padding:10px;
 background:var(--site-surface);
-display:grid;
+display:flex;
+flex-direction:column;
 gap:8px;
 transition:box-shadow .2s ease, transform .2s ease;
 flex:0 0 220px;
 min-width:220px;
 scroll-snap-align:start;
+}
+
+.recent-card-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recent-action-link {
+  width: 100%;
 }
 
 .recent-card:hover{

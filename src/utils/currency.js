@@ -360,11 +360,11 @@ export function formatOrderDisplayCurrency(order, amountKey = "total", fallbackV
     return formatBaseCurrency(value, options);
   }
 
-  // Convert other fields from BASE_CURRENCY (INR) to display currency
+  // Value is already in displayCurrency, format directly without conversion
   return formatCurrencyForUser(value, {
     locale: options.locale,
     currency: displayCurrency,
-    sourceCurrency: BASE_CURRENCY,
+    sourceCurrency: displayCurrency,
     minimumFractionDigits: options.minimumFractionDigits,
     maximumFractionDigits: options.maximumFractionDigits
   });

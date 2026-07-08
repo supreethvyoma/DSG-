@@ -202,40 +202,93 @@ function Checkout() {
     return getDeliveryPricingDetails(charges, selectedAddress, cartItems);
   }, [charges, selectedAddress, cartItems]);
 
-  const totals = useMemo(() => {
-    const getItemUnitPrice = (item) => Number(getProductPriceDetails(item, selectedAddress?.country).price || 0);
-    const subtotal = roundMoney(cartItems.reduce(
-      (sum, item) => sum + getItemUnitPrice(item) * Number(item.quantity || 1),
-      0
-    ));
+  const [serverTotals, setServerTotals] = useState({
+    subtotal: 0,
+    gstPercent: 0,
+    gstAmount: 0,
+    deliveryCharge: 0,
+    discount: 0,
+    total: 0,
+    currency: "INR"
+  });
+  const [isCalculatingTotals, setIsCalculatingTotals] = useState(false);
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setServerTotals({
+        subtotal: 0,
+        gstPercent: 0,
+        gstAmount: 0,
+        deliveryCharge: 0,
+        discount: 0,
+        total: 0,
+        currency: displayCurrency
+      });
+      return;
+    }
+
+    let active = true;
+    setIsCalculatingTotals(true);
+
+    const headers = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     
-    const defaultGstPercent = Number(charges.gstPercent || 0);
-    let totalItemGst = 0;
-    cartItems.forEach((item) => {
-      const qty = Math.max(1, Number(item.quantity || 1));
-      const price = getItemUnitPrice(item);
-      const lineTotal = qty * price;
-      const hsnSac = getItemHsnSac(item);
-      const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
-      const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
-      totalItemGst += itemGst;
+    axios.post("/api/orders/calculate-totals", {
+      items: cartItems,
+      shipping: selectedAddress || {},
+      couponCode: couponCode || "",
+      currencyDisplay: { currency: displayCurrency }
+    }, headers)
+    .then((res) => {
+      if (!active) return;
+      setServerTotals(res.data);
+      if (res.data.discount !== undefined) {
+        setDiscount(res.data.discount);
+      }
+    })
+    .catch((err) => {
+      if (!active) return;
+      console.error("Failed to calculate totals:", err);
+      if (couponCode) {
+        axios.post("/api/orders/calculate-totals", {
+          items: cartItems,
+          shipping: selectedAddress || {},
+          currencyDisplay: { currency: displayCurrency }
+        }, headers)
+        .then((resWithoutCoupon) => {
+          if (!active) return;
+          setServerTotals(resWithoutCoupon.data);
+          setDiscount(0);
+          setCouponCode("");
+          setCouponMessage(err?.response?.data?.message || "Invalid coupon removed.");
+        })
+        .catch((fallbackErr) => {
+          if (!active) return;
+          console.error("Fallback calculation failed:", fallbackErr);
+        });
+      } else {
+        setCheckoutMessage(err?.response?.data?.message || "Failed to calculate totals from server.");
+      }
+    })
+    .finally(() => {
+      if (!active) return;
+      setIsCalculatingTotals(false);
     });
 
-    const gstAmount = roundMoney(totalItemGst);
-    const deliveryCharge = roundMoney(
-      convertCurrencyAmount(Number(deliveryDetails.deliveryCharge || 0), {
-        sourceCurrency: "INR",
-        currency: displayCurrency
-      })
-    );
-    const grandTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
-    return { subtotal, gstAmount, deliveryCharge, grandTotal };
-  }, [cartItems, charges.gstPercent, deliveryDetails.deliveryCharge, selectedAddress?.country, displayCurrency]);
+    return () => {
+      active = false;
+    };
+  }, [cartItems, selectedAddress, couponCode, displayCurrency, token]);
 
-  const finalTotal = useMemo(
-    () => roundMoney(Math.max(0, Number(totals.grandTotal || 0) - Number(discount || 0))),
-    [totals.grandTotal, discount]
-  );
+  const totals = useMemo(() => {
+    return {
+      subtotal: serverTotals.subtotal,
+      gstAmount: serverTotals.gstAmount,
+      deliveryCharge: serverTotals.deliveryCharge,
+      grandTotal: roundMoney(serverTotals.subtotal + serverTotals.gstAmount + serverTotals.deliveryCharge)
+    };
+  }, [serverTotals]);
+
+  const finalTotal = serverTotals.total;
 
   const availableCoupons = useMemo(() => {
     const now = Date.now();
