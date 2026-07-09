@@ -88,6 +88,7 @@
 
 .register-form input {
   width: 100%;
+  box-sizing: border-box;
   border: 1px solid var(--site-border);
   background: var(--site-surface);
   color: var(--site-text);
@@ -157,12 +158,18 @@
 }
 
 @media (max-width: 860px) {
+  .register-page {
+    padding: var(--space-6) var(--space-4);
+  }
+
   .register-shell {
     grid-template-columns: 1fr;
+    max-width: 450px;
+    margin: 0 auto;
   }
 
   .register-brand {
-    padding: var(--space-6);
+    display: none;
   }
 
   .register-card {

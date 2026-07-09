@@ -160,12 +160,18 @@
 }
 
 @media (max-width: 860px) {
+  .login-page {
+    padding: var(--space-6) var(--space-4);
+  }
+
   .login-shell {
     grid-template-columns: 1fr;
+    max-width: 450px;
+    margin: 0 auto;
   }
 
   .login-brand {
-    padding: var(--space-6);
+    display: none;
   }
 
   .login-card {
