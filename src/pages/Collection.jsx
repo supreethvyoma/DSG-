@@ -4,10 +4,13 @@ import axios from "axios";
 import { SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import "./Collection.css";
+import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
 
 const PRODUCTS_PER_PAGE = 8;
 
 function Collection() {
+  useDocumentMetadata("Collection", "Browse our complete catalog of premium Sanskrit literature, grammar tutorials, scriptures, and ritual kit items.");
+
   const location = useLocation();
   const [products, setProducts] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);

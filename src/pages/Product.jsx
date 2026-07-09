@@ -9,6 +9,7 @@ import { useWishlist } from "../hooks/useWishlist";
 import "./Product.css";
 import { formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails } from "../utils/productPricing";
+import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
 
 const PRODUCT_EXTRA_DETAILS = {
   soundaryalahari: {
@@ -197,6 +198,7 @@ function Product() {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
 
   const [product, setProduct] = useState(null);
+  useDocumentMetadata(product?.name, product?.description);
   const [managedRelatedProducts, setManagedRelatedProducts] = useState([]);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);

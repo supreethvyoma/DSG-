@@ -7,6 +7,7 @@ import RecentlyViewed from "../components/RecentlyViewed";
 import { formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
 import "./Home.css";
+import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
 
 const HOME_REQUEST_RETRY_DELAYS = [800, 1800];
 
@@ -146,6 +147,8 @@ const SPONSORS = [
 ];
 
 function Home() {
+  useDocumentMetadata("Home", "Explore premium Sanskrit scriptures, linguistic studies, grammar learning books, and traditional educational kits.");
+
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isRetryingHomeData, setIsRetryingHomeData] = useState(false);
   const [homeLoadFailed, setHomeLoadFailed] = useState(false);
@@ -324,6 +327,7 @@ function Home() {
 
   return (
     <div className="home-page">
+      <h1 className="sr-only">Digital Sanskrit Guru - Premium Sanskrit Learning Store</h1>
       {isLoadingHeroBanners ? (
         <section className="home-banner home-banner-loading" aria-label="Loading homepage banner">
           <span className="home-skeleton home-banner-skeleton" />

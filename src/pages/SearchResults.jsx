@@ -4,6 +4,7 @@ import axios from "axios";
 import ProductCard from "../components/ProductCard";
 import "./Home.css";
 import "./SearchResults.css";
+import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
 
 function getCategoryLabel(product) {
   const raw = String(product?.category || "").trim();
@@ -36,6 +37,11 @@ function SearchResults() {
   const params = new URLSearchParams(location.search);
   const query = (params.get("q") || params.get("search") || "").trim();
   const normalizedQuery = query.toLowerCase();
+
+  useDocumentMetadata(
+    query ? `Search: "${query}"` : "Search Catalog",
+    `Search results for "${query}" on Digital Sanskrit Guru. Discover books, scriptures, grammar tutorials, and study aids.`
+  );
 
   useEffect(() => {
     setIsLoadingProducts(true);
