@@ -300,6 +300,32 @@ function Home() {
     };
   }, [isLoadingProducts]);
 
+  useEffect(() => {
+    const orgSchema = {
+      "@context": "https://schema.org",
+      "@type": "OnlineStore",
+      "name": "Digital Sanskrit Guru",
+      "url": window.location.origin,
+      "logo": `${window.location.origin}/logo.png`,
+      "description": "Premium Sanskrit scriptures, learning guides, grammatical studies, and traditional educational kits."
+    };
+
+    const scriptId = "store-jsonld-schema";
+    let scriptTag = document.getElementById(scriptId);
+    if (!scriptTag) {
+      scriptTag = document.createElement("script");
+      scriptTag.id = scriptId;
+      scriptTag.type = "application/ld+json";
+      document.head.appendChild(scriptTag);
+    }
+    scriptTag.text = JSON.stringify(orgSchema);
+
+    return () => {
+      const tag = document.getElementById(scriptId);
+      if (tag) tag.remove();
+    };
+  }, []);
+
   const activeHeroBanner = heroBanners[activeHeroBannerIndex] || null;
 
   useEffect(() => {

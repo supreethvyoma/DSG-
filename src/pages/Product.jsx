@@ -319,6 +319,57 @@ function Product() {
     }
   }, [product]);
 
+  useEffect(() => {
+    if (!product) return undefined;
+
+    const pricing = getProductPriceDetails(product, selectedAddress?.country);
+    const displayPrice = Number(pricing.price || 0);
+    const displayCurrency = pricing.currency || "INR";
+
+    const schemaData = {
+      "@context": "https://schema.org/",
+      "@type": "Product",
+      "name": product.name,
+      "image": product.image ? [product.image] : [],
+      "description": product.description || `Buy ${product.name} on Digital Sanskrit Guru.`,
+      "brand": {
+        "@type": "Brand",
+        "name": "Digital Sanskrit Guru"
+      },
+      "offers": {
+        "@type": "Offer",
+        "url": window.location.href,
+        "priceCurrency": displayCurrency,
+        "price": displayPrice.toString(),
+        "itemCondition": "https://schema.org/NewCondition",
+        "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+      }
+    };
+
+    if (product.rating) {
+      schemaData.aggregateRating = {
+        "@type": "AggregateRating",
+        "ratingValue": product.rating.toString(),
+        "reviewCount": Array.isArray(product.reviews) ? product.reviews.length.toString() : "0"
+      };
+    }
+
+    const scriptId = "product-jsonld-schema";
+    let scriptTag = document.getElementById(scriptId);
+    if (!scriptTag) {
+      scriptTag = document.createElement("script");
+      scriptTag.id = scriptId;
+      scriptTag.type = "application/ld+json";
+      document.head.appendChild(scriptTag);
+    }
+    scriptTag.text = JSON.stringify(schemaData);
+
+    return () => {
+      const tag = document.getElementById(scriptId);
+      if (tag) tag.remove();
+    };
+  }, [product, selectedAddress]);
+
   const submitReview = async () => {
     setReviewError("");
 
