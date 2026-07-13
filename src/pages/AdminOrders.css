@@ -865,3 +865,49 @@
     background-position: -200% 0;
   }
 }
+
+.admin-pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 12px;
+  background: var(--orders-surface);
+  border: 1px solid var(--orders-border);
+  border-radius: 8px;
+  box-shadow: var(--orders-shadow);
+}
+
+.pagination-btn {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--orders-border-strong);
+  border-radius: 6px;
+  background: var(--orders-surface);
+  color: var(--orders-text);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--orders-primary);
+  color: var(--orders-primary-dark);
+  background: #f8fbff;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--orders-muted);
+}
+
+.pagination-info strong {
+  color: var(--orders-text);
+}

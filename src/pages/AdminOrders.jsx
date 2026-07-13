@@ -34,11 +34,25 @@ function AdminOrders() {
   const canUpdateOrders = Boolean(user?.isAdmin);
   const canViewRevenue = Boolean(user?.isAdmin);
   const [orders, setOrders] = useState([]);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusCounts, setStatusCounts] = useState({
+    "On Hold": 0, Pending: 0, Shipped: 0, Delivered: 0, Cancelled: 0, [RETURN_FILTER_KEY]: 0, All: 0
+  });
+  const [overviewStats, setOverviewStats] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    pendingPayments: 0,
+    fulfilledOrders: 0
+  });
+
   const [fromDateTime, setFromDateTime] = useState("");
   const [toDateTime, setToDateTime] = useState("");
   const [activeQuickFilter, setActiveQuickFilter] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
   const [updatingOrderId, setUpdatingOrderId] = useState("");
   const [generatingInvoiceOrderId, setGeneratingInvoiceOrderId] = useState("");
@@ -90,13 +104,34 @@ function AdminOrders() {
   const loadOrders = async () => {
     setIsLoadingOrders(true);
     try {
+      const params = {
+        page: currentPage,
+        limit: 20,
+        sort: sortOrder,
+        search: debouncedSearchText,
+        status: selectedStatus,
+        fromDateTime,
+        toDateTime
+      };
       const res = await axios.get("/api/orders", {
+        params,
         headers: { Authorization: `Bearer ${token}` }
       });
-      setOrders(Array.isArray(res.data) ? res.data : []);
+      const data = res.data || {};
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      setTotalOrders(data.totalOrders || 0);
+      setTotalPages(data.totalPages || 1);
+      if (data.statusSummary) {
+        setStatusCounts(data.statusSummary);
+      }
+      if (data.overviewStats) {
+        setOverviewStats(data.overviewStats);
+      }
       setPageMessage("");
     } catch (err) {
       setOrders([]);
+      setTotalOrders(0);
+      setTotalPages(1);
       setPageMessage(err?.response?.data?.message || "Unable to load orders right now.");
     } finally {
       setIsLoadingOrders(false);
@@ -104,9 +139,20 @@ function AdminOrders() {
   };
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchText, selectedStatus, sortOrder, fromDateTime, toDateTime]);
+
+  useEffect(() => {
     if (!token) return;
     void loadOrders();
-  }, [token]);
+  }, [token, currentPage, debouncedSearchText, selectedStatus, sortOrder, fromDateTime, toDateTime]);
 
   const updateStatus = async (orderId, status) => {
     const safeStatus = DISPLAY_STATUSES.includes(status) ? status : "On Hold";
@@ -197,133 +243,75 @@ function AdminOrders() {
     }
   };
 
-  const filteredOrders = useMemo(() => {
-    const rawFromTs = fromDateTime ? new Date(fromDateTime).getTime() : null;
-    const rawToTs = toDateTime ? new Date(toDateTime).getTime() : null;
+  const exportOrdersCsv = async () => {
+    try {
+      setPageMessage("Preparing export...");
+      const params = {
+        limit: "all",
+        sort: sortOrder,
+        search: debouncedSearchText,
+        status: selectedStatus,
+        fromDateTime,
+        toDateTime
+      };
+      const res = await axios.get("/api/orders", {
+        params,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const allMatchingOrders = res.data?.orders || [];
+      if (allMatchingOrders.length === 0) {
+        window.alert("No orders to export.");
+        setPageMessage("");
+        return;
+      }
 
-    const hasFrom = rawFromTs !== null && !Number.isNaN(rawFromTs);
-    const hasTo = rawToTs !== null && !Number.isNaN(rawToTs);
-
-    let fromTs = hasFrom ? rawFromTs : null;
-    let toTs = hasTo ? rawToTs : null;
-
-    if (toTs !== null && toDateTime.length === 16) {
-      toTs += 59_999;
-    }
-
-    if (fromTs !== null && toTs !== null && fromTs > toTs) {
-      const temp = fromTs;
-      fromTs = toTs;
-      toTs = temp;
-    }
-
-    return orders.filter((order) => {
-      const orderTs = new Date(order.createdAt).getTime();
-      if (Number.isNaN(orderTs)) return false;
-      if (fromTs !== null && orderTs < fromTs) return false;
-      if (toTs !== null && orderTs > toTs) return false;
-      return true;
-    });
-  }, [orders, fromDateTime, toDateTime]);
-
-  const searchedOrders = useMemo(() => {
-    const query = searchText.trim().toLowerCase();
-    if (!query) return filteredOrders;
-
-    return filteredOrders.filter((order) => {
-      const orderId = String(order?._id || "").toLowerCase();
-      const name = String(order?.user?.name || "").toLowerCase();
-      const email = String(order?.user?.email || "").toLowerCase();
-      const status = String(getDisplayStatus(order) || "").toLowerCase();
-      const itemText = (order?.items || [])
-        .map((item) => `${item?.name || ""} ${item?.bundleName || ""}`)
-        .join(" ")
-        .toLowerCase();
-
-      return (
-        orderId.includes(query) ||
-        name.includes(query) ||
-        email.includes(query) ||
-        status.includes(query) ||
-        itemText.includes(query)
-      );
-    });
-  }, [filteredOrders, searchText]);
-
-  const statusSummary = useMemo(() => {
-    return searchedOrders.reduce(
-      (acc, order) => {
-        const safeStatus = getDisplayStatus(order);
-        acc[safeStatus] += 1;
-        if (hasReturnRequests(order)) {
-          acc[RETURN_FILTER_KEY] += 1;
-        }
-        return acc;
-      },
-      { "On Hold": 0, Pending: 0, Shipped: 0, Delivered: 0, Cancelled: 0, [RETURN_FILTER_KEY]: 0 }
-    );
-  }, [searchedOrders]);
-
-  const visibleOrders = useMemo(() => {
-    if (selectedStatus === "All") return searchedOrders;
-    if (selectedStatus === RETURN_FILTER_KEY) {
-      return searchedOrders.filter((order) => hasReturnRequests(order));
-    }
-    return searchedOrders.filter((order) => getDisplayStatus(order) === selectedStatus);
-  }, [searchedOrders, selectedStatus]);
-
-  const sortedOrders = useMemo(() => {
-    const sorted = [...visibleOrders];
-    sorted.sort((a, b) => {
-      const aTs = new Date(a?.createdAt).getTime() || 0;
-      const bTs = new Date(b?.createdAt).getTime() || 0;
-      return sortOrder === "oldest" ? aTs - bTs : bTs - aTs;
-    });
-    return sorted;
-  }, [visibleOrders, sortOrder]);
-
-  const exportOrdersCsv = () => {
-    const headers = [
-      "Order ID",
-      "Customer",
-      "Email",
-      "Payment Country",
-      "Items",
-      "Total INR",
-      "Customer Display Total",
-      "Order Status",
-      "Payment Status",
-      "Refund Status",
-      "Created At"
-    ];
-    const rows = sortedOrders.map((order) => {
-      const itemCount = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 1), 0);
-      return [
-        order._id,
-        order.user?.name || "Unknown",
-        order.user?.email || "",
-        getPaymentCountry(order),
-        itemCount,
-        Math.round(order.total || 0),
-        formatCustomerPaid(order),
-        getDisplayStatus(order),
-        getPaymentStatus(order),
-        order?.refundStatus || "Not Applicable",
-        new Date(order.createdAt).toISOString()
+      const headers = [
+        "Order ID",
+        "Customer",
+        "Email",
+        "Payment Country",
+        "Items",
+        "Total INR",
+        "Customer Display Total",
+        "Order Status",
+        "Payment Status",
+        "Refund Status",
+        "Created At"
       ];
-    });
 
-    const csv = [headers, ...rows]
-      .map((line) => line.map((cell) => `"${String(cell).replaceAll("\"", "\"\"")}"`).join(","))
-      .join("\n");
+      const rows = allMatchingOrders.map((order) => {
+        const itemCount = (order.items || []).reduce((sum, item) => sum + Number(item.quantity || 1), 0);
+        return [
+          order._id,
+          order.user?.name || "Unknown",
+          order.user?.email || "",
+          getPaymentCountry(order),
+          itemCount,
+          Math.round(order.total || 0),
+          formatCustomerPaid(order),
+          getDisplayStatus(order),
+          getPaymentStatus(order),
+          order?.refundStatus || "Not Applicable",
+          new Date(order.createdAt).toISOString()
+        ];
+      });
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `orders-${formatDateForFileName(new Date())}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+      const csv = [headers, ...rows]
+        .map((line) => line.map((cell) => `"${String(cell).replaceAll("\"", "\"\"")}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `orders-${formatDateForFileName(new Date())}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setPageMessage("Export completed successfully.");
+    } catch (err) {
+      console.error("CSV Export failed:", err);
+      setPageMessage("Failed to export orders.");
+    }
   };
 
   const applyQuickFilter = (type) => {
@@ -450,24 +438,6 @@ function AdminOrders() {
     }).format(date);
   };
 
-  const overviewStats = useMemo(() => {
-    const totalRevenue = sortedOrders.reduce((sum, order) => {
-      if (getDisplayStatus(order) === "Cancelled" || getPaymentStatus(order) === "Refunded") return sum;
-      return sum + Number(order?.total || 0);
-    }, 0);
-    const pendingPayments = sortedOrders.filter((order) => getPaymentStatus(order) !== "Paid").length;
-    const fulfilledOrders = sortedOrders.filter((order) =>
-      ["Shipped", "Delivered"].includes(getDisplayStatus(order))
-    ).length;
-
-    return {
-      totalOrders: sortedOrders.length,
-      totalRevenue,
-      pendingPayments,
-      fulfilledOrders
-    };
-  }, [sortedOrders]);
-
   return (
     <div className="admin-layout">
       <AdminSidebar />
@@ -483,7 +453,7 @@ function AdminOrders() {
           </div>
           <div className="admin-orders-header-actions">
             <span className="admin-orders-count">
-              Showing {visibleOrders.length} of {orders.length}
+              Showing {orders.length > 0 ? (currentPage - 1) * 20 + 1 : 0} - {Math.min(currentPage * 20, totalOrders)} of {totalOrders}
             </span>
             <button className="export-btn" onClick={exportOrdersCsv}>
               <Icon name="export" />
@@ -520,13 +490,13 @@ function AdminOrders() {
             className={selectedStatus === "All" ? "status-filter-chip active" : "status-filter-chip"}
             onClick={() => setSelectedStatus("All")}
           >
-            All ({searchedOrders.length})
+            All ({statusCounts.All || 0})
           </button>
           <button
             className={selectedStatus === RETURN_FILTER_KEY ? "status-filter-chip active" : "status-filter-chip"}
             onClick={() => setSelectedStatus(RETURN_FILTER_KEY)}
           >
-            Return Requests ({statusSummary[RETURN_FILTER_KEY]})
+            Return Requests ({statusCounts[RETURN_FILTER_KEY] || 0})
           </button>
           {DISPLAY_STATUSES.map((status) => (
             <button
@@ -534,7 +504,7 @@ function AdminOrders() {
               className={selectedStatus === status ? "status-filter-chip active" : "status-filter-chip"}
               onClick={() => setSelectedStatus(status)}
             >
-              {status} ({statusSummary[status]})
+              {status} ({statusCounts[status] || 0})
             </button>
           ))}
         </section>
@@ -621,7 +591,7 @@ function AdminOrders() {
           </button>
         </section>
 
-        {!isLoadingOrders && visibleOrders.length === 0 && (
+        {!isLoadingOrders && orders.length === 0 && (
           <section className="admin-orders-empty">
             <h2>No orders found</h2>
             <p>Try a different status, search term, or date range.</p>
@@ -663,7 +633,7 @@ function AdminOrders() {
           </div>
         )}
 
-        {!isLoadingOrders && visibleOrders.length > 0 && (
+        {!isLoadingOrders && orders.length > 0 && (
           <div className="admin-orders-table-wrap">
             <table className="admin-orders-table">
               <thead>
@@ -680,7 +650,7 @@ function AdminOrders() {
                 </tr>
               </thead>
               <tbody>
-                {sortedOrders.map((order) => {
+                {orders.map((order) => {
                   const displayStatus = getDisplayStatus(order);
                   const statusKey = displayStatus.toLowerCase().replace(/\s+/g, "-");
                   const paymentStatus = getPaymentStatus(order);
@@ -901,6 +871,28 @@ function AdminOrders() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="admin-pagination-container">
+            <button
+              className="pagination-btn"
+              disabled={currentPage === 1 || isLoadingOrders}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            >
+              Previous
+            </button>
+            <span className="pagination-info">
+              Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+            </span>
+            <button
+              className="pagination-btn"
+              disabled={currentPage === totalPages || isLoadingOrders}
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              Next
+            </button>
           </div>
         )}
       </main>

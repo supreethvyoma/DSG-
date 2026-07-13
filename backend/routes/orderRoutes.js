@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Order = require("../models/Order");
 const StoreSettings = require("../models/StoreSettings");
 const Coupon = require("../models/Coupon");
@@ -782,11 +783,196 @@ router.post("/", protect, async (req, res) => {
 
 // Get all orders (admin only)
 router.get("/", protect, admin, async (req, res) => {
-  const orders = await Order.find()
-    .populate("user", "name email")
-    .sort({ createdAt: -1 });
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limitQuery = req.query.limit;
+    const isPaginated = limitQuery !== "all";
+    const limit = Math.max(1, parseInt(limitQuery) || 20);
+    const skip = (page - 1) * limit;
 
-  res.json(orders);
+    const sortOrder = req.query.sort === "oldest" ? 1 : -1;
+    const searchText = req.query.search ? String(req.query.search).trim() : "";
+    const statusFilter = req.query.status ? String(req.query.status).trim() : "All";
+    const fromDateTime = req.query.fromDateTime;
+    const toDateTime = req.query.toDateTime;
+
+    // 1. Build base query (matching search text and date range)
+    let baseQuery = {};
+
+    if (searchText) {
+      // Find matching users first (for user.name and user.email search)
+      const matchingUsers = await User.find({
+        $or: [
+          { name: { $regex: searchText, $options: "i" } },
+          { email: { $regex: searchText, $options: "i" } }
+        ]
+      }).select("_id");
+      const userIds = matchingUsers.map((u) => u._id);
+
+      const conditions = [
+        { "billing.name": { $regex: searchText, $options: "i" } },
+        { "billing.email": { $regex: searchText, $options: "i" } },
+        { "shipping.name": { $regex: searchText, $options: "i" } },
+        { "items.name": { $regex: searchText, $options: "i" } }
+      ];
+
+      if (mongoose.Types.ObjectId.isValid(searchText)) {
+        conditions.push({ _id: searchText });
+      }
+
+      if (userIds.length > 0) {
+        conditions.push({ user: { $in: userIds } });
+      }
+
+      baseQuery.$or = conditions;
+    }
+
+    if (fromDateTime || toDateTime) {
+      baseQuery.createdAt = {};
+      if (fromDateTime) {
+        baseQuery.createdAt.$gte = new Date(fromDateTime);
+      }
+      if (toDateTime) {
+        baseQuery.createdAt.$lte = new Date(toDateTime);
+      }
+    }
+
+    // 2. Build final query adding status constraints
+    let finalQuery = { ...baseQuery };
+
+    if (statusFilter === "On Hold") {
+      finalQuery.status = { $ne: "Cancelled" };
+      finalQuery.paymentStatus = { $ne: "Paid" };
+    } else if (statusFilter === "Pending") {
+      finalQuery.status = "Pending";
+      finalQuery.paymentStatus = "Paid";
+    } else if (statusFilter === "Shipped") {
+      finalQuery.status = "Shipped";
+      finalQuery.paymentStatus = "Paid";
+    } else if (statusFilter === "Delivered") {
+      finalQuery.status = "Delivered";
+      finalQuery.paymentStatus = "Paid";
+    } else if (statusFilter === "Cancelled") {
+      finalQuery.status = "Cancelled";
+    } else if (statusFilter === "Return Requests") {
+      finalQuery["items.returnRequest.status"] = { $ne: "Not Requested" };
+    }
+
+    // 3. Query paginated orders
+    let queryExec = Order.find(finalQuery)
+      .populate("user", "name email")
+      .sort({ createdAt: sortOrder });
+
+    if (isPaginated) {
+      queryExec = queryExec.skip(skip).limit(limit);
+    }
+
+    const orders = await queryExec;
+
+    // 4. Calculate total count for matching active status query
+    const totalMatchingOrders = await Order.countDocuments(finalQuery);
+
+    // 5. Gather counts for each chip status (using baseQuery)
+    const [
+      totalCount,
+      onHoldCount,
+      pendingCount,
+      shippedCount,
+      deliveredCount,
+      cancelledCount,
+      returnCount,
+      statsResult
+    ] = await Promise.all([
+      Order.countDocuments(baseQuery),
+      Order.countDocuments({ ...baseQuery, status: { $ne: "Cancelled" }, paymentStatus: { $ne: "Paid" } }),
+      Order.countDocuments({ ...baseQuery, status: "Pending", paymentStatus: "Paid" }),
+      Order.countDocuments({ ...baseQuery, status: "Shipped", paymentStatus: "Paid" }),
+      Order.countDocuments({ ...baseQuery, status: "Delivered", paymentStatus: "Paid" }),
+      Order.countDocuments({ ...baseQuery, status: "Cancelled" }),
+      Order.countDocuments({ ...baseQuery, "items.returnRequest.status": { $ne: "Not Requested" } }),
+      Order.aggregate([
+        { $match: finalQuery },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: {
+                $cond: [
+                  {
+                    $or: [
+                      { $eq: ["$status", "Cancelled"] },
+                      { $eq: ["$refundStatus", "Refunded"] }
+                    ]
+                  },
+                  0,
+                  "$total"
+                ]
+              }
+            },
+            pendingPaymentsCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ["$paymentStatus", "Paid"] },
+                      { $ne: ["$refundStatus", "Refunded"] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            },
+            fulfilledCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $in: ["$status", ["Shipped", "Delivered"]] },
+                      { $eq: ["$paymentStatus", "Paid"] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            }
+          }
+        }
+      ])
+    ]);
+
+    const overviewStats = statsResult[0] || {
+      totalRevenue: 0,
+      pendingPaymentsCount: 0,
+      fulfilledCount: 0
+    };
+
+    res.json({
+      orders,
+      totalOrders: totalMatchingOrders,
+      totalPages: isPaginated ? Math.ceil(totalMatchingOrders / limit) : 1,
+      currentPage: page,
+      statusSummary: {
+        All: totalCount,
+        "On Hold": onHoldCount,
+        Pending: pendingCount,
+        Shipped: shippedCount,
+        Delivered: deliveredCount,
+        Cancelled: cancelledCount,
+        "Return Requests": returnCount
+      },
+      overviewStats: {
+        totalOrders: totalMatchingOrders,
+        totalRevenue: overviewStats.totalRevenue || 0,
+        pendingPayments: overviewStats.pendingPaymentsCount || 0,
+        fulfilledOrders: overviewStats.fulfilledCount || 0
+      }
+    });
+  } catch (error) {
+    console.error("Fetch orders error:", error);
+    res.status(500).json({ message: error.message || "Failed to load orders." });
+  }
 });
 // UPDATE order status (ADMIN)
 router.put("/:id/status", protect, admin, async (req, res) => {
