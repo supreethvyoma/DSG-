@@ -127,6 +127,7 @@ function Checkout() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
   const displayCurrency =
     cartItems.length > 0
@@ -555,39 +556,98 @@ function Checkout() {
 
       <div className="checkout-container">
         <section className="checkout-main">
-          <div className="checkout-section-head">
-            <h2>Select a delivery address</h2>
-          </div>
-          <p className="coupon-selector-empty">
-            Add or manage addresses from <a href="/account">My Account</a>.
-          </p>
-
-          <div className="address-list">
-            {addresses.map((item, index) => (
-              <div
-                key={index}
-                className={`address-card ${selectedIndex === index ? "selected" : ""}`}
-              >
-                <input
-                  type="radio"
-                  checked={selectedIndex === index}
-                  onChange={() => selectAddress(index)}
-                />
-
-                <div className="address-info">
-                  <strong>{item.name}</strong>
-                  {item.label ? <p className="checkout-address-label">{item.label}</p> : null}
-                  <p>{item.phone}</p>
-                  <p>{item.address}</p>
-                  {item.landmark && <p>Landmark: {item.landmark}</p>}
-                  {getAddressLocationText(item) && <p>{getAddressLocationText(item)}</p>}
-
-                  {item.isDefault && <span className="default-badge">Default</span>}
-
+          {selectedAddress && !isEditingAddress ? (
+            <div className="checkout-compact-address-box">
+              <div className="checkout-compact-address-info">
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <h2 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "var(--site-text)" }}>
+                    Delivering to {selectedAddress.name}
+                  </h2>
+                  {selectedAddress.label && (
+                    <span className="checkout-address-label" style={{ margin: 0 }}>{selectedAddress.label}</span>
+                  )}
+                  {selectedAddress.isDefault && (
+                    <span className="default-badge" style={{ margin: 0 }}>Default</span>
+                  )}
                 </div>
+                <p className="checkout-compact-address-detail" style={{ marginTop: "6px" }}>
+                  {selectedAddress.address}
+                </p>
+                {selectedAddress.landmark && (
+                  <p className="checkout-compact-address-detail">Landmark: {selectedAddress.landmark}</p>
+                )}
+                <p className="checkout-compact-address-detail">
+                  {getAddressLocationText(selectedAddress)}
+                </p>
+                <p className="checkout-compact-address-detail" style={{ fontWeight: "500", marginTop: "2px" }}>
+                  Phone: {selectedAddress.phone}
+                </p>
               </div>
-            ))}
-          </div>
+              <button
+                type="button"
+                className="checkout-compact-address-change-btn"
+                onClick={() => setIsEditingAddress(true)}
+              >
+                Change
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="checkout-section-head">
+                <h2>Select a delivery address</h2>
+                {selectedAddress && isEditingAddress && (
+                  <button
+                    type="button"
+                    className="checkout-compact-address-change-btn"
+                    onClick={() => setIsEditingAddress(false)}
+                    style={{ fontSize: "13px" }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+              <p className="coupon-selector-empty">
+                Add or manage addresses from <a href="/account">My Account</a>.
+              </p>
+
+              <div className="address-list">
+                {addresses.map((item, index) => (
+                  <div
+                    key={index}
+                    className={`address-card ${selectedIndex === index ? "selected" : ""}`}
+                    onClick={() => selectAddress(index)}
+                  >
+                    <input
+                      type="radio"
+                      checked={selectedIndex === index}
+                      onChange={() => selectAddress(index)}
+                    />
+
+                    <div className="address-info">
+                      <strong>{item.name}</strong>
+                      {item.label ? <p className="checkout-address-label">{item.label}</p> : null}
+                      <p>{item.phone}</p>
+                      <p>{item.address}</p>
+                      {item.landmark && <p>Landmark: {item.landmark}</p>}
+                      {getAddressLocationText(item) && <p>{getAddressLocationText(item)}</p>}
+
+                      {item.isDefault && <span className="default-badge">Default</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {addresses.length > 0 && (
+                <button
+                  type="button"
+                  className="checkout-address-save-btn"
+                  onClick={() => setIsEditingAddress(false)}
+                >
+                  Use this address
+                </button>
+              )}
+            </>
+          )}
 
           <div className="billing-address-toggle" style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: 'var(--site-surface-muted)', borderRadius: '8px', border: '1px solid var(--site-border)' }}>
             <input

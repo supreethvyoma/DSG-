@@ -683,3 +683,65 @@
     grid-template-columns:1fr;
   }
 }
+
+/* Amazon-style Compact Address Box */
+.checkout-compact-address-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 1px 2px rgba(15,17,17,.08);
+  gap: 16px;
+}
+
+.checkout-compact-address-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkout-compact-address-detail {
+  font-size: 14px;
+  color: var(--site-text-soft);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.checkout-compact-address-change-btn {
+  background: transparent;
+  border: none;
+  color: var(--site-link);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.checkout-compact-address-change-btn:hover {
+  background: rgba(0, 113, 133, 0.08);
+  text-decoration: underline;
+}
+
+.checkout-address-save-btn {
+  border: 1px solid #a88734;
+  border-radius: 20px;
+  background: linear-gradient(#f7dfa5, #f0c14b);
+  color: var(--site-text);
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 8px 20px;
+  cursor: pointer;
+  margin-top: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: filter 0.15s ease;
+}
+
+.checkout-address-save-btn:hover {
+  filter: brightness(0.96);
+}
