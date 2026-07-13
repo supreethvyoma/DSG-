@@ -745,3 +745,39 @@
 .checkout-address-save-btn:hover {
   filter: brightness(0.96);
 }
+
+.checkout-address-form-container {
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px var(--site-shadow-soft);
+  margin-top: 16px;
+}
+
+.checkout-form-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--site-text);
+}
+
+.checkout-form-input {
+  border: 1px solid var(--site-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--site-text);
+  background: var(--site-surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.checkout-form-input:focus {
+  outline: none;
+  border-color: var(--site-link);
+  box-shadow: 0 0 0 2px rgba(0, 113, 133, 0.15);
+}

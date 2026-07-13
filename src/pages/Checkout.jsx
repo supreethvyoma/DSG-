@@ -103,7 +103,8 @@ function Checkout() {
     addresses,
     selectedIndex,
     selectedAddress,
-    selectAddress
+    selectAddress,
+    addAddress
   } = useDeliveryLocation();
   const [isBillingSame, setIsBillingSame] = useState(true);
   const [selectedBillingIndex, setSelectedBillingIndex] = useState(0);
@@ -130,12 +131,152 @@ function Checkout() {
   const [checkoutMessage, setCheckoutMessage] = useState("");
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isEditingBillingAddress, setIsEditingBillingAddress] = useState(false);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [addressFormTriggerSource, setAddressFormTriggerSource] = useState("delivery");
+  const [addressLabel, setAddressLabel] = useState("Home");
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newAddressText, setNewAddressText] = useState("");
+  const [newLandmark, setNewLandmark] = useState("");
+  const [newCity, setNewCity] = useState("");
+  const [newState, setNewState] = useState("");
+  const [newPincode, setNewPincode] = useState("");
+  const [newCountry, setNewCountry] = useState("India");
+  const [addressError, setAddressError] = useState("");
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   useEffect(() => {
     if (!isBillingSame) {
       setIsEditingBillingAddress(true);
     }
   }, [isBillingSame]);
+
+  const fetchCoordinatesForAddress = async (parts = {}) => {
+    const query = [
+      parts.address,
+      parts.landmark,
+      parts.city,
+      parts.state,
+      parts.pincode,
+      parts.country
+    ]
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+      .join(", ");
+
+    if (!query) {
+      return { latitude: null, longitude: null };
+    }
+
+    const params = new URLSearchParams({
+      q: query,
+      format: "jsonv2",
+      limit: "1",
+      addressdetails: "1"
+    });
+
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        return { latitude: null, longitude: null };
+      }
+
+      const results = await response.json();
+      const first = Array.isArray(results) ? results[0] : null;
+      const latitude = Number(first?.lat);
+      const longitude = Number(first?.lon);
+
+      if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+        return { latitude: null, longitude: null };
+      }
+
+      return { latitude, longitude };
+    } catch {
+      return { latitude: null, longitude: null };
+    }
+  };
+
+  const handleSaveNewAddress = async () => {
+    const cleanPhone = String(newPhone || "").replace(/\D/g, "");
+    const cleanPincode = String(newPincode || "").trim();
+    const cleanCountry = String(newCountry || "").trim();
+
+    if (!newName || !cleanPhone || !newAddressText || !newCity || !newState || !cleanPincode || !cleanCountry) {
+      setAddressError("Please fill full name, phone, address, city, state, postal code, and country.");
+      return;
+    }
+
+    if (cleanPhone.length < 10) {
+      setAddressError("Enter a valid phone number (at least 10 digits).");
+      return;
+    }
+
+    if (!/^[A-Za-z0-9\s-]{3,12}$/.test(cleanPincode)) {
+      setAddressError("Enter a valid postal code.");
+      return;
+    }
+
+    setAddressError("");
+    setIsSavingAddress(true);
+
+    try {
+      const nextCoordinates = await fetchCoordinatesForAddress({
+        address: newAddressText,
+        landmark: newLandmark,
+        city: newCity,
+        state: newState,
+        pincode: cleanPincode,
+        country: cleanCountry
+      });
+
+      const payload = {
+        label: addressLabel,
+        name: newName,
+        phone: cleanPhone,
+        address: newAddressText,
+        landmark: newLandmark,
+        city: newCity,
+        state: newState,
+        pincode: cleanPincode,
+        country: cleanCountry,
+        latitude: nextCoordinates.latitude,
+        longitude: nextCoordinates.longitude,
+        isDefault: addresses.length === 0
+      };
+
+      addAddress(payload);
+      setShowNewAddressForm(false);
+      
+      if (addressFormTriggerSource === "billing") {
+        setSelectedBillingIndex(addresses.length);
+        setIsEditingBillingAddress(false);
+      } else {
+        setIsEditingAddress(false);
+      }
+
+      // Reset form fields
+      setNewName("");
+      setNewPhone("");
+      setNewAddressText("");
+      setNewLandmark("");
+      setNewCity("");
+      setNewState("");
+      setNewPincode("");
+      setNewCountry("India");
+      setAddressLabel("Home");
+      setAddressError("");
+    } catch (err) {
+      setAddressError("Failed to save address. Please try again.");
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
   const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
   const displayCurrency =
     cartItems.length > 0
@@ -564,180 +705,215 @@ function Checkout() {
 
       <div className="checkout-container">
         <section className="checkout-main">
-          {selectedAddress && !isEditingAddress ? (
-            <div className="checkout-compact-address-box">
-              <div className="checkout-compact-address-info">
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <h2 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "var(--site-text)" }}>
-                    Delivering to {selectedAddress.name}
-                  </h2>
-                  {selectedAddress.label && (
-                    <span className="checkout-address-label" style={{ margin: 0 }}>{selectedAddress.label}</span>
-                  )}
-                  {selectedAddress.isDefault && (
-                    <span className="default-badge" style={{ margin: 0 }}>Default</span>
-                  )}
-                </div>
-                <p className="checkout-compact-address-detail" style={{ marginTop: "6px" }}>
-                  {selectedAddress.address}
-                </p>
-                {selectedAddress.landmark && (
-                  <p className="checkout-compact-address-detail">Landmark: {selectedAddress.landmark}</p>
-                )}
-                <p className="checkout-compact-address-detail">
-                  {getAddressLocationText(selectedAddress)}
-                </p>
-                <p className="checkout-compact-address-detail" style={{ fontWeight: "500", marginTop: "2px" }}>
-                  Phone: {selectedAddress.phone}
-                </p>
+          {showNewAddressForm ? (
+            <div className="checkout-address-form-container">
+              <div className="checkout-section-head" style={{ marginBottom: '16px' }}>
+                <h2>Add a New Address</h2>
+                <button
+                  type="button"
+                  className="checkout-compact-address-change-btn"
+                  onClick={() => setShowNewAddressForm(false)}
+                >
+                  Back to List
+                </button>
               </div>
-              <button
-                type="button"
-                className="checkout-compact-address-change-btn"
-                onClick={() => setIsEditingAddress(true)}
-              >
-                Change
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="checkout-section-head">
-                <h2>Select a delivery address</h2>
-                {selectedAddress && isEditingAddress && (
+
+              <div className="checkout-address-form-grid" style={{ display: 'grid', gap: '14px' }}>
+                <div className="checkout-address-form-labels" style={{ display: 'flex', gap: '8px' }}>
+                  {["Home", "Work", "Other"].map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`checkout-address-label-chip ${addressLabel === option ? "active" : ""}`}
+                      onClick={() => setAddressLabel(option)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '999px',
+                        border: '1px solid var(--site-border)',
+                        background: addressLabel === option ? 'var(--site-link)' : 'var(--site-surface)',
+                        color: addressLabel === option ? '#fff' : 'var(--site-text)',
+                        fontWeight: '700',
+                        fontSize: '12.5px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                  <label className="checkout-form-label">
+                    <span>Full Name *</span>
+                    <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Rohan Sharma" className="checkout-form-input" />
+                  </label>
+                  <label className="checkout-form-label">
+                    <span>Phone Number *</span>
+                    <input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="e.g. 9876543210" className="checkout-form-input" />
+                  </label>
+                </div>
+
+                <label className="checkout-form-label" style={{ display: 'block' }}>
+                  <span>Complete Address *</span>
+                  <textarea
+                    value={newAddressText}
+                    onChange={(e) => setNewAddressText(e.target.value)}
+                    placeholder="Flat, house no., building, street, area"
+                    className="checkout-form-input"
+                    style={{ minHeight: '80px', width: '100%', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                  <label className="checkout-form-label">
+                    <span>Landmark</span>
+                    <input value={newLandmark} onChange={(e) => setNewLandmark(e.target.value)} placeholder="Optional landmark" className="checkout-form-input" />
+                  </label>
+                  <label className="checkout-form-label">
+                    <span>City *</span>
+                    <input value={newCity} onChange={(e) => setNewCity(e.target.value)} placeholder="e.g. Delhi" className="checkout-form-input" />
+                  </label>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                  <label className="checkout-form-label">
+                    <span>State *</span>
+                    <input value={newState} onChange={(e) => setNewState(e.target.value)} placeholder="e.g. Delhi" className="checkout-form-input" />
+                  </label>
+                  <label className="checkout-form-label">
+                    <span>Postal Code *</span>
+                    <input value={newPincode} onChange={(e) => setNewPincode(e.target.value)} placeholder="e.g. 110001" className="checkout-form-input" />
+                  </label>
+                  <label className="checkout-form-label">
+                    <span>Country *</span>
+                    <input value={newCountry} onChange={(e) => setNewCountry(e.target.value)} placeholder="e.g. India" className="checkout-form-input" />
+                  </label>
+                </div>
+
+                {addressError && (
+                  <p style={{ color: '#d32f2f', fontSize: '13px', fontWeight: '600', margin: '4px 0 0' }}>
+                    {addressError}
+                  </p>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '14px' }}>
                   <button
                     type="button"
-                    className="checkout-compact-address-change-btn"
-                    onClick={() => setIsEditingAddress(false)}
-                    style={{ fontSize: "13px" }}
+                    onClick={handleSaveNewAddress}
+                    disabled={isSavingAddress}
+                    className="checkout-address-save-btn"
+                    style={{ margin: 0 }}
+                  >
+                    {isSavingAddress ? "Saving..." : "Save and Use Address"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAddressForm(false)}
+                    style={{
+                      border: '1px solid var(--site-border)',
+                      borderRadius: '20px',
+                      background: 'var(--site-surface)',
+                      color: 'var(--site-text)',
+                      fontSize: '13.5px',
+                      fontWeight: '700',
+                      padding: '8px 20px',
+                      cursor: 'pointer'
+                    }}
                   >
                     Cancel
                   </button>
-                )}
+                </div>
               </div>
-              <p className="coupon-selector-empty">
-                Add or manage addresses from <a href="/account">My Account</a>.
-              </p>
-
-              <div className="address-list">
-                {addresses.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`address-card ${selectedIndex === index ? "selected" : ""}`}
-                    onClick={() => {
-                      selectAddress(index);
-                      setIsEditingAddress(false);
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      checked={selectedIndex === index}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        selectAddress(index);
-                        setIsEditingAddress(false);
-                      }}
-                    />
-
-                    <div className="address-info">
-                      <strong>{item.name}</strong>
-                      {item.label ? <p className="checkout-address-label">{item.label}</p> : null}
-                      <p>{item.phone}</p>
-                      <p>{item.address}</p>
-                      {item.landmark && <p>Landmark: {item.landmark}</p>}
-                      {getAddressLocationText(item) && <p>{getAddressLocationText(item)}</p>}
-
-                      {item.isDefault && <span className="default-badge">Default</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          <div className="billing-address-toggle" style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: 'var(--site-surface-muted)', borderRadius: '8px', border: '1px solid var(--site-border)' }}>
-            <input
-              type="checkbox"
-              id="billing-same"
-              checked={isBillingSame}
-              onChange={(e) => setIsBillingSame(e.target.checked)}
-              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-            />
-            <label htmlFor="billing-same" style={{ fontWeight: '600', cursor: 'pointer', color: 'var(--site-text)', fontSize: '14.5px' }}>
-              Billing address is same as delivery address
-            </label>
-          </div>
-
-          {!isBillingSame && (
-            <div className="billing-address-section" style={{ marginTop: "24px" }}>
-              {selectedBillingAddress && !isEditingBillingAddress ? (
+            </div>
+          ) : (
+            <>
+              {selectedAddress && !isEditingAddress ? (
                 <div className="checkout-compact-address-box">
                   <div className="checkout-compact-address-info">
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                       <h2 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "var(--site-text)" }}>
-                        Billing to {selectedBillingAddress.name}
+                        Delivering to {selectedAddress.name}
                       </h2>
-                      {selectedBillingAddress.label && (
-                        <span className="checkout-address-label" style={{ margin: 0 }}>{selectedBillingAddress.label}</span>
+                      {selectedAddress.label && (
+                        <span className="checkout-address-label" style={{ margin: 0 }}>{selectedAddress.label}</span>
                       )}
-                      {selectedBillingAddress.isDefault && (
+                      {selectedAddress.isDefault && (
                         <span className="default-badge" style={{ margin: 0 }}>Default</span>
                       )}
                     </div>
                     <p className="checkout-compact-address-detail" style={{ marginTop: "6px" }}>
-                      {selectedBillingAddress.address}
+                      {selectedAddress.address}
                     </p>
-                    {selectedBillingAddress.landmark && (
-                      <p className="checkout-compact-address-detail">Landmark: {selectedBillingAddress.landmark}</p>
+                    {selectedAddress.landmark && (
+                      <p className="checkout-compact-address-detail">Landmark: {selectedAddress.landmark}</p>
                     )}
                     <p className="checkout-compact-address-detail">
-                      {getAddressLocationText(selectedBillingAddress)}
+                      {getAddressLocationText(selectedAddress)}
                     </p>
                     <p className="checkout-compact-address-detail" style={{ fontWeight: "500", marginTop: "2px" }}>
-                      Phone: {selectedBillingAddress.phone}
+                      Phone: {selectedAddress.phone}
                     </p>
                   </div>
                   <button
                     type="button"
                     className="checkout-compact-address-change-btn"
-                    onClick={() => setIsEditingBillingAddress(true)}
+                    onClick={() => setIsEditingAddress(true)}
                   >
                     Change
                   </button>
                 </div>
               ) : (
                 <>
-                  <div className="checkout-section-head" style={{ marginBottom: "12px" }}>
-                    <h2>Select a billing address</h2>
-                    {selectedBillingAddress && isEditingBillingAddress && (
+                  <div className="checkout-section-head">
+                    <h2>Select a delivery address</h2>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                       <button
                         type="button"
                         className="checkout-compact-address-change-btn"
-                        onClick={() => setIsEditingBillingAddress(false)}
-                        style={{ fontSize: "13px" }}
+                        onClick={() => {
+                          setAddressFormTriggerSource("delivery");
+                          setShowNewAddressForm(true);
+                        }}
                       >
-                        Cancel
+                        + Add New Address
                       </button>
-                    )}
+                      {selectedAddress && isEditingAddress && (
+                        <button
+                          type="button"
+                          className="checkout-compact-address-change-btn"
+                          onClick={() => setIsEditingAddress(false)}
+                          style={{ fontSize: "13px" }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
+                  <p className="coupon-selector-empty">
+                    Add or manage addresses from <a href="/account">My Account</a>.
+                  </p>
+
                   <div className="address-list">
                     {addresses.map((item, index) => (
                       <div
-                        key={`billing-${index}`}
-                        className={`address-card ${selectedBillingIndex === index ? "selected" : ""}`}
+                        key={index}
+                        className={`address-card ${selectedIndex === index ? "selected" : ""}`}
                         onClick={() => {
-                          setSelectedBillingIndex(index);
-                          setIsEditingBillingAddress(false);
+                          selectAddress(index);
+                          setIsEditingAddress(false);
                         }}
                       >
                         <input
                           type="radio"
-                          checked={selectedBillingIndex === index}
+                          checked={selectedIndex === index}
                           onChange={(e) => {
                             e.stopPropagation();
-                            setSelectedBillingIndex(index);
-                            setIsEditingBillingAddress(false);
+                            selectAddress(index);
+                            setIsEditingAddress(false);
                           }}
                         />
+
                         <div className="address-info">
                           <strong>{item.name}</strong>
                           {item.label ? <p className="checkout-address-label">{item.label}</p> : null}
@@ -745,13 +921,127 @@ function Checkout() {
                           <p>{item.address}</p>
                           {item.landmark && <p>Landmark: {item.landmark}</p>}
                           {getAddressLocationText(item) && <p>{getAddressLocationText(item)}</p>}
+
+                          {item.isDefault && <span className="default-badge">Default</span>}
                         </div>
                       </div>
                     ))}
                   </div>
                 </>
               )}
-            </div>
+
+              <div className="billing-address-toggle" style={{ marginTop: '24px', display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', backgroundColor: 'var(--site-surface-muted)', borderRadius: '8px', border: '1px solid var(--site-border)' }}>
+                <input
+                  type="checkbox"
+                  id="billing-same"
+                  checked={isBillingSame}
+                  onChange={(e) => setIsBillingSame(e.target.checked)}
+                  style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                />
+                <label htmlFor="billing-same" style={{ fontWeight: '600', cursor: 'pointer', color: 'var(--site-text)', fontSize: '14.5px' }}>
+                  Billing address is same as delivery address
+                </label>
+              </div>
+
+              {!isBillingSame && (
+                <div className="billing-address-section" style={{ marginTop: "24px" }}>
+                  {selectedBillingAddress && !isEditingBillingAddress ? (
+                    <div className="checkout-compact-address-box">
+                      <div className="checkout-compact-address-info">
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                          <h2 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "var(--site-text)" }}>
+                            Billing to {selectedBillingAddress.name}
+                          </h2>
+                          {selectedBillingAddress.label && (
+                            <span className="checkout-address-label" style={{ margin: 0 }}>{selectedBillingAddress.label}</span>
+                          )}
+                          {selectedBillingAddress.isDefault && (
+                            <span className="default-badge" style={{ margin: 0 }}>Default</span>
+                          )}
+                        </div>
+                        <p className="checkout-compact-address-detail" style={{ marginTop: "6px" }}>
+                          {selectedBillingAddress.address}
+                        </p>
+                        {selectedBillingAddress.landmark && (
+                          <p className="checkout-compact-address-detail">Landmark: {selectedBillingAddress.landmark}</p>
+                        )}
+                        <p className="checkout-compact-address-detail">
+                          {getAddressLocationText(selectedBillingAddress)}
+                        </p>
+                        <p className="checkout-compact-address-detail" style={{ fontWeight: "500", marginTop: "2px" }}>
+                          Phone: {selectedBillingAddress.phone}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="checkout-compact-address-change-btn"
+                        onClick={() => setIsEditingBillingAddress(true)}
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="checkout-section-head" style={{ marginBottom: "12px" }}>
+                        <h2>Select a billing address</h2>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            className="checkout-compact-address-change-btn"
+                            onClick={() => {
+                              setAddressFormTriggerSource("billing");
+                              setShowNewAddressForm(true);
+                            }}
+                          >
+                            + Add New Address
+                          </button>
+                          {selectedBillingAddress && isEditingBillingAddress && (
+                            <button
+                              type="button"
+                              className="checkout-compact-address-change-btn"
+                              onClick={() => setIsEditingBillingAddress(false)}
+                              style={{ fontSize: "13px" }}
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="address-list">
+                        {addresses.map((item, index) => (
+                          <div
+                            key={`billing-${index}`}
+                            className={`address-card ${selectedBillingIndex === index ? "selected" : ""}`}
+                            onClick={() => {
+                              setSelectedBillingIndex(index);
+                              setIsEditingBillingAddress(false);
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              checked={selectedBillingIndex === index}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                setSelectedBillingIndex(index);
+                                setIsEditingBillingAddress(false);
+                              }}
+                            />
+                            <div className="address-info">
+                              <strong>{item.name}</strong>
+                              {item.label ? <p className="checkout-address-label">{item.label}</p> : null}
+                              <p>{item.phone}</p>
+                              <p>{item.address}</p>
+                              {item.landmark && <p>Landmark: {item.landmark}</p>}
+                              {getAddressLocationText(item) && <p>{getAddressLocationText(item)}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
 
