@@ -203,6 +203,15 @@ export function AuthProvider({ children }) {
     persistAuth({ token: res.data.token, user: nextUser, rememberMe: nextRememberMe });
   };
 
+  const loginWithGoogle = async (idToken, nextRememberMe = false) => {
+    const res = await axios.post("/api/auth/google", { idToken, rememberMe: nextRememberMe });
+    const nextUser = normalizeUser(res.data);
+    setUser(nextUser);
+    setToken(res.data.token);
+    setRememberMe(nextRememberMe);
+    persistAuth({ token: res.data.token, user: nextUser, rememberMe: nextRememberMe });
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -216,7 +225,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, rememberMe, register, login, logout }}>
+    <AuthContext.Provider value={{ user, token, rememberMe, register, login, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   );

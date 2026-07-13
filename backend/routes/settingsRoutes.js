@@ -223,6 +223,7 @@ function normalizeHeroBanners(input, legacyImage = "", legacyProductId = "") {
   const normalized = values
     .map((item) => ({
       image: String(item?.image || "").trim(),
+      mobileImage: String(item?.mobileImage || "").trim(),
       productId: String(item?.productId || "").trim()
     }))
     .filter((item) => item.image);
@@ -233,7 +234,7 @@ function normalizeHeroBanners(input, legacyImage = "", legacyProductId = "") {
 
   const fallbackImage = String(legacyImage || "").trim();
   const fallbackProductId = String(legacyProductId || "").trim();
-  return fallbackImage ? [{ image: fallbackImage, productId: fallbackProductId }] : [];
+  return fallbackImage ? [{ image: fallbackImage, mobileImage: "", productId: fallbackProductId }] : [];
 }
 
 function normalizeSponsors(input) {

@@ -25,6 +25,7 @@ const MyAccount = lazy(() => import("./pages/MyAccount"));
 const MyOrders = lazy(() => import("./pages/MyOrders"));
 const Register = lazy(() => import("./pages/Register"));
 const Login = lazy(() => import("./pages/Login"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminOrders = lazy(() => import("./pages/AdminOrders"));
 const AdminOrderDetails = lazy(() => import("./pages/AdminOrderDetails"));
@@ -360,6 +361,7 @@ function App() {
           />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </Suspense>
 

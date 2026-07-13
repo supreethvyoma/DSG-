@@ -234,7 +234,7 @@ const getHomePricingConfig = (settings = {}) => ({
 
 const buildHomePayload = (products = [], settings = {}) => {
   const pricingConfig = getHomePricingConfig(settings);
-  const topRatedProducts = [...products].sort((a, b) => getAverageRating(b) - getAverageRating(a)).slice(0, 5);
+  const topRatedProducts = [...products].sort((a, b) => getAverageRating(b) - getAverageRating(a)).slice(0, 8);
   const newArrivals = [...products].sort(sortByNewest).slice(0, 4);
   const budgetPicks = [...products]
     .sort(

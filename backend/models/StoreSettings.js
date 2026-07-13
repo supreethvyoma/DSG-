@@ -192,6 +192,11 @@ const heroBannerSchema = new mongoose.Schema(
       default: "",
       trim: true
     },
+    mobileImage: {
+      type: String,
+      default: "",
+      trim: true
+    },
     productId: {
       type: String,
       default: "",

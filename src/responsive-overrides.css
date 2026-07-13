@@ -474,9 +474,22 @@ table {
   --radius-xl: 0px !important;
 }
 
-/* Force 0px border-radius on all boxes, buttons, inputs, search bars, and panels */
+/* Force 0px border-radius on all boxes, inputs, search bars, and panels */
 *, *::before, *::after {
   border-radius: 0px !important;
+}
+
+/* Force 10px border-radius on all buttons and interactive button elements throughout the website */
+button,
+.btn,
+.button,
+a.button,
+a.btn,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"] {
+  border-radius: 10px !important;
 }
 
 /* Re-apply circular shape to explicit circles to preserve avatars, status dots, and swatches */
@@ -494,7 +507,6 @@ table {
 .theme-color-item,
 .theme-particle-swatch,
 .festive-toggle-thumb,
-.festive-custom-anim-delete,
 .color-swatch,
 .color-preview-circle,
 .address-avatar,
@@ -505,6 +517,14 @@ table {
 /* Keep toggle tracks as pill shapes */
 .festive-toggle {
   border-radius: 999px !important;
+}
+
+/* Raise WhatsApp floating button above storefront mobile bottom bar */
+@media (max-width: 768px) {
+  .whatsapp-float-container {
+    bottom: 84px !important;
+    right: 16px !important;
+  }
 }
 
 /* ── Admin Dashboard Layout Overlaps Fix ─────────────────────────────────── */
@@ -522,5 +542,22 @@ table {
   --admin-border: rgba(0, 0, 0, 0.15) !important;
   --admin-border-soft: rgba(0, 0, 0, 0.1) !important;
   --site-header-border: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Prevent the search button inside the search wrap container from having rounded inner corners */
+.navbar-search-btn {
+  border-radius: 0px !important;
+}
+
+/* Set search bar container wrapper border-radius to 10px */
+.navbar-search-wrap {
+  border-radius: 10px !important;
+}
+
+/* Scroll offset for homepage sections to prevent them from being covered by the sticky navbar */
+#home-section-top-rated,
+#home-section-new-arrivals,
+#home-section-budget-picks {
+  scroll-margin-top: 110px !important;
 }
 

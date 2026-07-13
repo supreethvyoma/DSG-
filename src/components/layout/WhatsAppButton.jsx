@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import "./WhatsAppButton.css";
 
 function WhatsAppButton() {
   const [showTooltip, setShowTooltip] = useState(false);
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   useEffect(() => {
+    if (isAdminRoute) return undefined;
+
     // Show tooltip 2 seconds after page load
     const timer = setTimeout(() => {
       setShowTooltip(true);
@@ -19,7 +24,11 @@ function WhatsAppButton() {
       clearTimeout(timer);
       clearTimeout(hideTimer);
     };
-  }, []);
+  }, [isAdminRoute]);
+
+  if (isAdminRoute) {
+    return null;
+  }
 
   return (
     <div className="whatsapp-float-container">

@@ -13,7 +13,8 @@ const emailLogSchema = new mongoose.Schema(
         "low-stock-admin",
         "wishlist-alert",
         "broadcast",
-        "test"
+        "test",
+        "password-reset"
       ],
       default: "campaign"
     },

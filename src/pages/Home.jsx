@@ -330,12 +330,17 @@ function Home() {
 
   useEffect(() => {
     const heroImage = String(heroBanners[0]?.image || "").trim();
+    const heroMobileImage = String(heroBanners[0]?.mobileImage || "").trim();
     if (!heroImage || typeof document === "undefined") return undefined;
 
     const preloadLink = document.createElement("link");
     preloadLink.rel = "preload";
     preloadLink.as = "image";
-    preloadLink.href = heroImage;
+    if (heroMobileImage && window.innerWidth <= 768) {
+      preloadLink.href = heroMobileImage;
+    } else {
+      preloadLink.href = heroImage;
+    }
     document.head.appendChild(preloadLink);
 
     return () => {
@@ -368,16 +373,19 @@ function Home() {
             }
             className="home-banner home-banner-has-media"
           >
-            <img
-              src={activeHeroBanner.image}
-              alt="Homepage banner"
-              className="home-banner-image"
-              width="1600"
-              height="520"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-            />
+            <picture style={{ display: "block", width: "100%" }}>
+              <source media="(max-width: 768px)" srcSet={activeHeroBanner.mobileImage || activeHeroBanner.image} />
+              <img
+                src={activeHeroBanner.image}
+                alt="Homepage banner"
+                className="home-banner-image"
+                width="1600"
+                height="520"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            </picture>
             {heroBanners.length > 1 ? (
               <>
                 <button type="button" className="home-banner-nav prev" onClick={(e) => { e.preventDefault(); showPreviousHeroBanner(); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -398,16 +406,19 @@ function Home() {
           </Link>
         ) : (
           <section className="home-banner home-banner-has-media">
-            <img
-              src={activeHeroBanner.image}
-              alt="Homepage banner"
-              className="home-banner-image"
-              width="1600"
-              height="520"
-              loading="eager"
-              fetchPriority="high"
-              decoding="async"
-            />
+            <picture style={{ display: "block", width: "100%" }}>
+              <source media="(max-width: 768px)" srcSet={activeHeroBanner.mobileImage || activeHeroBanner.image} />
+              <img
+                src={activeHeroBanner.image}
+                alt="Homepage banner"
+                className="home-banner-image"
+                width="1600"
+                height="520"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
+            </picture>
             {heroBanners.length > 1 ? (
               <>
                 <button type="button" className="home-banner-nav prev" onClick={showPreviousHeroBanner} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>

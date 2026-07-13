@@ -2,11 +2,14 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
+const crypto = require("crypto");
+const axios = require("axios");
 const User = require("../models/User");
 const AdminAuditLog = require("../models/AdminAuditLog");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { logAdminAction } = require("../utils/adminAudit");
+const { sendEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -383,6 +386,154 @@ router.put("/addresses", protect, async (req, res) => {
   } catch (err) {
     console.error("[Auth] Update addresses error:", err.message);
     res.status(500).json({ message: "Failed to update addresses." });
+  }
+});
+
+// ── Password Reset Flow ──────────────────────────────────────────────────────
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Standard security: do not leak existence of user, just say it's sent
+      return res.json({ message: "If that email is registered, a password reset link has been sent." });
+    }
+
+    const token = crypto.randomBytes(20).toString("hex");
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // Construct reset link using HashRouter structure
+    const resetUrl = `${req.protocol}://${req.get("host")}/#/reset-password?token=${token}`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #1a1a2e;">Password Reset Request</h2>
+        <p>Hello ${user.name || "User"},</p>
+        <p>You requested a password reset for your account. Please click the button below to set a new password:</p>
+        <p style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #e94560; color: white; padding: 12px 24px; text-decoration: none; border-radius: 10px; display: inline-block; font-weight: bold;">Reset Password</a>
+        </p>
+        <p>Or copy and paste this URL into your browser:</p>
+        <p style="word-break: break-all; color: #666;"><a href="${resetUrl}">${resetUrl}</a></p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+        <p style="font-size: 0.85em; color: #999;">This link will expire in 1 hour. If you did not request this, you can safely ignore this email.</p>
+      </div>
+    `;
+
+    await sendEmail({
+      to: user.email,
+      subject: "Password Reset Link",
+      html: htmlContent,
+      type: "password-reset"
+    });
+
+    res.json({ message: "If that email is registered, a password reset link has been sent." });
+  } catch (err) {
+    console.error("[Auth] Forgot password error:", err.message);
+    res.status(500).json({ message: "Failed to request password reset. Please try again." });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: "Password reset token is required." });
+    }
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters." });
+    }
+    if (password.length > 128) {
+      return res.status(400).json({ message: "Password must be 128 characters or fewer." });
+    }
+
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Password reset token is invalid or has expired." });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    user.password = hashedPassword;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.json({ message: "Your password has been successfully updated. You can now log in." });
+  } catch (err) {
+    console.error("[Auth] Reset password error:", err.message);
+    res.status(500).json({ message: "Failed to reset password. Please try again." });
+  }
+});
+
+// ── Google Sign-In ───────────────────────────────────────────────────────────
+router.post("/google", async (req, res) => {
+  try {
+    const { idToken, rememberMe } = req.body;
+    if (!idToken) {
+      return res.status(400).json({ message: "Google ID Token is required." });
+    }
+
+    let email = "";
+    let name = "";
+
+    // Check for dev/testing simulation token
+    if (idToken.startsWith("mock-google-token-")) {
+      email = "mock.google.user@example.com";
+      name = "Demo Google User";
+    } else {
+      const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
+      const googleRes = await axios.get(tokenInfoUrl);
+      
+      const payload = googleRes.data;
+      if (!payload || !payload.email) {
+        return res.status(400).json({ message: "Invalid Google token payload." });
+      }
+
+      email = String(payload.email).trim().toLowerCase();
+      name = String(payload.name || payload.given_name || "Google User").trim();
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Invalid email from Google account." });
+    }
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      const randomPassword = crypto.randomBytes(32).toString("hex");
+      const hashedPassword = await bcrypt.hash(randomPassword, 12);
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: getTokenExpiry(rememberMe === true) }
+    );
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: Boolean(user.isAdmin),
+      token
+    });
+  } catch (err) {
+    console.error("[Auth] Google sign-in validation error:", err?.response?.data || err.message);
+    res.status(401).json({ message: "Google verification failed. Please try again." });
   }
 });
 

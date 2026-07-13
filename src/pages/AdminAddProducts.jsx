@@ -19,7 +19,7 @@ const DEFAULT_CATEGORY_OPTIONS = [
 ];
 
 function createEmptyHeroBanner() {
-  return { image: "", productId: "" };
+  return { image: "", mobileImage: "", productId: "" };
 }
 
 function createEmptyBundleItem() {
@@ -153,6 +153,7 @@ function AdminAddProducts() {
   const [activeHeroBannerIndex, setActiveHeroBannerIndex] = useState(0);
   const [isSavingHeroBanner, setIsSavingHeroBanner] = useState(false);
   const [isUploadingHeroBanners, setIsUploadingHeroBanners] = useState(false);
+  const [isUploadingMobileHeroBanners, setIsUploadingMobileHeroBanners] = useState(false);
   const [isUploadingProductImages, setIsUploadingProductImages] = useState(false);
   const [isOptimizingStoredImages, setIsOptimizingStoredImages] = useState(false);
   const [heroBannerMessage, setHeroBannerMessage] = useState("");
@@ -179,11 +180,13 @@ function AdminAddProducts() {
           Array.isArray(res.data?.heroBanners) && res.data.heroBanners.length > 0
             ? res.data.heroBanners.map((item) => ({
                 image: String(item?.image || "").trim(),
+                mobileImage: String(item?.mobileImage || "").trim(),
                 productId: String(item?.productId || "").trim()
               }))
             : [
                 {
                   image: String(res.data?.heroBannerImage || "").trim(),
+                  mobileImage: "",
                   productId: String(res.data?.heroBannerProductId || "").trim()
                 }
               ].filter((item) => item.image);
@@ -394,6 +397,7 @@ function AdminAddProducts() {
       const nextHeroBanners = heroBanners
         .map((item) => ({
           image: String(item?.image || "").trim(),
+          mobileImage: String(item?.mobileImage || "").trim(),
           productId: String(item?.productId || "").trim()
         }))
         .filter((item) => item.image);
@@ -408,6 +412,7 @@ function AdminAddProducts() {
         Array.isArray(res.data?.heroBanners) && res.data.heroBanners.length > 0
           ? res.data.heroBanners.map((item) => ({
               image: String(item?.image || "").trim(),
+              mobileImage: String(item?.mobileImage || "").trim(),
               productId: String(item?.productId || "").trim()
             }))
           : [createEmptyHeroBanner()];
@@ -479,6 +484,35 @@ function AdminAddProducts() {
       setHeroBannerMessage("Could not upload banner images.");
     } finally {
       setIsUploadingHeroBanners(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleMobileHeroBannerFileUpload = async (event, index) => {
+    const [file] = Array.from(event.target.files || []);
+    if (!file) return;
+
+    setIsUploadingMobileHeroBanners(true);
+    setHeroBannerMessage("");
+
+    try {
+      if (!String(file.type || "").startsWith("image/")) {
+        setHeroBannerMessage("Please choose an image file for the mobile banner.");
+        return;
+      }
+
+      const optimized = await optimizeImageFile(file, {
+        maxWidth: 768,
+        maxHeight: 1024,
+        quality: 0.88
+      });
+
+      updateHeroBanner(index, "mobileImage", optimized);
+      setHeroBannerMessage("Mobile banner image optimized and attached. Save hero banners to publish.");
+    } catch {
+      setHeroBannerMessage("Could not upload mobile banner image.");
+    } finally {
+      setIsUploadingMobileHeroBanners(false);
       event.target.value = "";
     }
   };
@@ -569,28 +603,45 @@ function AdminAddProducts() {
 
       for (const banner of heroBanners) {
         const source = String(banner?.image || "").trim();
-        if (!source) {
-          optimizedHeroBanners.push(banner);
-          continue;
+        const mobileSource = String(banner?.mobileImage || "").trim();
+        let optimizedImage = source;
+        let optimizedMobileImage = mobileSource;
+
+        if (source) {
+          try {
+            optimizedImage = await optimizeImageSource(source, {
+              maxWidth: 1600,
+              maxHeight: 700,
+              quality: 0.82
+            });
+            if (optimizedImage !== source) {
+              updatedBannerCount += 1;
+            }
+          } catch {
+            skippedCount += 1;
+          }
         }
 
-        try {
-          const optimizedImage = await optimizeImageSource(source, {
-            maxWidth: 1600,
-            maxHeight: 700,
-            quality: 0.82
-          });
-          if (optimizedImage !== source) {
-            updatedBannerCount += 1;
+        if (mobileSource) {
+          try {
+            optimizedMobileImage = await optimizeImageSource(mobileSource, {
+              maxWidth: 768,
+              maxHeight: 1024,
+              quality: 0.82
+            });
+            if (optimizedMobileImage !== mobileSource) {
+              updatedBannerCount += 1;
+            }
+          } catch {
+            skippedCount += 1;
           }
-          optimizedHeroBanners.push({
-            ...banner,
-            image: optimizedImage
-          });
-        } catch {
-          skippedCount += 1;
-          optimizedHeroBanners.push(banner);
         }
+
+        optimizedHeroBanners.push({
+          ...banner,
+          image: optimizedImage,
+          mobileImage: optimizedMobileImage
+        });
       }
 
       if (updatedBannerCount > 0) {
@@ -599,6 +650,7 @@ function AdminAddProducts() {
           {
             heroBanners: optimizedHeroBanners.map((item) => ({
               image: String(item?.image || "").trim(),
+              mobileImage: String(item?.mobileImage || "").trim(),
               productId: String(item?.productId || "").trim()
             }))
           },
@@ -609,6 +661,7 @@ function AdminAddProducts() {
           Array.isArray(data?.heroBanners) && data.heroBanners.length > 0
             ? data.heroBanners.map((item) => ({
                 image: String(item?.image || "").trim(),
+                mobileImage: String(item?.mobileImage || "").trim(),
                 productId: String(item?.productId || "").trim()
               }))
             : [createEmptyHeroBanner()];
@@ -1871,31 +1924,84 @@ function AdminAddProducts() {
           </div>
 
           <div className="hero-banner-admin-layout">
-            <div className="hero-banner-admin-preview">
-              {activeHeroBanner.image.trim() ? (
-                <img
-                  src={activeHeroBanner.image.trim()}
-                  alt="Hero banner preview"
-                  onError={(e) => {
-                    e.currentTarget.src = "https://picsum.photos/1200/420";
-                  }}
-                />
-              ) : (
-                <div className="hero-banner-admin-empty">
-                  <strong>No banner image selected</strong>
-                  <span>Paste a hero banner URL to preview how it will look on the home page.</span>
-                </div>
-              )}
+            <div className="hero-banner-admin-preview" style={{ flexDirection: "column", gap: "16px", padding: "16px", minHeight: "auto", alignItems: "stretch" }}>
+              <div style={{ borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--admin-primary)", display: "block", marginBottom: "8px" }}>Desktop Banner Preview</span>
+                {activeHeroBanner.image.trim() ? (
+                  <img
+                    src={activeHeroBanner.image.trim()}
+                    alt="Hero banner desktop preview"
+                    onError={(e) => {
+                      e.currentTarget.src = "https://picsum.photos/1200/420";
+                    }}
+                  />
+                ) : (
+                  <div className="hero-banner-admin-empty" style={{ padding: "10px 0" }}>
+                    <span>No desktop image URL provided</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ paddingTop: "4px" }}>
+                <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--admin-primary)", display: "block", marginBottom: "8px" }}>Mobile Banner Preview</span>
+                {activeHeroBanner.mobileImage?.trim() ? (
+                  <div style={{ display: "flex", justifyContent: "center" }}>
+                    <img
+                      src={activeHeroBanner.mobileImage.trim()}
+                      alt="Hero banner mobile preview"
+                      style={{ maxWidth: "240px", height: "auto", objectFit: "contain", border: "1px solid var(--admin-border)", borderRadius: "8px" }}
+                      onError={(e) => {
+                        e.currentTarget.src = "https://picsum.photos/400/500";
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="hero-banner-admin-empty" style={{ padding: "10px 0" }}>
+                    <span>No mobile image URL provided (will fallback to desktop banner image)</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="hero-banner-admin-controls">
               <label className="admin-field admin-field-wide">
-                <span>Banner Image URL</span>
+                <span>Banner Image URL (Desktop)</span>
                 <textarea
                   className="hero-banner-url-field"
                   placeholder="https://example.com/banner.jpg"
                   value={activeHeroBanner.image}
                   onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "image", e.target.value)}
+                  rows={4}
+                />
+              </label>
+
+              <label className="admin-field admin-field-wide">
+                <span>Mobile Banner Image URL (Optional)</span>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "6px" }}>
+                  <label className="hero-banner-admin-upload-btn" style={{ margin: 0, padding: "8px 16px", minHeight: "auto", height: "36px", fontSize: "12px", whiteSpace: "nowrap" }}>
+                    {isUploadingMobileHeroBanners ? "Uploading..." : "Upload Mobile Image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleMobileHeroBannerFileUpload(e, activeHeroBannerIndex)}
+                      disabled={isUploadingMobileHeroBanners}
+                    />
+                  </label>
+                  {activeHeroBanner.mobileImage?.trim() && (
+                    <button
+                      type="button"
+                      className="hero-banner-admin-remove-btn"
+                      style={{ margin: 0, padding: "8px 16px", minHeight: "auto", height: "36px", fontSize: "12px" }}
+                      onClick={() => updateHeroBanner(activeHeroBannerIndex, "mobileImage", "")}
+                    >
+                      Clear Mobile Image
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  className="hero-banner-url-field"
+                  placeholder="https://example.com/banner-mobile.jpg"
+                  value={activeHeroBanner.mobileImage || ""}
+                  onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "mobileImage", e.target.value)}
                   rows={4}
                 />
               </label>
