@@ -60,6 +60,9 @@
   display: block;
   width: 100%;
   height: auto;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .home-banner-has-media {
