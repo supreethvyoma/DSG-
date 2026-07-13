@@ -379,6 +379,8 @@ function Home() {
                 src={activeHeroBanner.image}
                 alt="Homepage banner"
                 className="home-banner-image"
+                width="1600"
+                height="520"
                 loading="eager"
                 fetchPriority="high"
                 decoding="async"
@@ -410,6 +412,8 @@ function Home() {
                 src={activeHeroBanner.image}
                 alt="Homepage banner"
                 className="home-banner-image"
+                width="1600"
+                height="520"
                 loading="eager"
                 fetchPriority="high"
                 decoding="async"
