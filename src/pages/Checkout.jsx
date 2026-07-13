@@ -107,6 +107,7 @@ function Checkout() {
   } = useDeliveryLocation();
   const [isBillingSame, setIsBillingSame] = useState(true);
   const [selectedBillingIndex, setSelectedBillingIndex] = useState(0);
+  const selectedBillingAddress = addresses[selectedBillingIndex];
   const navigate = useNavigate();
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
   const isDummyPaymentEnabled =
