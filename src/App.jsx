@@ -35,6 +35,7 @@ const AdminCoupons = lazy(() => import("./pages/AdminCoupons"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminThemeSettings = lazy(() => import("./pages/AdminThemeSettings"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
+const About = lazy(() => import("./pages/About"));
 
 function RouteLoadingFallback() {
   return (
@@ -285,6 +286,7 @@ function App() {
           <Route path="/search" element={<SearchResults />} />
           <Route path="/product/:id" element={<Product />} />
           <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/about" element={<About />} />
           <Route path="/cart" element={<Cart />} />
           <Route
             path="/checkout"

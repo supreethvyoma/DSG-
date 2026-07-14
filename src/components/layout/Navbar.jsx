@@ -681,35 +681,45 @@ function Navbar({ bannerActive = false }) {
             {deliveryLine1} <strong>{deliveryLine2}</strong>
           </button>
 
-          <NavLink className={linkClassName} to="/" end>
+          <NavLink className={linkClassName} to="/" end onClick={() => setIsMenuOpen(false)}>
             Home
           </NavLink>
-          <NavLink className={linkClassName} to="/wishlist">
+          <NavLink className={linkClassName} to="/about" onClick={() => setIsMenuOpen(false)}>
+            About Us
+          </NavLink>
+          <NavLink className={linkClassName} to="/wishlist" onClick={() => setIsMenuOpen(false)}>
             Wishlist <span className="navbar-inline-count">{wishlist.length}</span>
           </NavLink>
-          <NavLink className={linkClassName} to="/my-orders">
+          <NavLink className={linkClassName} to="/my-orders" onClick={() => setIsMenuOpen(false)}>
             My Orders
           </NavLink>
           {user ? (
-            <NavLink className={linkClassName} to="/account">
+            <NavLink className={linkClassName} to="/account" onClick={() => setIsMenuOpen(false)}>
               My Account
             </NavLink>
           ) : (
-            <NavLink className={linkClassName} to="/login">
+            <NavLink className={linkClassName} to="/login" onClick={() => setIsMenuOpen(false)}>
               Login
             </NavLink>
           )}
           {user?.isAdmin && (
-            <NavLink className={linkClassName} to="/admin">
+            <NavLink className={linkClassName} to="/admin" onClick={() => setIsMenuOpen(false)}>
               Admin Dashboard
             </NavLink>
           )}
           {user ? (
-            <button type="button" className="navbar-link navbar-logout navbar-outline" onClick={logout}>
+            <button
+              type="button"
+              className="navbar-link navbar-logout navbar-outline"
+              onClick={() => {
+                setIsMenuOpen(false);
+                logout();
+              }}
+            >
               Sign Out
             </button>
           ) : (
-            <NavLink className={linkClassName} to="/register">
+            <NavLink className={linkClassName} to="/register" onClick={() => setIsMenuOpen(false)}>
               New Customer? Register
             </NavLink>
           )}

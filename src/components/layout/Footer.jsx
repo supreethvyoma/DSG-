@@ -33,6 +33,9 @@ function Footer() {
           <h3>More</h3>
           <ul>
             <li>
+              <Link to="/about">About Us</Link>
+            </li>
+            <li>
               <a href="#/faq">FAQ</a>
             </li>
             <li>
