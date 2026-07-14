@@ -615,6 +615,35 @@ function Checkout() {
           razorpayOrderId: response.razorpay_order_id,
           razorpayPaymentId: response.razorpay_payment_id
         });
+
+        // Track purchase event for GTM and Facebook Pixel
+        const orderId = response.razorpay_order_id || `order_${Date.now()}`;
+        if (window.fbq) {
+          window.fbq("track", "Purchase", {
+            value: Number(finalTotal || 0),
+            currency: displayCurrency || "INR",
+            content_type: "product",
+            content_ids: cartItems.map((item) => item.id || item._id).filter(Boolean)
+          });
+        }
+        if (window.dataLayer) {
+          window.dataLayer.push({
+            event: "purchase",
+            ecommerce: {
+              transaction_id: orderId,
+              value: Number(finalTotal || 0),
+              currency: displayCurrency || "INR",
+              coupon: couponCode || "",
+              items: cartItems.map((item) => ({
+                item_name: item.name,
+                item_id: item.id || item._id,
+                price: Number(item.price || 0),
+                quantity: Number(item.quantity || 1)
+              }))
+            }
+          });
+        }
+
         await clearCart();
         navigate("/my-orders", {
           state: { message: "Payment successful. Your order has been placed." }
@@ -658,6 +687,35 @@ function Checkout() {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id
             });
+
+            // Track purchase event for GTM and Facebook Pixel
+            const orderId = response.razorpay_order_id || `order_${Date.now()}`;
+            if (window.fbq) {
+              window.fbq("track", "Purchase", {
+                value: Number(finalTotal || 0),
+                currency: displayCurrency || "INR",
+                content_type: "product",
+                content_ids: cartItems.map((item) => item.id || item._id).filter(Boolean)
+              });
+            }
+            if (window.dataLayer) {
+              window.dataLayer.push({
+                event: "purchase",
+                ecommerce: {
+                  transaction_id: orderId,
+                  value: Number(finalTotal || 0),
+                  currency: displayCurrency || "INR",
+                  coupon: couponCode || "",
+                  items: cartItems.map((item) => ({
+                    item_name: item.name,
+                    item_id: item.id || item._id,
+                    price: Number(item.price || 0),
+                    quantity: Number(item.quantity || 1)
+                  }))
+                }
+              });
+            }
+
             await clearCart();
             navigate("/my-orders", {
               state: { message: "Payment successful. Your order has been placed." }

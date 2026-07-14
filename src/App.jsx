@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from "react";
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
 import axios from "axios";
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
@@ -52,6 +52,28 @@ function RouteLoadingFallback() {
       Loading page...
     </div>
   );
+}
+
+function AnalyticsTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    // 1. PageView for GTM / Google Analytics
+    if (window.dataLayer) {
+      window.dataLayer.push({
+        event: "pageview",
+        page_path: location.pathname + location.search + location.hash,
+        page_title: document.title
+      });
+    }
+
+    // 2. PageView for Meta Pixel
+    if (window.fbq) {
+      window.fbq("track", "PageView");
+    }
+  }, [location]);
+
+  return null;
 }
 
 function App() {
@@ -230,6 +252,7 @@ function App() {
 
   return (
     <HashRouter>
+      <AnalyticsTracker />
       {isBannerActive && (
         <FestiveBanner
           text={festiveBanner.text}

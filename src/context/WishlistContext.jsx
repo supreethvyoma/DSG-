@@ -84,6 +84,30 @@ export function WishlistProvider({ children }) {
     if (added) {
       showToast("Added to wishlist");
 
+      // Signal GTM and Meta Pixel of addition to wishlist
+      if (window.fbq) {
+        window.fbq("track", "AddToWishlist", {
+          content_name: product.name,
+          content_ids: [product._id],
+          content_type: "product",
+          value: Number(product.price || 0),
+          currency: "INR"
+        });
+      }
+      if (window.dataLayer) {
+        window.dataLayer.push({
+          event: "add_to_wishlist",
+          ecommerce: {
+            items: [{
+              item_name: product.name,
+              item_id: product._id,
+              price: Number(product.price || 0),
+              quantity: 1
+            }]
+          }
+        });
+      }
+
       // Sync add to server (fire-and-forget)
       if (token) {
         axios
