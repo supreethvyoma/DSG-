@@ -61,6 +61,7 @@ function MyOrders() {
   const [selectedView, setSelectedView] = useState("All");
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ORDERS);
   const [activeTracking, setActiveTracking] = useState({});
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
   const isDummyPaymentEnabled =
     String(import.meta.env.VITE_ENABLE_DUMMY_PAYMENT || "").toLowerCase() === "true";
@@ -100,8 +101,14 @@ function MyOrders() {
 
   useEffect(() => {
     const incomingMessage = String(location.state?.message || "").trim();
-    if (incomingMessage) {
-      showToast(incomingMessage, incomingMessage.toLowerCase().includes("success") ? "success" : "info");
+    const shouldShowReview = !!location.state?.showReviewPrompt;
+    if (shouldShowReview) {
+      setShowReviewModal(true);
+    }
+    if (incomingMessage || shouldShowReview) {
+      if (incomingMessage) {
+        showToast(incomingMessage, incomingMessage.toLowerCase().includes("success") ? "success" : "info");
+      }
       navigate(
         {
           pathname: location.pathname,
@@ -483,6 +490,16 @@ function MyOrders() {
                               {requestingReturnOrderId === `${order._id}:${itemId}` ? "Submitting..." : "Return product"}
                             </button>
                           ) : null}
+                          {isPaid && status !== "Cancelled" ? (
+                            <a
+                              href="http://review.digitalsanskritguru.com/"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="my-order-review-link"
+                            >
+                              Write Review
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -623,6 +640,33 @@ function MyOrders() {
           </button>
         </div>
       ) : null}
+      {showReviewModal && (
+        <div className="review-redirect-modal-backdrop">
+          <div className="review-redirect-modal">
+            <h2>Thank you for your purchase!</h2>
+            <p>We hope you love your new product. We would be extremely grateful if you could share your feedback with us.</p>
+            <div className="review-redirect-modal-actions">
+              <button
+                type="button"
+                className="review-redirect-btn-primary"
+                onClick={() => {
+                  setShowReviewModal(false);
+                  window.location.href = "http://review.digitalsanskritguru.com/";
+                }}
+              >
+                Leave a Review
+              </button>
+              <button
+                type="button"
+                className="review-redirect-btn-secondary"
+                onClick={() => setShowReviewModal(false)}
+              >
+                Go to My Orders
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

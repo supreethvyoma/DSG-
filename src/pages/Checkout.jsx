@@ -646,7 +646,10 @@ function Checkout() {
 
         await clearCart();
         navigate("/my-orders", {
-          state: { message: "Payment successful. Your order has been placed." }
+          state: {
+            message: "Payment successful. Your order has been placed.",
+            showReviewPrompt: true
+          }
         });
         setIsPaying(false);
         return;
@@ -718,7 +721,10 @@ function Checkout() {
 
             await clearCart();
             navigate("/my-orders", {
-              state: { message: "Payment successful. Your order has been placed." }
+              state: {
+                message: "Payment successful. Your order has been placed.",
+                showReviewPrompt: true
+              }
             });
           } catch {
             setCheckoutMessage("Payment succeeded, but the order could not be saved. Please contact support.");
