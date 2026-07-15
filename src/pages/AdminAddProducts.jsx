@@ -104,11 +104,7 @@ async function optimizeImageFile(file, options) {
 }
 
 async function optimizeHeroBannerFile(file) {
-  return optimizeImageFile(file, {
-    maxWidth: 2560,
-    maxHeight: 1080,
-    quality: 0.92
-  });
+  return readFileAsDataUrl(file);
 }
 
 function AdminAddProducts() {
@@ -501,11 +497,7 @@ function AdminAddProducts() {
         return;
       }
 
-      const optimized = await optimizeImageFile(file, {
-        maxWidth: 768,
-        maxHeight: 1024,
-        quality: 0.88
-      });
+      const optimized = await readFileAsDataUrl(file);
 
       updateHeroBanner(index, "mobileImage", optimized);
       setHeroBannerMessage("Mobile banner image optimized and attached. Save hero banners to publish.");
@@ -602,45 +594,10 @@ function AdminAddProducts() {
       const optimizedHeroBanners = [];
 
       for (const banner of heroBanners) {
-        const source = String(banner?.image || "").trim();
-        const mobileSource = String(banner?.mobileImage || "").trim();
-        let optimizedImage = source;
-        let optimizedMobileImage = mobileSource;
-
-        if (source) {
-          try {
-            optimizedImage = await optimizeImageSource(source, {
-              maxWidth: 1600,
-              maxHeight: 700,
-              quality: 0.82
-            });
-            if (optimizedImage !== source) {
-              updatedBannerCount += 1;
-            }
-          } catch {
-            skippedCount += 1;
-          }
-        }
-
-        if (mobileSource) {
-          try {
-            optimizedMobileImage = await optimizeImageSource(mobileSource, {
-              maxWidth: 768,
-              maxHeight: 1024,
-              quality: 0.82
-            });
-            if (optimizedMobileImage !== mobileSource) {
-              updatedBannerCount += 1;
-            }
-          } catch {
-            skippedCount += 1;
-          }
-        }
-
         optimizedHeroBanners.push({
           ...banner,
-          image: optimizedImage,
-          mobileImage: optimizedMobileImage
+          image: String(banner?.image || "").trim(),
+          mobileImage: String(banner?.mobileImage || "").trim()
         });
       }
 
