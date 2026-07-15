@@ -772,8 +772,8 @@ function Home() {
                   </div>
                 );
 
-                const props = {
-                  key: sponsor.id || sponsor._id || idx,
+                const keyVal = sponsor.id || sponsor._id || idx;
+                const cardProps = {
                   className: "home-sponsor-card"
                 };
 
@@ -787,14 +787,14 @@ function Home() {
 
                 if (sponsor.websiteUrl) {
                   return (
-                    <a href={sponsor.websiteUrl} target="_blank" rel="noreferrer" {...props}>
+                    <a key={keyVal} href={sponsor.websiteUrl} target="_blank" rel="noreferrer" {...cardProps}>
                       {innerContent}
                     </a>
                   );
                 }
 
                 return (
-                  <div {...props}>
+                  <div key={keyVal} {...cardProps}>
                     {innerContent}
                   </div>
                 );

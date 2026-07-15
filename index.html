@@ -68,22 +68,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Google Fonts — Inter (primary) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <!-- Widescreen Hero Banner image preload for instant paint (LCP reduction) -->
-    <script>
-      (function() {
-        const hash = window.location.hash;
-        // In a HashRouter SPA, pathname is always "/" on all pages. 
-        // We must only check the hash to identify the homepage.
-        if (hash === "" || hash === "#" || hash === "#/") {
-          const link = document.createElement("link");
-          link.rel = "preload";
-          link.as = "image";
-          link.href = "/assets/main-hero.webp";
-          link.fetchPriority = "high";
-          document.head.appendChild(link);
-        }
-      })();
-    </script>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Discover premium Sanskrit learning materials, grammar guides, scriptures, and traditional kits at Digital Sanskrit Guru." />
     
