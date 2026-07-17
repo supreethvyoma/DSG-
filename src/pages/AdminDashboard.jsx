@@ -372,6 +372,7 @@ function AdminDashboard() {
         currencyConversionRates: res.data?.currencyConversionRates || {}
       });
       setPricingMessage("Pricing settings updated.");
+      window.dispatchEvent(new CustomEvent("siteSettingsUpdated"));
     } catch (err) {
       setPricingMessage(err?.response?.data?.message || "Could not save pricing settings.");
     } finally {
