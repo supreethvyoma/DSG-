@@ -236,6 +236,44 @@ function Navbar({ bannerActive = false }) {
   };
 
   const fetchAddressFromCoordinates = async (latitude, longitude) => {
+    const radarKey = import.meta.env.VITE_RADAR_PUBLISHABLE_KEY;
+
+    if (radarKey) {
+      try {
+        const response = await fetch(
+          `https://api.radar.io/v1/geocode/reverse?coordinates=${latitude},${longitude}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: radarKey
+            }
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const addressObj = data?.addresses?.[0] || {};
+          return {
+            name: String(user?.name || "Current Location").trim(),
+            phone: "",
+            label: "Home",
+            address: addressObj.formattedAddress || "Current location",
+            landmark: addressObj.placeLabel || "",
+            city: addressObj.city || addressObj.sublocality || "",
+            state: addressObj.state || addressObj.stateCode || "",
+            pincode: addressObj.postalCode || "",
+            country: addressObj.country || "India",
+            latitude: Number(latitude),
+            longitude: Number(longitude),
+            isDefault: addresses.length === 0
+          };
+        }
+      } catch (err) {
+        console.warn("Radar reverse geocoding failed, falling back to Nominatim", err);
+      }
+    }
+
+    // Fallback to Nominatim
     const params = new URLSearchParams({
       lat: String(latitude),
       lon: String(longitude),
