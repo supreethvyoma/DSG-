@@ -482,6 +482,11 @@ function Product() {
   const trailerVideo = getProductTrailerEmbed(product.trailerVideoUrl);
   const mediaItems = buildProductMediaItems(product, galleryImages, trailerVideo);
   const activeMedia = selectedMedia || mediaItems[0] || null;
+  const isKindleBook = Boolean(
+    product.kindleLink ||
+    String(product.digitalType || "").toLowerCase().includes("kindle") ||
+    String(product.name || "").toLowerCase().includes("kindle")
+  );
 
   return (
     <>
@@ -657,29 +662,62 @@ function Product() {
             <p className="delivery">Fast Delivery</p>
             <p className="buy-box-note">Fastest delivery available at your selected location.</p>
 
-            <div className="qty-box">
-              <button className="qty-btn" onClick={() => setQty(qty > 1 ? qty - 1 : 1)}>-</button>
-              <span className="qty-number">{qty}</span>
-              <button
-                className="qty-btn"
-                onClick={() => setQty(qty < (product.stock || 10) ? qty + 1 : qty)}
-              >+</button>
-            </div>
+            {isKindleBook ? (
+              <div style={{ marginTop: "12px" }}>
+                <a
+                  href={product.kindleLink || "https://www.amazon.in/s?k=kindle+digital+sanskrit+guru"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    width: "100%",
+                    padding: "14px 18px",
+                    borderRadius: "8px",
+                    backgroundColor: "#ff9900",
+                    color: "#111",
+                    fontWeight: 700,
+                    fontSize: "15px",
+                    textDecoration: "none",
+                    boxShadow: "0 4px 12px rgba(255, 153, 0, 0.35)",
+                    transition: "transform 0.15s ease"
+                  }}
+                >
+                  📱 Buy Kindle Edition on Amazon ↗
+                </a>
+                <p style={{ margin: "10px 0 0", fontSize: "12px", color: "var(--site-text-soft)", textAlign: "center" }}>
+                  Kindle books are sold and fulfilled directly on Amazon Kindle Store.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="qty-box">
+                  <button className="qty-btn" onClick={() => setQty(qty > 1 ? qty - 1 : 1)}>-</button>
+                  <span className="qty-number">{qty}</span>
+                  <button
+                    className="qty-btn"
+                    onClick={() => setQty(qty < (product.stock || 10) ? qty + 1 : qty)}
+                  >+</button>
+                </div>
 
-            <button
-              className="add-cart-btn"
-              disabled={product.stock === 0}
-              onClick={() => addToCart(product, qty)}
-            >
-              {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
-            </button>
-            <button
-              className="buy-now-btn"
-              disabled={product.stock === 0}
-              onClick={handleBuyNow}
-            >
-              {product.stock === 0 ? "Out of Stock" : "Buy Now"}
-            </button>
+                <button
+                  className="add-cart-btn"
+                  disabled={product.stock === 0}
+                  onClick={() => addToCart(product, qty)}
+                >
+                  {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                </button>
+                <button
+                  className="buy-now-btn"
+                  disabled={product.stock === 0}
+                  onClick={handleBuyNow}
+                >
+                  {product.stock === 0 ? "Out of Stock" : "Buy Now"}
+                </button>
+              </>
+            )}
 
 
             {/* <p className="secure-line">Secure transaction</p> */}

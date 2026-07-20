@@ -1205,8 +1205,21 @@ function Checkout() {
           </div>
           <div className="summary-item">
             <span>Delivery</span>
-            <span>{formatCurrencyExact(totals.deliveryCharge, displayCurrency)}</span>
+            <span>
+              {deliveryDetails.pricingMode === "digital" || deliveryDetails.isDigitalOnly ? (
+                <strong style={{ color: "#2e7d32" }}>FREE (Digital Access)</strong>
+              ) : totals.deliveryCharge === 0 ? (
+                <strong style={{ color: "#2e7d32" }}>FREE</strong>
+              ) : (
+                formatCurrencyExact(totals.deliveryCharge, displayCurrency)
+              )}
+            </span>
           </div>
+          {deliveryDetails.pricingMode === "digital" || deliveryDetails.isDigitalOnly ? (
+            <p className="coupon-selector-empty" style={{ color: "#2e7d32", fontWeight: 600 }}>
+              ⚡ Digital order: Instant access granted upon payment completion. No physical shipping fee required.
+            </p>
+          ) : null}
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p className="coupon-selector-empty">Estimated distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>
           )}

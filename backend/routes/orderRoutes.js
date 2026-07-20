@@ -280,6 +280,8 @@ router.post("/calculate-totals", protect, async (req, res) => {
         name: String(product?.name || item?.name || "").trim(),
         image: String(product?.image || item?.image || "").trim(),
         category: String(product?.category || item?.category || "General").trim() || "General",
+        format: String(item?.format || item?.selectedFormat || product?.format || "").trim(),
+        isDigital: Boolean(product?.isDigital || item?.isDigital),
         quantity,
         price: roundMoney(pricing.price),
         currency: String(pricing.currency || "INR").trim().toUpperCase()
@@ -474,6 +476,8 @@ router.post("/", protect, async (req, res) => {
       name: String(product?.name || item?.name || "").trim(),
       image: String(product?.image || item?.image || "").trim(),
       category: String(product?.category || item?.category || "General").trim() || "General",
+      format: String(item?.format || item?.selectedFormat || product?.format || "").trim(),
+      isDigital: Boolean(product?.isDigital || item?.isDigital),
       quantity,
       price: roundMoney(pricing.price),
       currency: String(pricing.currency || "INR").trim().toUpperCase(),

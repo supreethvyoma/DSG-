@@ -139,6 +139,36 @@ const productSchema = new mongoose.Schema(
       default: "single"
     },
 
+    isDigital: {
+      type: Boolean,
+      default: false
+    },
+
+    digitalType: {
+      type: String,
+      default: "Web Version"
+    },
+
+    webReaderLink: {
+      type: String,
+      default: ""
+    },
+
+    kindleLink: {
+      type: String,
+      default: ""
+    },
+
+    kindleAsin: {
+      type: String,
+      default: ""
+    },
+
+    digitalInstructions: {
+      type: String,
+      default: ""
+    },
+
     bundleItems: {
       type: [bundleItemSchema],
       default: []

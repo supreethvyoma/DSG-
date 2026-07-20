@@ -66,6 +66,19 @@ const userSchema = mongoose.Schema({
     type: Boolean,
     default: false
   },
+  adminRole: {
+    type: String,
+    default: "Super Admin"
+  },
+  adminLevel: {
+    type: Number,
+    enum: [1, 2],
+    default: 1
+  },
+  allowedPages: {
+    type: [String],
+    default: ["dashboard", "orders", "products", "add-products", "coupons", "marketing", "users", "theme"]
+  },
   adminGrantedAt: {
     type: Date,
     default: null

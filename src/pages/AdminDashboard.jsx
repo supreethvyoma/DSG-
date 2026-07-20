@@ -46,7 +46,7 @@ function normalizePricingMarketsInput(pricingMarkets = []) {
 }
 
 function AdminDashboard() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [orderLoadError, setOrderLoadError] = useState("");
@@ -104,9 +104,6 @@ function AdminDashboard() {
   const [isSavingPricing, setIsSavingPricing] = useState(false);
   const [isGettingWarehouseLocation, setIsGettingWarehouseLocation] = useState(false);
   const [pricingMessage, setPricingMessage] = useState("");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [isMakingAdmin, setIsMakingAdmin] = useState(false);
-  const [makeAdminMessage, setMakeAdminMessage] = useState("");
   useEffect(() => {
     let active = true;
 
@@ -540,29 +537,7 @@ function AdminDashboard() {
     );
   };
 
-  const makeUserAdmin = async () => {
-    const email = String(adminEmail || "").trim().toLowerCase();
-    if (!email) {
-      setMakeAdminMessage("Enter user email.");
-      return;
-    }
 
-    setIsMakingAdmin(true);
-    setMakeAdminMessage("");
-    try {
-      const res = await axios.put(
-        "/api/auth/make-admin",
-        { email },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMakeAdminMessage(res?.data?.message || "User promoted to admin.");
-      setAdminEmail("");
-    } catch (err) {
-      setMakeAdminMessage(err?.response?.data?.message || "Could not make user admin.");
-    } finally {
-      setIsMakingAdmin(false);
-    }
-  };
 
   const topProducts = useMemo(() => {
     const salesByName = orders.reduce((acc, order) => {
@@ -1437,24 +1412,7 @@ function AdminDashboard() {
           )}
         </section>
 
-        <section className="card make-admin-card">
-          <div className="make-admin-header">
-            <h3>Admin Access Control</h3>
-            <p>Promote an existing user to admin by email.</p>
-          </div>
-          <div className="make-admin-form">
-            <input
-              type="email"
-              placeholder="Enter user email"
-              value={adminEmail}
-              onChange={(e) => setAdminEmail(e.target.value)}
-            />
-            <button onClick={makeUserAdmin} disabled={isMakingAdmin}>
-              {isMakingAdmin ? "Updating..." : "Make Admin"}
-            </button>
-          </div>
-          {makeAdminMessage && <p className="make-admin-message">{makeAdminMessage}</p>}
-        </section>
+
 
         {notifications.length > 0 && (
           <section className="card notifications-card">

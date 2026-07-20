@@ -131,6 +131,12 @@ function AdminAddProducts() {
   const [festiveOffer, setFestiveOffer] = useState(false);
   const [festiveDiscountPercent, setFestiveDiscountPercent] = useState("0");
   const [productType, setProductType] = useState("single");
+  const [isDigital, setIsDigital] = useState(false);
+  const [digitalType, setDigitalType] = useState("Web Version");
+  const [webReaderLink, setWebReaderLink] = useState("");
+  const [kindleLink, setKindleLink] = useState("");
+  const [kindleAsin, setKindleAsin] = useState("");
+  const [digitalInstructions, setDigitalInstructions] = useState("");
   const [bundleItems, setBundleItems] = useState([createEmptyBundleItem()]);
   const [relatedProductItems, setRelatedProductItems] = useState([createEmptyRelatedProduct()]);
   const [category, setCategory] = useState("General");
@@ -380,6 +386,12 @@ function AdminAddProducts() {
     setFestiveOffer(false);
     setFestiveDiscountPercent("0");
     setProductType("single");
+    setIsDigital(false);
+    setDigitalType("Web Version");
+    setWebReaderLink("");
+    setKindleLink("");
+    setKindleAsin("");
+    setDigitalInstructions("");
     setBundleItems([createEmptyBundleItem()]);
     setRelatedProductItems([createEmptyRelatedProduct()]);
     setCategory("General");
@@ -869,6 +881,12 @@ function AdminAddProducts() {
       festiveOffer,
       festiveDiscountPercent: festiveOffer ? Math.min(95, Math.max(0, Number(festiveDiscountPercent || 0))) : 0,
       productType,
+      isDigital,
+      digitalType,
+      webReaderLink: webReaderLink.trim(),
+      kindleLink: kindleLink.trim(),
+      kindleAsin: kindleAsin.trim(),
+      digitalInstructions: digitalInstructions.trim(),
       bundleItems:
         productType === "bundle"
           ? bundleItems
@@ -962,6 +980,12 @@ function AdminAddProducts() {
     setFestiveOffer(product.festiveOffer === true);
     setFestiveDiscountPercent(String(Number(product.festiveDiscountPercent || 0)));
     setProductType(String(product.productType || "single") === "bundle" ? "bundle" : "single");
+    setIsDigital(product.isDigital === true);
+    setDigitalType(product.digitalType || "Web Version");
+    setWebReaderLink(product.webReaderLink || "");
+    setKindleLink(product.kindleLink || "");
+    setKindleAsin(product.kindleAsin || "");
+    setDigitalInstructions(product.digitalInstructions || "");
     setBundleItems(
       Array.isArray(product.bundleItems) && product.bundleItems.length > 0
         ? product.bundleItems.map((item) => ({
@@ -1490,6 +1514,78 @@ function AdminAddProducts() {
                       rows={5}
                     />
                   </label>
+                </div>
+              </section>
+
+              <section className="product-composer-panel">
+                <div className="product-composer-panel-head">
+                  <div>
+                    <h4>📖 Digital Content & Kindle Settings</h4>
+                    <p>Configure Web Reader links, Amazon Kindle redemption URLs, and access instructions for digital buyers.</p>
+                  </div>
+                </div>
+                <div className="product-composer-panel-body">
+                  <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontWeight: 600, fontSize: "14px", color: "var(--admin-text)", marginBottom: "14px" }}>
+                    <input
+                      type="checkbox"
+                      checked={isDigital}
+                      onChange={(e) => setIsDigital(e.target.checked)}
+                    />
+                    This product includes Digital Content (Web Version / Kindle / E-Book / PDF)
+                  </label>
+
+                  {isDigital && (
+                    <div style={{ display: "grid", gap: "14px", padding: "16px", borderRadius: "10px", backgroundColor: "var(--admin-input-bg, #f9fafb)", border: "1px solid var(--admin-border)" }}>
+                      <div className="admin-field-grid">
+                        <label className="admin-field">
+                          <span>Digital Format Type</span>
+                          <select value={digitalType} onChange={(e) => setDigitalType(e.target.value)}>
+                            <option value="Web Version">Web Version (Online Reader)</option>
+                            <option value="Kindle">Kindle E-Book</option>
+                            <option value="E-Book">Standard E-Book (EPUB/PDF)</option>
+                            <option value="PDF">PDF Download</option>
+                            <option value="Other">Other Digital Access</option>
+                          </select>
+                        </label>
+                        <label className="admin-field">
+                          <span>Kindle ASIN / Redeem Code</span>
+                          <input
+                            placeholder="e.g. B08XXXXXX or REDEEM-CODE-123"
+                            value={kindleAsin}
+                            onChange={(e) => setKindleAsin(e.target.value)}
+                          />
+                        </label>
+                      </div>
+
+                      <label className="admin-field admin-field-wide">
+                        <span>Web Reader Access URL</span>
+                        <input
+                          placeholder="https://... (Direct link to Web Reader or Flipbook viewer)"
+                          value={webReaderLink}
+                          onChange={(e) => setWebReaderLink(e.target.value)}
+                        />
+                      </label>
+
+                      <label className="admin-field admin-field-wide">
+                        <span>Amazon Kindle Store / Redeem URL</span>
+                        <input
+                          placeholder="https://www.amazon.in/dp/... (Direct link to Amazon Kindle edition)"
+                          value={kindleLink}
+                          onChange={(e) => setKindleLink(e.target.value)}
+                        />
+                      </label>
+
+                      <label className="admin-field admin-field-wide">
+                        <span>Customer Access Instructions</span>
+                        <textarea
+                          placeholder="e.g. Access your Web Reader anytime from My Orders page. To read on Kindle, click 'Open on Kindle' or send the EPUB/PDF to your Amazon Send-to-Kindle email address."
+                          value={digitalInstructions}
+                          onChange={(e) => setDigitalInstructions(e.target.value)}
+                          rows={3}
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
               </section>
 

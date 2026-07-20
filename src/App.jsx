@@ -34,6 +34,7 @@ const AdminProducts = lazy(() => import("./pages/AdminProducts"));
 const AdminAddProducts = lazy(() => import("./pages/AdminAddProducts"));
 const AdminCoupons = lazy(() => import("./pages/AdminCoupons"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+const AdminAccessControl = lazy(() => import("./pages/AdminAccessControl"));
 const AdminThemeSettings = lazy(() => import("./pages/AdminThemeSettings"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
 const About = lazy(() => import("./pages/About"));
@@ -316,7 +317,7 @@ function App() {
           <Route
             path="/admin"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="dashboard">
                 <AdminDashboard />
               </AdminRoute>
             }
@@ -324,7 +325,7 @@ function App() {
           <Route
             path="/admin/orders"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="orders">
                 <AdminOrders />
               </AdminRoute>
             }
@@ -332,7 +333,7 @@ function App() {
           <Route
             path="/admin/orders/:id"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="orders">
                 <AdminOrderDetails />
               </AdminRoute>
             }
@@ -340,7 +341,7 @@ function App() {
           <Route
             path="/admin/products"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="products">
                 <AdminProducts />
               </AdminRoute>
             }
@@ -348,7 +349,7 @@ function App() {
           <Route
             path="/admin/add-products"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="add-products">
                 <AdminAddProducts />
               </AdminRoute>
             }
@@ -356,7 +357,7 @@ function App() {
           <Route
             path="/admin/coupons"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="coupons">
                 <AdminCoupons />
               </AdminRoute>
             }
@@ -364,15 +365,23 @@ function App() {
           <Route
             path="/admin/users"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="users">
                 <AdminUsers />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/admin-access"
+            element={
+              <AdminRoute requiredPage="admin-access">
+                <AdminAccessControl />
               </AdminRoute>
             }
           />
           <Route
             path="/admin/theme"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="theme">
                 <AdminThemeSettings />
               </AdminRoute>
             }
@@ -380,7 +389,7 @@ function App() {
           <Route
             path="/admin/marketing"
             element={
-              <AdminRoute>
+              <AdminRoute requiredPage="marketing">
                 <AdminMarketing />
               </AdminRoute>
             }

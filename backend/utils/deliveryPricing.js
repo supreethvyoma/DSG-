@@ -79,12 +79,47 @@ function calculateDistanceKm(from, to) {
   return earthRadiusKm * c;
 }
 
+function isDigitalItem(item) {
+  if (!item) return false;
+  if (item.isDigital === true || item.product?.isDigital === true) return true;
+
+  const format = String(
+    item.format || item.selectedFormat || item.variant || item.binding || item.product?.format || ""
+  ).trim().toLowerCase();
+
+  const category = String(
+    item.category || item.product?.category || ""
+  ).trim().toLowerCase();
+
+  const name = String(
+    item.name || item.product?.name || item.title || ""
+  ).trim().toLowerCase();
+
+  const digitalKeywords = [
+    "ebook",
+    "e-book",
+    "kindle",
+    "web version",
+    "web-version",
+    "webversion",
+    "digital",
+    "flipbook",
+    "epub",
+    "pdf"
+  ];
+
+  return digitalKeywords.some(
+    (kw) => format.includes(kw) || category.includes(kw) || name.includes(kw)
+  );
+}
+
 function calculateIndiaPostCharge(distanceKm, items) {
-  // 1. Calculate Total Chargeable Weight of the cart items
+  // 1. Calculate Total Chargeable Weight of the physical cart items
   let totalWeightGrams = 0;
   
   if (Array.isArray(items)) {
     items.forEach((item) => {
+      if (isDigitalItem(item)) return; // Digital items contribute zero shipping weight
       const qty = Math.max(1, Number(item?.quantity || 1));
       const actualWeight = Number(item?.weight || 0); // weight in grams
       const l = Number(item?.length || 0); // in cm
@@ -185,6 +220,19 @@ function calculateIndiaPostCharge(distanceKm, items) {
 }
 
 function resolveDeliveryCharge(settings, shipping, items) {
+  const itemList = Array.isArray(items) ? items : [];
+
+  if (itemList.length > 0) {
+    const physicalItems = itemList.filter((item) => !isDigitalItem(item));
+
+    // If ALL items in the cart/order are digital (Web version, Kindle, E-book, PDF, etc.)
+    if (physicalItems.length === 0) {
+      return 0;
+    }
+
+    items = physicalItems;
+  }
+
   const fallbackCharge = Math.max(0, Number(settings?.deliveryCharge || 0));
   const warehouseLocation = normalizeWarehouseLocation(settings?.warehouseLocation || {});
   const distancePricing = normalizeDistancePricing(settings?.distancePricing || {}, fallbackCharge);
@@ -228,5 +276,7 @@ module.exports = {
   normalizeDistancePricing,
   normalizeInternationalDelivery,
   calculateDistanceKm,
-  resolveDeliveryCharge
+  resolveDeliveryCharge,
+  isDigitalItem
 };
+

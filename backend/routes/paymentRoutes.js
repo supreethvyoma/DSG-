@@ -8,6 +8,7 @@ const isDummyPaymentEnabled = String(process.env.ALLOW_DUMMY_PAYMENT || "").toLo
 router.post("/create-order", async (req, res) => {
   try {
     const amount = Number(req.body?.amount || 0);
+    const currency = String(req.body?.currency || "INR").trim().toUpperCase();
     if (Number.isNaN(amount) || amount <= 0) {
       return res.status(400).json({ message: "Invalid amount" });
     }
@@ -16,7 +17,7 @@ router.post("/create-order", async (req, res) => {
       return res.json({
         id: `dummy_order_${Date.now()}`,
         amount: Math.round(amount * 100),
-        currency: "INR",
+        currency,
         receipt: `dummy_receipt_${Date.now()}`,
         isDummy: true
       });
@@ -25,7 +26,7 @@ router.post("/create-order", async (req, res) => {
     const razorpay = getRazorpayClient();
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
-      currency: "INR",
+      currency,
       receipt: `order_${Date.now()}`
     });
 

@@ -126,11 +126,15 @@ router.post("/register", registerLimiter, async (req, res) => {
       { expiresIn: getTokenExpiry(rememberMe === true) }
     );
 
+    const adminLevel = Number(user.adminLevel || 1);
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      adminLevel,
+      adminRole: user.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
+      allowedPages: adminLevel === 1 ? ALL_ADMIN_PAGES : (Array.isArray(user.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ["dashboard"]),
       token
     });
   } catch (err) {
@@ -164,11 +168,19 @@ router.post("/login", authLimiter, async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: getTokenExpiry(rememberMe === true) }
       );
+      const adminLevel = Number(user.adminLevel || 1);
+      const allowedPages = adminLevel === 1
+        ? ALL_ADMIN_PAGES
+        : (Array.isArray(user.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ["dashboard"]);
+
       return res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         isAdmin: user.isAdmin,
+        adminLevel,
+        adminRole: user.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
+        allowedPages,
         token
       });
     }
@@ -180,9 +192,36 @@ router.post("/login", authLimiter, async (req, res) => {
   }
 });
 
-router.put("/make-admin", protect, admin, async (req, res) => {
+const ALL_ADMIN_PAGES = [
+  "dashboard",
+  "users",
+  "admin-access",
+  "orders",
+  "products",
+  "add-products",
+  "coupons",
+  "marketing",
+  "theme"
+];
+
+function sanitizeAllowedPages(inputPages = [], isSuperAdmin = false) {
+  if (isSuperAdmin) return ALL_ADMIN_PAGES;
+  if (!Array.isArray(inputPages)) return [];
+
+  const filtered = inputPages
+    .map((p) => String(p || "").trim().toLowerCase())
+    .filter((p) => ALL_ADMIN_PAGES.includes(p));
+
+  return [...new Set(filtered)];
+}
+
+router.put("/make-admin", protect, admin, admin.requireSuperAdmin, async (req, res) => {
   try {
     const email = (req.body.email || "").trim().toLowerCase();
+    const requestedLevel = Number(req.body.adminLevel || 1);
+    const adminLevel = [1, 2].includes(requestedLevel) ? requestedLevel : 1;
+    const requestedRole = String(req.body.adminRole || (adminLevel === 1 ? "Super Admin" : "Custom Sub-Admin")).trim();
+    const allowedPages = sanitizeAllowedPages(req.body.allowedPages, adminLevel === 1);
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
@@ -193,12 +232,17 @@ router.put("/make-admin", protect, admin, async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (user.isAdmin) {
-      return res.json({ message: "User is already an admin" });
+    const actor = await User.findById(req.user).select("name email").lean();
+    if (actor?.email && actor.email.toLowerCase() === user.email.toLowerCase() && adminLevel === 2) {
+      return res.status(400).json({
+        message: "You cannot demote your own Super Admin account to Level 2 Sub-Admin."
+      });
     }
 
-    const actor = await User.findById(req.user).select("name email").lean();
     user.isAdmin = true;
+    user.adminLevel = adminLevel;
+    user.adminRole = adminLevel === 1 ? "Super Admin" : requestedRole;
+    user.allowedPages = allowedPages;
     user.adminGrantedAt = new Date();
     user.adminGrantedByName = String(actor?.name || "").trim();
     user.adminGrantedByEmail = String(actor?.email || "").trim().toLowerCase();
@@ -212,17 +256,94 @@ router.put("/make-admin", protect, admin, async (req, res) => {
       entityType: "user",
       entityId: String(user._id || ""),
       entityLabel: user.email,
-      summary: `Granted admin access to ${user.email}`,
+      summary: `Granted Level ${adminLevel} (${user.adminRole}) access to ${user.email}`,
       details: {
         targetUserName: String(user.name || "").trim(),
-        targetUserEmail: user.email
+        targetUserEmail: user.email,
+        adminLevel,
+        assignedRole: user.adminRole,
+        allowedPages
       }
     });
 
-    res.json({ message: `${user.email} is now an admin` });
+    res.json({
+      message: `${user.email} is now a Level ${adminLevel} Admin (${user.adminRole})`,
+      adminLevel,
+      adminRole: user.adminRole,
+      allowedPages
+    });
   } catch (err) {
     console.error("[Auth] Make-admin error:", err.message);
-    res.status(500).json({ message: "Failed to update admin status." });
+    res.status(500).json({ message: err?.message || "Failed to update admin status." });
+  }
+});
+
+router.put("/update-admin-role", protect, admin, admin.requireSuperAdmin, async (req, res) => {
+  try {
+    const userId = String(req.body.userId || "").trim();
+    const actionType = String(req.body.action || "updateRole").trim(); // "updateRole" or "revokeAdmin"
+    const requestedLevel = Number(req.body.adminLevel || 1);
+    const adminLevel = [1, 2].includes(requestedLevel) ? requestedLevel : 1;
+    const requestedRole = String(req.body.adminRole || (adminLevel === 1 ? "Super Admin" : "Custom Sub-Admin")).trim();
+    const allowedPages = sanitizeAllowedPages(req.body.allowedPages, adminLevel === 1);
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const actor = await User.findById(req.user).select("name email").lean();
+
+    if (actionType === "revokeAdmin") {
+      targetUser.isAdmin = false;
+      await targetUser.save();
+
+      await logAdminAction({
+        req,
+        actorName: actor?.name,
+        actorEmail: actor?.email,
+        action: "admin-access-revoked",
+        entityType: "user",
+        entityId: String(targetUser._id),
+        entityLabel: targetUser.email,
+        summary: `Revoked admin access for ${targetUser.email}`,
+        details: { targetUserEmail: targetUser.email }
+      });
+
+      return res.json({ message: `Revoked admin access for ${targetUser.email}` });
+    }
+
+    targetUser.isAdmin = true;
+    targetUser.adminLevel = adminLevel;
+    targetUser.adminRole = adminLevel === 1 ? "Super Admin" : requestedRole;
+    targetUser.allowedPages = allowedPages;
+    await targetUser.save();
+
+    await logAdminAction({
+      req,
+      actorName: actor?.name,
+      actorEmail: actor?.email,
+      action: "admin-role-updated",
+      entityType: "user",
+      entityId: String(targetUser._id),
+      entityLabel: targetUser.email,
+      summary: `Updated Level ${adminLevel} permissions for ${targetUser.email}`,
+      details: { targetUserEmail: targetUser.email, adminLevel, newRole: targetUser.adminRole, allowedPages }
+    });
+
+    res.json({
+      message: `Updated Level ${adminLevel} access for ${targetUser.email}`,
+      adminLevel,
+      adminRole: targetUser.adminRole,
+      allowedPages
+    });
+  } catch (err) {
+    console.error("[Auth] Update-admin-role error:", err.message);
+    res.status(500).json({ message: err?.message || "Failed to update admin role." });
   }
 });
 
@@ -287,9 +408,9 @@ router.get("/admin/audit-logs", protect, admin, async (req, res) => {
 
 router.get("/admin/users-metrics", protect, admin, async (req, res) => {
   try {
-    const users = await User.find().select("name email isAdmin lastActiveAt totalTimeSpentSec").lean();
+    const users = await User.find().select("name email isAdmin adminLevel adminRole allowedPages lastActiveAt totalTimeSpentSec").lean();
     const adminUsersRaw = await User.find({ isAdmin: true })
-      .select("name email isAdmin adminGrantedAt adminGrantedByName adminGrantedByEmail lastActiveAt")
+      .select("name email isAdmin adminLevel adminRole allowedPages adminGrantedAt adminGrantedByName adminGrantedByEmail lastActiveAt")
       .sort({ adminGrantedAt: -1, createdAt: -1 })
       .lean();
     const now = Date.now();
@@ -299,11 +420,15 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
       .map((user) => {
         const lastActiveTs = user?.lastActiveAt ? new Date(user.lastActiveAt).getTime() : NaN;
         const isActive = !Number.isNaN(lastActiveTs) && now - lastActiveTs <= activeWindowMs;
+        const adminLevel = Number(user?.adminLevel || 1);
         return {
           _id: String(user?._id || ""),
           name: user?.name || "User",
           email: user?.email || "",
           isAdmin: Boolean(user?.isAdmin),
+          adminLevel,
+          adminRole: user?.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
+          allowedPages: Array.isArray(user?.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ["dashboard"],
           lastActiveAt: user?.lastActiveAt || null,
           totalTimeSpentSec: Math.max(0, Number(user?.totalTimeSpentSec || 0)),
           isActive
@@ -325,10 +450,14 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
       const key = String(user?.email || "").trim().toLowerCase();
       const latestAction = latestAdminActionByEmail.get(key) || null;
       const lastActiveTs = user?.lastActiveAt ? new Date(user.lastActiveAt).getTime() : NaN;
+      const adminLevel = Number(user?.adminLevel || 1);
       return {
         _id: String(user?._id || ""),
         name: user?.name || "Admin",
         email: user?.email || "",
+        adminLevel,
+        adminRole: user?.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
+        allowedPages: Array.isArray(user?.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ALL_ADMIN_PAGES,
         isActive: !Number.isNaN(lastActiveTs) && now - lastActiveTs <= activeWindowMs,
         lastActiveAt: user?.lastActiveAt || null,
         adminGrantedAt: user?.adminGrantedAt || null,
@@ -349,13 +478,17 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
 
 router.get("/me", protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user).select("_id name email isAdmin addresses");
+    const user = await User.findById(req.user).select("_id name email isAdmin adminLevel adminRole allowedPages addresses");
     if (!user) return res.status(404).json({ message: "User not found" });
+    const adminLevel = Number(user.adminLevel || 1);
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: Boolean(user.isAdmin),
+      adminLevel,
+      adminRole: user.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
+      allowedPages: Array.isArray(user.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ALL_ADMIN_PAGES,
       addresses: normalizeAddressList(user.addresses || [])
     });
   } catch (err) {

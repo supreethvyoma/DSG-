@@ -284,7 +284,13 @@ const getProductAuditFields = (product = {}) => ({
   relatedProducts: Array.isArray(product?.relatedProducts) ? product.relatedProducts : [],
   image: String(product?.image || "").trim(),
   images: Array.isArray(product?.images) ? product.images : [],
-  trailerVideoUrl: String(product?.trailerVideoUrl || "").trim()
+  trailerVideoUrl: String(product?.trailerVideoUrl || "").trim(),
+  isDigital: product?.isDigital === true,
+  digitalType: String(product?.digitalType || "").trim(),
+  webReaderLink: String(product?.webReaderLink || "").trim(),
+  kindleLink: String(product?.kindleLink || "").trim(),
+  kindleAsin: String(product?.kindleAsin || "").trim(),
+  digitalInstructions: String(product?.digitalInstructions || "").trim()
 });
 
 const summarizeProductChanges = (before = {}, after = {}) => {
@@ -304,6 +310,9 @@ const summarizeProductChanges = (before = {}, after = {}) => {
   if (String(before.image || "") !== String(after.image || "")) changes.push("primary image");
   if (JSON.stringify(before.images || []) !== JSON.stringify(after.images || [])) changes.push("gallery");
   if (String(before.trailerVideoUrl || "") !== String(after.trailerVideoUrl || "")) changes.push("trailer video");
+  if (Boolean(before.isDigital) !== Boolean(after.isDigital)) changes.push("digital item status");
+  if (String(before.kindleLink || "") !== String(after.kindleLink || "")) changes.push("kindle link");
+  if (String(before.webReaderLink || "") !== String(after.webReaderLink || "")) changes.push("web reader link");
   return changes;
 };
 
@@ -419,6 +428,24 @@ router.put("/:id", protect, admin, largeJson, async (req, res) => {
       req.body.relatedProducts !== undefined
         ? normalizeRelatedProducts(req.body.relatedProducts, product._id)
         : product.relatedProducts;
+    if (req.body.isDigital !== undefined) {
+      product.isDigital = req.body.isDigital === true;
+    }
+    if (req.body.digitalType !== undefined) {
+      product.digitalType = String(req.body.digitalType || "Web Version").trim();
+    }
+    if (req.body.webReaderLink !== undefined) {
+      product.webReaderLink = String(req.body.webReaderLink || "").trim();
+    }
+    if (req.body.kindleLink !== undefined) {
+      product.kindleLink = String(req.body.kindleLink || "").trim();
+    }
+    if (req.body.kindleAsin !== undefined) {
+      product.kindleAsin = String(req.body.kindleAsin || "").trim();
+    }
+    if (req.body.digitalInstructions !== undefined) {
+      product.digitalInstructions = String(req.body.digitalInstructions || "").trim();
+    }
     if (product.productType === "bundle" && product.bundleItems.length === 0) {
       return res.status(400).json({ message: "Select at least one product for the bundle." });
     }

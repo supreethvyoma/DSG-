@@ -249,6 +249,19 @@ function Cart() {
             Subtotal ({itemCount} items): <strong>{formatCurrencyExact(totals.subtotal, displayCurrency)}</strong>
           </p>
           <p>GST ({charges.gstPercent}%): {formatCurrencyExact(totals.gstAmount, displayCurrency)}</p>
+          {deliveryDetails.pricingMode === "digital" || deliveryDetails.isDigitalOnly ? (
+            <p className="cart-delivery-charge-info">
+              Delivery: <strong style={{ color: "#2e7d32" }}>FREE (Instant Digital Access)</strong>
+            </p>
+          ) : (
+            <p className="cart-delivery-charge-info">
+              Delivery Charge: {totals.deliveryCharge === 0 ? (
+                <strong style={{ color: "#2e7d32" }}>FREE</strong>
+              ) : (
+                formatCurrencyExact(totals.deliveryCharge, displayCurrency)
+              )}
+            </p>
+          )}
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p>Estimated warehouse distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>
           )}

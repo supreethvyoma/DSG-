@@ -9,9 +9,25 @@ const REMEMBER_ME_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function normalizeUser(value) {
   if (!value) return null;
+  const adminLevel = Number(value.adminLevel || 1);
+  const defaultPages = [
+    "dashboard",
+    "orders",
+    "products",
+    "add-products",
+    "coupons",
+    "marketing",
+    "users",
+    "theme"
+  ];
   return {
     ...value,
-    isAdmin: Boolean(value.isAdmin)
+    isAdmin: Boolean(value.isAdmin),
+    adminLevel,
+    adminRole: String(value.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin")).trim(),
+    allowedPages: adminLevel === 1
+      ? defaultPages
+      : (Array.isArray(value.allowedPages) ? value.allowedPages : [])
   };
 }
 

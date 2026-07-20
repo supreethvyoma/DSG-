@@ -62,6 +62,8 @@ function MyOrders() {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_ORDERS);
   const [activeTracking, setActiveTracking] = useState({});
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [activeWebReaderUrl, setActiveWebReaderUrl] = useState("");
+  const [activeKindleGuideItem, setActiveKindleGuideItem] = useState(null);
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
   const isDummyPaymentEnabled =
     String(import.meta.env.VITE_ENABLE_DUMMY_PAYMENT || "").toLowerCase() === "true";
@@ -477,6 +479,64 @@ function MyOrders() {
                                         : "7-day return window has closed."}
                             </p>
                           ) : null}
+
+                          {isPaid && (item.isDigital || String(item.name || "").toLowerCase().includes("kindle") || String(item.name || "").toLowerCase().includes("web version") || item.webReaderLink || item.kindleLink) && (
+                            <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(59, 130, 246, 0.3)", backgroundColor: "rgba(59, 130, 246, 0.05)" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "#2563eb", marginBottom: "8px" }}>
+                                ⚡ Digital Reader Access Granted
+                              </div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                                {(item.webReaderLink || String(item.name || "").toLowerCase().includes("web") || item.isDigital) && (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        if (item.webReaderLink) {
+                                          setActiveWebReaderUrl(item.webReaderLink);
+                                        } else {
+                                          alert("Web Reader link has not been configured for this item yet. Please contact support.");
+                                        }
+                                      }}
+                                      style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "#2563eb", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                                    >
+                                      📖 Read Web Version
+                                    </button>
+                                    {item.webReaderLink && (
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(item.webReaderLink);
+                                          showToast("Web Reader access link copied to clipboard!");
+                                        }}
+                                        style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "transparent", border: "1px solid var(--site-border)", color: "var(--site-text)", fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                                      >
+                                        📋 Copy Link
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                                {(item.kindleLink || String(item.name || "").toLowerCase().includes("kindle")) && (
+                                  <a
+                                    href={item.kindleLink || "https://www.amazon.in/s?k=kindle+digital+sanskrit+guru"}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "#ff9900", color: "#111", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", textDecoration: "none" }}
+                                  >
+                                    📱 View Kindle Edition on Amazon ↗
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => setActiveKindleGuideItem(item)}
+                                  style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "transparent", border: "1px solid var(--site-border)", color: "var(--site-text)", fontSize: "12px", cursor: "pointer" }}
+                                >
+                                  💡 How to Access
+                                </button>
+                              </div>
+                              {item.digitalInstructions && (
+                                <p style={{ margin: "8px 0 0", fontSize: "11px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
+                                  {item.digitalInstructions}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="my-order-item-side">
                           <span>{formatCurrencyExact(Number(item?.price || 0), item?.currency || order?.currencyDisplay?.currency || "INR")}</span>
@@ -492,7 +552,7 @@ function MyOrders() {
                           ) : null}
                           {isPaid && status !== "Cancelled" ? (
                             <a
-                              href="http://review.digitalsanskritguru.com/"
+                              href="https://review.digitalsanskritguru.com/"
                               target="_blank"
                               rel="noopener noreferrer"
                               className="my-order-review-link"
@@ -651,7 +711,7 @@ function MyOrders() {
                 className="review-redirect-btn-primary"
                 onClick={() => {
                   setShowReviewModal(false);
-                  window.location.href = "http://review.digitalsanskritguru.com/";
+                  window.location.href = "https://review.digitalsanskritguru.com/";
                 }}
               >
                 Leave a Review
@@ -664,6 +724,96 @@ function MyOrders() {
                 Go to My Orders
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {activeKindleGuideItem && (
+        <div className="review-redirect-modal-backdrop" onClick={() => setActiveKindleGuideItem(null)}>
+          <div className="review-redirect-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "540px", textAlign: "left" }}>
+            <h3 style={{ margin: "0 0 6px", color: "var(--site-text)" }}>📱 Access Your Digital & Kindle Content</h3>
+            <p style={{ margin: "0 0 16px", fontSize: "13px", color: "var(--site-text-soft)" }}>
+              Instructions for reading <strong>{activeKindleGuideItem.name}</strong> on Web, Kindle app, or Kindle E-Reader device.
+            </p>
+
+            <div style={{ display: "grid", gap: "12px" }}>
+              <div style={{ padding: "12px", borderRadius: "8px", border: "1px solid var(--site-border)", backgroundColor: "var(--site-bg-soft)" }}>
+                <h4 style={{ margin: "0 0 4px", fontSize: "14px" }}>📖 Option 1: Instant Web Reader</h4>
+                <p style={{ margin: 0, fontSize: "12.5px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
+                  Click <strong>"Read Web Version"</strong> above to open the interactive online reader in your web browser on mobile or desktop instantly.
+                </p>
+              </div>
+
+              <div style={{ padding: "12px", borderRadius: "8px", border: "1px solid var(--site-border)", backgroundColor: "var(--site-bg-soft)" }}>
+                <h4 style={{ margin: "0 0 4px", fontSize: "14px" }}>📱 Option 2: Send to Kindle / Amazon Kindle App</h4>
+                <ol style={{ margin: "4px 0 0", paddingLeft: "20px", fontSize: "12.5px", color: "var(--site-text-soft)", lineHeight: 1.5 }}>
+                  <li>Open your Amazon Kindle app or Kindle E-Reader device.</li>
+                  <li>Use your Amazon account's <strong>Send to Kindle email address</strong> or click <strong>"Open on Kindle"</strong> to claim your copy.</li>
+                  {activeKindleGuideItem.kindleAsin && (
+                    <li>Kindle ASIN / Code: <code>{activeKindleGuideItem.kindleAsin}</code></li>
+                  )}
+                </ol>
+              </div>
+            </div>
+
+            <div style={{ marginTop: "20px", textAlign: "right" }}>
+              <button
+                type="button"
+                className="review-redirect-btn-primary"
+                onClick={() => setActiveKindleGuideItem(null)}
+              >
+                Close Guide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeWebReaderUrl && (
+        <div
+          className="review-redirect-modal-backdrop"
+          onClick={() => setActiveWebReaderUrl("")}
+          style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 9999, padding: "12px" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "1100px",
+              height: "90vh",
+              backgroundColor: "#1a1a2e",
+              borderRadius: "12px",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
+            }}
+          >
+            <div style={{ padding: "12px 16px", backgroundColor: "#16213e", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #0f3460" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#fff", fontWeight: 600, fontSize: "14px" }}>
+                <span>📖 Digital Sanskrit Reader</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <a
+                  href={activeWebReaderUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "#0f3460", color: "#fff", textDecoration: "none", fontSize: "12px" }}
+                >
+                  Open in New Tab ↗
+                </a>
+                <button
+                  onClick={() => setActiveWebReaderUrl("")}
+                  style={{ padding: "6px 14px", borderRadius: "6px", backgroundColor: "#e94560", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "12px" }}
+                >
+                  Close Reader
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={activeWebReaderUrl}
+              title="Digital Web Reader"
+              style={{ width: "100%", height: "100%", border: "none", backgroundColor: "#ffffff" }}
+              allow="fullscreen"
+            />
           </div>
         </div>
       )}
