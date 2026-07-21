@@ -28,6 +28,7 @@ const Register = lazy(() => import("./pages/Register"));
 const Login = lazy(() => import("./pages/Login"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const RedeemGift = lazy(() => import("./pages/RedeemGift"));
+const MyLibrary = lazy(() => import("./pages/MyLibrary"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const AdminOrders = lazy(() => import("./pages/AdminOrders"));
 const AdminOrderDetails = lazy(() => import("./pages/AdminOrderDetails"));
@@ -313,6 +314,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-library"
+            element={
+              <ProtectedRoute>
+                <MyLibrary />
               </ProtectedRoute>
             }
           />
