@@ -192,7 +192,7 @@ function AdminAccessControl() {
 
       <main className="admin-main">
         <div className="admin-header">
-          <h1>🛡️ Admin Roles & Access Control</h1>
+          <h1>🛡️ Admin Roles & Access Control</h1><br></br>
           <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--admin-muted)" }}>
             Grant admin access, configure 1st & 2nd Level Admin roles, select particular page permissions, and review audit logs.
           </p>

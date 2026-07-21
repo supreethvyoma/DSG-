@@ -478,6 +478,11 @@ router.post("/", protect, async (req, res) => {
       category: String(product?.category || item?.category || "General").trim() || "General",
       format: String(item?.format || item?.selectedFormat || product?.format || "").trim(),
       isDigital: Boolean(product?.isDigital || item?.isDigital),
+      digitalType: String(product?.digitalType || item?.digitalType || "Web Version").trim(),
+      webReaderLink: String(product?.webReaderLink || item?.webReaderLink || "").trim(),
+      kindleLink: String(product?.kindleLink || item?.kindleLink || "").trim(),
+      kindleAsin: String(product?.kindleAsin || item?.kindleAsin || "").trim(),
+      digitalInstructions: String(product?.digitalInstructions || item?.digitalInstructions || "").trim(),
       quantity,
       price: roundMoney(pricing.price),
       currency: String(pricing.currency || "INR").trim().toUpperCase(),
@@ -1322,9 +1327,45 @@ router.put("/:id/items/:itemId/return-status", protect, admin, async (req, res) 
 // GET logged-in user's orders
 router.get("/my", protect, async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user }).sort({ createdAt: -1 });
+    const orders = await Order.find({ user: req.user }).sort({ createdAt: -1 }).lean();
+
+    const productIds = [];
+    orders.forEach((order) => {
+      if (Array.isArray(order.items)) {
+        order.items.forEach((item) => {
+          const pId = String(item.product || item._id || item.id || "").trim();
+          if (pId) productIds.push(pId);
+        });
+      }
+    });
+
+    if (productIds.length > 0) {
+      const products = await Product.find({ _id: { $in: productIds } })
+        .select("isDigital digitalType webReaderLink kindleLink kindleAsin digitalInstructions")
+        .lean();
+      const productMap = new Map(products.map((p) => [String(p._id), p]));
+
+      orders.forEach((order) => {
+        if (Array.isArray(order.items)) {
+          order.items.forEach((item) => {
+            const pId = String(item.product || item._id || item.id || "").trim();
+            const prod = productMap.get(pId);
+            if (prod) {
+              if (!item.isDigital && prod.isDigital) item.isDigital = true;
+              if (!item.webReaderLink && prod.webReaderLink) item.webReaderLink = prod.webReaderLink;
+              if (!item.kindleLink && prod.kindleLink) item.kindleLink = prod.kindleLink;
+              if (!item.kindleAsin && prod.kindleAsin) item.kindleAsin = prod.kindleAsin;
+              if (!item.digitalInstructions && prod.digitalInstructions) item.digitalInstructions = prod.digitalInstructions;
+              if (!item.digitalType && prod.digitalType) item.digitalType = prod.digitalType;
+            }
+          });
+        }
+      });
+    }
+
     res.json(orders);
-  } catch {
+  } catch (err) {
+    console.error("Failed to load user orders:", err);
     res.status(500).json({ message: "Failed to load orders" });
   }
 });
