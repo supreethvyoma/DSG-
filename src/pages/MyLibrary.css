@@ -50,6 +50,27 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.my-library-redeem-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #d97706;
+  background-color: rgba(217, 119, 6, 0.08);
+  color: #d97706;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.my-library-redeem-btn:hover {
+  background-color: #d97706;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+}
+
 .my-library-loading {
   text-align: center;
   padding: 60px 20px;

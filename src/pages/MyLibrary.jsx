@@ -34,32 +34,59 @@ function MyLibrary() {
     }
   }, [location.state]);
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchOrders = async () => {
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-      try {
-        const response = await axios.get("/api/orders/my", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (isMounted) {
-          setOrders(Array.isArray(response.data) ? response.data : []);
-        }
-      } catch (err) {
-        console.error("Failed to fetch digital library:", err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [redeemError, setRedeemError] = useState("");
 
+  const fetchOrders = async () => {
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const response = await axios.get("/api/orders/my", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setOrders(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error("Failed to fetch digital library:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchOrders();
-    return () => {
-      isMounted = false;
-    };
   }, [token]);
+
+  const handleRedeemGift = async (e) => {
+    e.preventDefault();
+    const cleanCode = redeemCode.trim().toUpperCase();
+    if (!cleanCode) return;
+
+    setIsRedeeming(true);
+    setRedeemError("");
+
+    try {
+      const response = await axios.post(
+        "/api/gifts/redeem",
+        { code: cleanCode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data?.success) {
+        showToast(response.data.message || "Gift Pass redeemed successfully!");
+        setShowRedeemModal(false);
+        setRedeemCode("");
+        fetchOrders();
+      }
+    } catch (err) {
+      setRedeemError(err?.response?.data?.message || "Failed to redeem Gift Pass. Please check the code.");
+    } finally {
+      setIsRedeeming(false);
+    }
+  };
 
   // Filter paid digital items across all user orders
   const digitalBooks = useMemo(() => {
@@ -128,17 +155,26 @@ function MyLibrary() {
           <p>Access all your purchased Web Versions, Flipbooks, and E-Books in one place.</p>
         </div>
 
-        {digitalBooks.length > 0 && (
-          <div className="my-library-search-box">
-            <input
-              type="text"
-              placeholder="Search your digital books..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="my-library-search-input"
-            />
-          </div>
-        )}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          {digitalBooks.length > 0 && (
+            <div className="my-library-search-box">
+              <input
+                type="text"
+                placeholder="Search your digital books..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="my-library-search-input"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            className="my-library-redeem-btn"
+            onClick={() => setShowRedeemModal(true)}
+          >
+            🎟️ Redeem Gift Pass
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -324,6 +360,82 @@ function MyLibrary() {
                 Got It
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Redeem Gift Pass Modal */}
+      {showRedeemModal && (
+        <div
+          className="review-redirect-modal-backdrop"
+          onClick={() => {
+            setShowRedeemModal(false);
+            setRedeemError("");
+          }}
+        >
+          <div
+            className="review-redirect-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "460px", textAlign: "left" }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, color: "var(--site-text)", display: "flex", alignItems: "center", gap: "6px" }}>
+                🎟️ Redeem Gift Pass
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRedeemModal(false);
+                  setRedeemError("");
+                }}
+                style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "var(--site-text-soft)" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: "0 0 16px", fontSize: "13px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
+              Enter the 1-Time Gift Code (e.g. <code>GIFT-DSG-849201</code>) you received to unlock the book directly in your library.
+            </p>
+
+            {redeemError && (
+              <div style={{ padding: "10px 12px", borderRadius: "6px", backgroundColor: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#dc2626", fontSize: "12.5px", marginBottom: "14px" }}>
+                {redeemError}
+              </div>
+            )}
+
+            <form onSubmit={handleRedeemGift} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <input
+                type="text"
+                placeholder="e.g. GIFT-DSG-849201"
+                value={redeemCode}
+                onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "2px dashed var(--site-border)", fontSize: "15px", fontWeight: 700, textAlign: "center", letterSpacing: "1px", textTransform: "uppercase" }}
+                maxLength={20}
+                required
+              />
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRedeemModal(false);
+                    setRedeemError("");
+                  }}
+                  style={{ padding: "9px 16px", borderRadius: "8px", border: "1px solid var(--site-border)", backgroundColor: "transparent", cursor: "pointer", fontSize: "13px" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="review-redirect-btn-primary"
+                  disabled={isRedeeming || !redeemCode.trim()}
+                  style={{ padding: "9px 18px", borderRadius: "8px", fontSize: "13px", fontWeight: 700 }}
+                >
+                  {isRedeeming ? "Redeeming..." : "Unlock Gift 📖"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
