@@ -772,29 +772,56 @@ function AdminOrders() {
                               <button
                                 className="status-action-btn"
                                 disabled
-                                title="Waiting for successful payment"
+                title="Waiting for successful payment"
                               >
                                 Move to Pending
                               </button>
                             )}
-                            {canUpdateOrders && displayStatus === "Pending" && canProgressStatus && (
-                              <button
-                                className="status-action-btn"
-                                disabled={updatingOrderId === order._id}
-                                onClick={() => updateStatus(order._id, "Shipped")}
-                              >
-                                {updatingOrderId === order._id ? "Updating..." : "Mark Shipped"}
-                              </button>
-                            )}
-                            {canUpdateOrders && displayStatus === "Shipped" && canProgressStatus && (
-                              <button
-                                className="status-action-btn"
-                                disabled={updatingOrderId === order._id}
-                                onClick={() => updateStatus(order._id, "Delivered")}
-                              >
-                                {updatingOrderId === order._id ? "Updating..." : "Mark Delivered"}
-                              </button>
-                            )}
+                            {(() => {
+                               const isDigitalOnly = Array.isArray(order.items) && order.items.length > 0 && order.items.every((item) =>
+                                 Boolean(
+                                   item.isDigital ||
+                                   item.webReaderLink ||
+                                   item.kindleLink ||
+                                   String(item.name || "").toLowerCase().includes("web") ||
+                                   String(item.name || "").toLowerCase().includes("kindle") ||
+                                   String(item.name || "").toLowerCase().includes("flipbook") ||
+                                   String(item.format || "").toLowerCase().includes("web") ||
+                                   String(item.format || "").toLowerCase().includes("flipbook")
+                                 )
+                               );
+
+                               if (isDigitalOnly) {
+                                 return (
+                                   <div style={{ margin: "4px 0", padding: "6px 10px", borderRadius: "6px", backgroundColor: "rgba(37, 99, 235, 0.1)", color: "#2563eb", fontSize: "12px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                     ⚡ Instant Digital Access Granted
+                                   </div>
+                                 );
+                               }
+
+                               return (
+                                 <>
+                                   {canUpdateOrders && displayStatus === "Pending" && canProgressStatus && (
+                                     <button
+                                       className="status-action-btn"
+                                       disabled={updatingOrderId === order._id}
+                                       onClick={() => updateStatus(order._id, "Shipped")}
+                                     >
+                                       {updatingOrderId === order._id ? "Updating..." : "Mark Shipped"}
+                                     </button>
+                                   )}
+                                   {canUpdateOrders && displayStatus === "Shipped" && canProgressStatus && (
+                                     <button
+                                       className="status-action-btn"
+                                       disabled={updatingOrderId === order._id}
+                                       onClick={() => updateStatus(order._id, "Delivered")}
+                                     >
+                                       {updatingOrderId === order._id ? "Updating..." : "Mark Delivered"}
+                                     </button>
+                                   )}
+                                 </>
+                               );
+                             })()}
                             {canUpdateOrders && ["On Hold", "Pending"].includes(displayStatus) && (
                               <button
                                 className="status-action-btn cancel"

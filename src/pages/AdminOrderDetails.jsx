@@ -195,13 +195,30 @@ function AdminOrderDetails() {
               <aside className="admin-order-side-stack">
                 <article className="admin-order-details-card">
                   <h2>Shipping</h2>
-                  <div className="admin-order-address-block">
-                    <strong>{order.shipping?.name || "Customer"}</strong>
-                    <p>{order.shipping?.address || "-"}</p>
-                    <p>{[order.shipping?.city, order.shipping?.state, order.shipping?.pincode].filter(Boolean).join(", ")}</p>
-                    <p>{order.shipping?.country || "-"}</p>
-                    <p>{order.shipping?.phone || "-"}</p>
-                  </div>
+                  {Array.isArray(order?.items) && order.items.length > 0 && order.items.every((item) =>
+                    Boolean(
+                      item.isDigital ||
+                      item.webReaderLink ||
+                      item.kindleLink ||
+                      String(item.name || "").toLowerCase().includes("web") ||
+                      String(item.name || "").toLowerCase().includes("kindle") ||
+                      String(item.name || "").toLowerCase().includes("flipbook") ||
+                      String(item.format || "").toLowerCase().includes("web") ||
+                      String(item.format || "").toLowerCase().includes("flipbook")
+                    )
+                  ) ? (
+                    <div style={{ padding: "8px 12px", borderRadius: "6px", backgroundColor: "rgba(37, 99, 235, 0.08)", color: "#2563eb", fontSize: "12.5px", fontWeight: 700 }}>
+                      ⚡ Digital Order: Instant online access granted. No physical shipping required.
+                    </div>
+                  ) : (
+                    <div className="admin-order-address-block">
+                      <strong>{order.shipping?.name || "Customer"}</strong>
+                      <p>{order.shipping?.address || "-"}</p>
+                      <p>{[order.shipping?.city, order.shipping?.state, order.shipping?.pincode].filter(Boolean).join(", ")}</p>
+                      <p>{order.shipping?.country || "-"}</p>
+                      <p>{order.shipping?.phone || "-"}</p>
+                    </div>
+                  )}
                 </article>
 
                 {order.trackingId ? (

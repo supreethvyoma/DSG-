@@ -761,6 +761,25 @@ router.post("/", protect, async (req, res) => {
 
   const requestedBilling = req.body.billing || req.body.shipping || {};
 
+  const isDigitalOnlyOrder = normalizedItems.length > 0 && normalizedItems.every((item) =>
+    Boolean(
+      item.isDigital ||
+      item.webReaderLink ||
+      item.kindleLink ||
+      String(item.name || "").toLowerCase().includes("web") ||
+      String(item.name || "").toLowerCase().includes("kindle") ||
+      String(item.name || "").toLowerCase().includes("flipbook") ||
+      String(item.format || "").toLowerCase().includes("web") ||
+      String(item.format || "").toLowerCase().includes("flipbook")
+    )
+  );
+
+  const initialOrderStatus = rawPaymentStatus === "Paid" && isDigitalOnlyOrder
+    ? "Completed"
+    : rawPaymentStatus === "Paid"
+    ? "Pending"
+    : "On Hold";
+
   let order;
   try {
     order = await Order.create({
@@ -773,6 +792,7 @@ router.post("/", protect, async (req, res) => {
       discount,
       deliveryCharge,
       total,
+      orderStatus: initialOrderStatus,
       paymentStatus: rawPaymentStatus,
       paymentMeta: {
         razorpayOrderId,
@@ -1225,6 +1245,23 @@ router.put("/:id/payment-status", protect, async (req, res) => {
       razorpayPaymentId: String(req.body?.razorpayPaymentId || ""),
       paidAt: new Date()
     };
+
+    const isDigitalOnly = Array.isArray(order.items) && order.items.length > 0 && order.items.every((item) =>
+      Boolean(
+        item.isDigital ||
+        item.webReaderLink ||
+        item.kindleLink ||
+        String(item.name || "").toLowerCase().includes("web") ||
+        String(item.name || "").toLowerCase().includes("kindle") ||
+        String(item.name || "").toLowerCase().includes("flipbook") ||
+        String(item.format || "").toLowerCase().includes("web") ||
+        String(item.format || "").toLowerCase().includes("flipbook")
+      )
+    );
+
+    if (isDigitalOnly) {
+      order.orderStatus = "Completed";
+    }
   }
 
   const updated = await order.save();
