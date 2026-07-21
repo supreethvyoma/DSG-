@@ -407,6 +407,11 @@ function Navbar({ bannerActive = false }) {
               <span className="navbar-account-line2">& Orders</span>
             </Link>
 
+            <Link className="navbar-orders navbar-outline" to="/redeem-gift">
+              <span className="navbar-account-line1">🎟️ Redeem</span>
+              <span className="navbar-account-line2">Gift Pass</span>
+            </Link>
+
             <Link className="navbar-cart navbar-outline" to="/cart">
               <span className="navbar-cart-icon" aria-hidden="true">
                 {renderIcon("cart", storeIcons.cart)}

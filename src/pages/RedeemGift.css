@@ -1,0 +1,121 @@
+.redeem-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.redeem-card {
+  background: var(--site-card-bg, #ffffff);
+  border: 1px solid var(--site-border, #e5e7eb);
+  border-radius: 16px;
+  padding: 36px 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.redeem-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.redeem-icon {
+  font-size: 44px;
+  margin-bottom: 8px;
+}
+
+.redeem-header h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--site-text, #111827);
+}
+
+.redeem-header p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--site-text-soft, #6b7280);
+}
+
+.redeem-alert-error {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.redeem-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.redeem-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--site-text, #374151);
+}
+
+.redeem-input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 10px;
+  border: 2px dashed var(--site-border, #d1d5db);
+  background-color: var(--site-bg-soft, #f9fafb);
+  color: var(--site-text, #111827);
+  transition: all 0.2s ease;
+}
+
+.redeem-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  border-style: solid;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.redeem-submit-btn {
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.redeem-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.redeem-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.redeem-footer-note {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--site-border, #f3f4f6);
+  text-align: center;
+}
+
+.redeem-footer-note p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--site-text-soft, #6b7280);
+}

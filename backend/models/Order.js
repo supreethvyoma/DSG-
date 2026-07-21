@@ -44,6 +44,11 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    isGift: {
+      type: Boolean,
+      default: false
+    },
+    giftPasses: Array,
     total: Number,
     currencyDisplay: {
       currency: {

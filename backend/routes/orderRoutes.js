@@ -6,6 +6,8 @@ const Coupon = require("../models/Coupon");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const Wishlist = require("../models/Wishlist");
+const GiftPass = require("../models/GiftPass");
+const { generateGiftCode } = require("./giftRoutes");
 const { resolveDeliveryCharge } = require("../utils/deliveryPricing");
 const { convertCurrencyAmount, normalizeCurrencyCode } = require("../utils/currency");
 const { getProductPriceDetails } = require("../utils/productPricing");
@@ -431,6 +433,36 @@ router.post("/calculate-totals", protect, async (req, res) => {
   }
 });
 
+const ensureGiftPassesForOrder = async (order) => {
+  if (!order || String(order.paymentStatus) !== "Paid") return order;
+
+  const items = Array.isArray(order.items) ? [...order.items] : [];
+  let updated = false;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if ((order.isGift || item.isGift) && item.isDigital && !item.giftCode) {
+      const code = generateGiftCode();
+      await GiftPass.create({
+        code,
+        product: item.product || item._id || item.id,
+        productName: item.name || "Digital Item",
+        order: order._id,
+        buyer: order.user,
+        isRedeemed: false
+      });
+      item.giftCode = code;
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    await Order.updateOne({ _id: order._id }, { $set: { items } });
+    order.items = items;
+  }
+  return order;
+};
+
 // Create order (logged-in user)
 router.post("/", protect, async (req, res) => {
   const shipping = req.body.shipping || {};
@@ -732,6 +764,7 @@ router.post("/", protect, async (req, res) => {
         razorpayPaymentId,
         paidAt: rawPaymentStatus === "Paid" ? new Date() : null
       },
+      isGift: req.body?.isGift === true,
       refundStatus: "Not Applicable",
       currencyDisplay: {
         currency: requestedCurrency || orderCurrency,
@@ -773,6 +806,8 @@ router.post("/", protect, async (req, res) => {
       { $addToSet: { usedBy: req.user } }
     );
   }
+
+  await ensureGiftPassesForOrder(order);
 
   res.json(order);
 
@@ -1178,6 +1213,7 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   }
 
   const updated = await order.save();
+  await ensureGiftPassesForOrder(updated);
   res.json(updated);
 });
 

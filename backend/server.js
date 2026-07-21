@@ -127,6 +127,8 @@ if (IS_PRODUCTION && cluster.isPrimary) {
   };
 
   // ── Routes ──────────────────────────────────────────────────────────────────
+  const { router: giftRoutes } = require("./routes/giftRoutes");
+
   app.use("/api/auth", requireDatabase, authRoutes);
   app.use("/api/orders", requireDatabase, orderRoutes);
   app.use("/api/products", requireDatabase, productRoutes);
@@ -134,6 +136,7 @@ if (IS_PRODUCTION && cluster.isPrimary) {
   app.use("/api/settings", requireDatabase, settingsRoutes);
   app.use("/api/coupons", requireDatabase, couponRoutes);
   app.use("/api/payment", requireDatabase, paymentRoutes);
+  app.use("/api/gifts", requireDatabase, giftRoutes);
   app.use("/api/maps", mapsRoutes);
   app.use("/api/push", requireDatabase, pushRoutes);
   app.use("/api/wishlist", requireDatabase, wishlistRoutes);

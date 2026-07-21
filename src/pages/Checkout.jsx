@@ -108,6 +108,7 @@ function Checkout() {
   } = useDeliveryLocation();
   const [isBillingSame, setIsBillingSame] = useState(true);
   const [selectedBillingIndex, setSelectedBillingIndex] = useState(0);
+  const [isGift, setIsGift] = useState(false);
   const selectedBillingAddress = addresses[selectedBillingIndex];
   const navigate = useNavigate();
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
@@ -504,6 +505,7 @@ function Checkout() {
         billing,
         couponCode: couponCode || "",
         discount,
+        isGift,
         paymentStatus,
         razorpayOrderId: paymentInfo?.razorpayOrderId || "",
         razorpayPaymentId: paymentInfo?.razorpayPaymentId || "",
@@ -1220,6 +1222,22 @@ function Checkout() {
               ⚡ Digital order: Instant access granted upon payment completion. No physical shipping fee required.
             </p>
           ) : null}
+
+          <div style={{ margin: "14px 0", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--site-border)", backgroundColor: "var(--site-bg-soft)" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontWeight: 600, fontSize: "13.5px", color: "var(--site-text)" }}>
+              <input
+                type="checkbox"
+                checked={isGift}
+                onChange={(e) => setIsGift(e.target.checked)}
+              />
+              🎁 Purchase digital items in this order as Gift Passes
+            </label>
+            {isGift && (
+              <p style={{ margin: "6px 0 0 24px", fontSize: "12px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
+                Unique 1-time Gift Pass Codes (e.g. <code>GIFT-DSG-XXXXXX</code>) will be generated under <strong>My Orders</strong> so you can share them with friends or family!
+              </p>
+            )}
+          </div>
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p className="coupon-selector-empty">Estimated distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>
           )}

@@ -525,6 +525,35 @@ function MyOrders() {
                               )}
                             </div>
                           )}
+
+                          {isPaid && (order.isGift || item.giftCode) && (
+                            <div style={{ marginTop: "10px", padding: "10px 14px", borderRadius: "8px", border: "1px dashed #d97706", backgroundColor: "rgba(217, 119, 6, 0.06)" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                                <div>
+                                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#d97706", display: "block" }}>🎟️ 1-Time Gift Pass Code</span>
+                                  <code style={{ fontSize: "15px", fontWeight: 700, color: "var(--site-text)", letterSpacing: "1px" }}>
+                                    {item.giftCode || (Array.isArray(order.giftPasses) && order.giftPasses[i]?.code) || "GIFT-PASS-GENERATED"}
+                                  </code>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const code = item.giftCode || (Array.isArray(order.giftPasses) && order.giftPasses[i]?.code);
+                                    if (code) {
+                                      navigator.clipboard.writeText(code);
+                                      showToast("Gift Pass Code copied to clipboard!");
+                                    }
+                                  }}
+                                  style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "#d97706", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
+                                >
+                                  📋 Copy Code
+                                </button>
+                              </div>
+                              <p style={{ margin: "6px 0 0", fontSize: "11.5px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
+                                Share this code with your recipient. They can redeem it anytime under <strong>🎟️ Redeem Gift Pass</strong> in the top header!
+                              </p>
+                            </div>
+                          )}
                         </div>
                         <div className="my-order-item-side">
                           <span>{formatCurrencyExact(Number(item?.price || 0), item?.currency || order?.currencyDisplay?.currency || "INR")}</span>
