@@ -80,7 +80,7 @@ function AdminSidebar() {
                 color: adminLevel === 1 ? "#e94560" : "#3b82f6"
               }}
             >
-              {adminLevel === 1 ? `Level 1: ${currentRole}` : `Level 2: Sub-Admin`}
+              {adminLevel === 1 ? "Super Admin" : "Level Admin"}
             </span>
           </div>
           <button
