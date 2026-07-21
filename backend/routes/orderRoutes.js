@@ -441,18 +441,33 @@ const ensureGiftPassesForOrder = async (order) => {
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if ((order.isGift || item.isGift) && item.isDigital && !item.giftCode) {
+    const isDigitalItem = Boolean(
+      item.isDigital ||
+      item.webReaderLink ||
+      item.kindleLink ||
+      String(item.name || "").toLowerCase().includes("flipbook") ||
+      String(item.name || "").toLowerCase().includes("web") ||
+      String(item.name || "").toLowerCase().includes("kindle") ||
+      String(item.format || "").toLowerCase().includes("web") ||
+      String(item.format || "").toLowerCase().includes("flipbook")
+    );
+
+    if ((order.isGift || item.isGift) && !item.giftCode) {
       const code = generateGiftCode();
-      await GiftPass.create({
-        code,
-        product: item.product || item._id || item.id,
-        productName: item.name || "Digital Item",
-        order: order._id,
-        buyer: order.user,
-        isRedeemed: false
-      });
-      item.giftCode = code;
-      updated = true;
+      try {
+        await GiftPass.create({
+          code,
+          product: item.product || item._id || item.id,
+          productName: item.name || "Digital Item",
+          order: order._id,
+          buyer: order.user,
+          isRedeemed: false
+        });
+        item.giftCode = code;
+        updated = true;
+      } catch (err) {
+        console.error("[GiftPass] Creation error:", err.message);
+      }
     }
   }
 
@@ -1363,7 +1378,33 @@ router.put("/:id/items/:itemId/return-status", protect, admin, async (req, res) 
 // GET logged-in user's orders
 router.get("/my", protect, async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user }).sort({ createdAt: -1 }).lean();
+    let orders = await Order.find({ user: req.user }).sort({ createdAt: -1 }).lean();
+
+    // Ensure gift pass codes exist for any paid gift orders
+    for (let i = 0; i < orders.length; i++) {
+      if (orders[i].isGift && orders[i].paymentStatus === "Paid") {
+        orders[i] = await ensureGiftPassesForOrder(orders[i]);
+      }
+    }
+
+    // Also fetch any gift passes redeemed by this user
+    const redeemedPasses = await GiftPass.find({ redeemedBy: req.user, isRedeemed: true })
+      .populate("product")
+      .lean();
+
+    if (redeemedPasses.length > 0) {
+      const redeemedOrderIds = redeemedPasses.map((gp) => String(gp.order));
+      const existingOrderIds = new Set(orders.map((o) => String(o._id)));
+      const missingOrderIds = redeemedOrderIds.filter((id) => !existingOrderIds.has(id));
+
+      if (missingOrderIds.length > 0) {
+        const giftOrders = await Order.find({ _id: { $in: missingOrderIds } }).lean();
+        giftOrders.forEach((gOrder) => {
+          gOrder.isRedeemedGift = true;
+          orders.push(gOrder);
+        });
+      }
+    }
 
     const productIds = [];
     orders.forEach((order) => {
