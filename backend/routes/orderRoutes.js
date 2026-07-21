@@ -860,18 +860,52 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
+const autoCompletePaidDigitalOrders = async (orders) => {
+  if (!Array.isArray(orders) || orders.length === 0) return orders;
+
+  const orderIdsToComplete = [];
+  orders.forEach((order) => {
+    const isPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+    const items = Array.isArray(order.items) ? order.items : [];
+    const isDigitalOnly = items.length > 0 && items.every((item) =>
+      Boolean(
+        item.isDigital ||
+        item.webReaderLink ||
+        item.kindleLink ||
+        String(item.name || "").toLowerCase().includes("web") ||
+        String(item.name || "").toLowerCase().includes("kindle") ||
+        String(item.name || "").toLowerCase().includes("flipbook") ||
+        String(item.format || "").toLowerCase().includes("web") ||
+        String(item.format || "").toLowerCase().includes("flipbook")
+      )
+    );
+
+    if (isPaid && isDigitalOnly && order.orderStatus !== "Completed" && order.status !== "Completed" && order.orderStatus !== "Cancelled" && order.status !== "Cancelled") {
+      order.orderStatus = "Completed";
+      order.status = "Completed";
+      if (order._id) orderIdsToComplete.push(order._id);
+    }
+  });
+
+  if (orderIdsToComplete.length > 0) {
+    try {
+      await Order.updateMany(
+        { _id: { $in: orderIdsToComplete } },
+        { $set: { orderStatus: "Completed", status: "Completed" } }
+      );
+    } catch (err) {
+      console.error("Failed to auto-complete digital orders:", err);
+    }
+  }
+
+  return orders;
+};
+
 // Get all orders (admin only)
 router.get("/", protect, admin, async (req, res) => {
   try {
     const settings = await StoreSettings.findOne().select("currencyConversionRates").lean();
     const rates = settings?.currencyConversionRates || {};
-
-    const branches = Object.entries(rates)
-      .filter(([currency, rate]) => currency !== "INR" && Number(rate) > 0)
-      .map(([currency, rate]) => ({
-        case: { $eq: ["$currencyDisplay.currency", currency.toUpperCase()] },
-        then: Number(rate)
-      }));
 
     const paidAmountExpression = { $ifNull: ["$currencyDisplay.amount", "$total"] };
 
@@ -973,6 +1007,7 @@ router.get("/", protect, admin, async (req, res) => {
     }
 
     const orders = await queryExec;
+    await autoCompletePaidDigitalOrders(orders);
 
     // 4. Calculate total count for matching active status query
     const totalMatchingOrders = await Order.countDocuments(finalQuery);

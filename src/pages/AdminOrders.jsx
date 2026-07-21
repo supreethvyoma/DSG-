@@ -23,7 +23,7 @@ const Icon = ({ name }) => {
   );
 };
 
-const BACKEND_STATUSES = ["Pending", "Shipped", "Delivered", "Cancelled"];
+const BACKEND_STATUSES = ["Pending", "Shipped", "Delivered", "Completed", "Cancelled"];
 const DISPLAY_STATUSES = ["On Hold", ...BACKEND_STATUSES];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
 const RETURN_STATUSES = ["Not Requested", "Requested", "Approved", "Rejected", "Refunded"];
@@ -38,7 +38,7 @@ function AdminOrders() {
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusCounts, setStatusCounts] = useState({
-    "On Hold": 0, Pending: 0, Shipped: 0, Delivered: 0, Cancelled: 0, [RETURN_FILTER_KEY]: 0, All: 0
+    "On Hold": 0, Pending: 0, Shipped: 0, Delivered: 0, Completed: 0, Cancelled: 0, [RETURN_FILTER_KEY]: 0, All: 0
   });
   const [overviewStats, setOverviewStats] = useState({
     totalOrders: 0,
@@ -63,6 +63,7 @@ function AdminOrders() {
     Pending: 1,
     Shipped: 2,
     Delivered: 3,
+    Completed: 3,
     Cancelled: 0
   };
 
@@ -82,9 +83,24 @@ function AdminOrders() {
     Array.isArray(order?.items) && order.items.some((item) => getReturnStatus(item) !== "Not Requested");
 
   const getDisplayStatus = (order) => {
-    const rawStatus = String(order?.status || "").trim();
+    const rawStatus = String(order?.status || order?.orderStatus || "").trim();
     if (rawStatus === "Cancelled") return "Cancelled";
     if (getPaymentStatus(order) !== "Paid") return "On Hold";
+
+    const isDigitalOnly = Array.isArray(order?.items) && order.items.length > 0 && order.items.every((item) =>
+      Boolean(
+        item.isDigital ||
+        item.webReaderLink ||
+        item.kindleLink ||
+        String(item.name || "").toLowerCase().includes("web") ||
+        String(item.name || "").toLowerCase().includes("kindle") ||
+        String(item.name || "").toLowerCase().includes("flipbook") ||
+        String(item.format || "").toLowerCase().includes("web") ||
+        String(item.format || "").toLowerCase().includes("flipbook")
+      )
+    );
+
+    if (isDigitalOnly || rawStatus === "Completed") return "Completed";
     if (BACKEND_STATUSES.includes(rawStatus)) return rawStatus;
     return "Pending";
   };
