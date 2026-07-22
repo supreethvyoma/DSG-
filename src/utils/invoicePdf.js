@@ -372,24 +372,28 @@ export function generateInvoicePdf(order, options = {}) {
     y += 22;
   } else {
     enrichedItems.forEach((item, index) => {
-      let nameLines = [item.name];
+      const wrappedProductName = doc.splitTextToSize(item.name, 195);
+      
+      const subNotes = [];
       if (item.productType === "bundle" && Array.isArray(item.bundleItems) && item.bundleItems.length > 0) {
-        nameLines.push("Pack Includes:");
+        subNotes.push("Pack Includes:");
         item.bundleItems.forEach((bi) => {
-          nameLines.push(`  • ${bi.name} (Qty: ${bi.quantity * item.qty})`);
+          subNotes.push(`  • ${bi.name} (Qty: ${bi.quantity * item.qty})`);
         });
       }
       
       const isDigital = item.hsnSac === "9973";
       if (isDigital) {
         if (order?.isGift) {
-          nameLines.push(`  * Gift Access Sent to: ${order.giftRecipientEmail || "Recipient"}`);
+          subNotes.push(`* Gift Access Sent to: ${order.giftRecipientEmail || "Recipient"}`);
         } else {
-          nameLines.push("  * Web Reader Access Active in My Library");
+          subNotes.push("* Web Reader Access Active in My Library");
         }
       }
-      const wrappedName = doc.splitTextToSize(nameLines.join("\n"), 200);
-      const rowHeight = Math.max(22, wrappedName.length * 12 + 10);
+      
+      const wrappedSubNotes = subNotes.length > 0 ? doc.splitTextToSize(subNotes.join("\n"), 195) : [];
+      const totalTextLines = wrappedProductName.length + (wrappedSubNotes.length > 0 ? wrappedSubNotes.length + 0.5 : 0);
+      const rowHeight = Math.max(26, Math.round(totalTextLines * 11 + 10));
       
       // Zebra striping alternating colors
       if (index % 2 === 1) {
@@ -401,8 +405,26 @@ export function generateInvoicePdf(order, options = {}) {
       doc.setDrawColor(241, 245, 249);
       doc.line(marginX, y + rowHeight, 555, y + rowHeight);
       
+      // Draw Product Name (Dark, Bold)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(wrappedProductName, marginX + 8, y + 14);
+      
+      // Draw Sub-notes (Muted Gray, Italic)
+      if (wrappedSubNotes.length > 0) {
+        const nameHeight = wrappedProductName.length * 11;
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8);
+        doc.setTextColor(115, 125, 140);
+        doc.text(wrappedSubNotes, marginX + 8, y + 14 + nameHeight);
+      }
+      
+      // Draw other columns aligned with the first line
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
       doc.setTextColor(51, 65, 85);
-      doc.text(wrappedName, marginX + 8, y + 14);
+      
       doc.text(item.hsnSac, 260, y + 14);
       doc.text(String(item.qty), 350, y + 14, { align: "right" });
       doc.text(formatCurrency(item.price, currency), 440, y + 14, { align: "right" });
@@ -422,16 +444,20 @@ export function generateInvoicePdf(order, options = {}) {
   // Group by HSN/SAC
   const hsnGroups = {};
   enrichedItems.forEach((item) => {
+    // If the overall order has no GST, override item rates/amounts to 0 (for old orders consistency)
+    const finalItemGstRate = totalGst === 0 ? 0 : item.gstRate;
+    const finalItemGstAmount = totalGst === 0 ? 0 : item.gstAmount;
+    
     if (!hsnGroups[item.hsnSac]) {
       hsnGroups[item.hsnSac] = {
         hsnSac: item.hsnSac,
         taxableValue: 0,
-        gstRate: item.gstRate,
+        gstRate: finalItemGstRate,
         gstAmount: 0
       };
     }
-    hsnGroups[item.hsnSac].taxableValue += item.lineTotal;
-    hsnGroups[item.hsnSac].gstAmount += item.gstAmount;
+    hsnGroups[item.hsnSac].taxableValue += (item.lineTotal - finalItemGstAmount);
+    hsnGroups[item.hsnSac].gstAmount += finalItemGstAmount;
   });
 
   // Render Tax Breakdown Box (Bottom Left)
