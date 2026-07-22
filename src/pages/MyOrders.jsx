@@ -480,7 +480,7 @@ function MyOrders() {
                             </p>
                           ) : null}
 
-                          {isPaid && (item.isDigital || String(item.name || "").toLowerCase().includes("kindle") || String(item.name || "").toLowerCase().includes("web version") || item.webReaderLink || item.kindleLink) && (
+                          {isPaid && (item.isDigital || String(item.name || "").toLowerCase().includes("kindle") || String(item.name || "").toLowerCase().includes("web version") || item.webReaderLink || item.kindleLink) && (order.isRedeemedGift || !(order.isGift || item.giftCode)) && (
                             <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "8px", border: "1px solid rgba(59, 130, 246, 0.3)", backgroundColor: "rgba(59, 130, 246, 0.05)" }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px", fontWeight: 700, color: "#2563eb", marginBottom: "8px" }}>
                                 ⚡ Digital Reader Access Granted

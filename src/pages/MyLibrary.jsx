@@ -113,6 +113,11 @@ function MyLibrary() {
         );
 
         if (isDigital) {
+          const isGiftItem = Boolean(order.isGift || item.giftCode);
+          if (isGiftItem && !order.isRedeemedGift) {
+            return;
+          }
+
           const key = String(item.product || item._id || item.name).trim();
           if (seenMap.has(key)) {
             const existing = seenMap.get(key);
