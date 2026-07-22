@@ -410,6 +410,58 @@ export function generateInvoicePdf(order, options = {}) {
 
   y += 20;
 
+  // Group by HSN/SAC
+  const hsnGroups = {};
+  enrichedItems.forEach((item) => {
+    if (!hsnGroups[item.hsnSac]) {
+      hsnGroups[item.hsnSac] = {
+        hsnSac: item.hsnSac,
+        taxableValue: 0,
+        gstRate: item.gstRate,
+        gstAmount: 0
+      };
+    }
+    hsnGroups[item.hsnSac].taxableValue += item.lineTotal;
+    hsnGroups[item.hsnSac].gstAmount += item.gstAmount;
+  });
+
+  // Render Tax Breakdown Box (Bottom Left)
+  const breakdownX = marginX;
+  const breakdownWidth = 250;
+  let breakdownY = y;
+  
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+  doc.text("GST TAX BREAKDOWN", breakdownX, breakdownY);
+  
+  breakdownY += 6;
+  doc.setFillColor(241, 245, 249);
+  doc.rect(breakdownX, breakdownY, breakdownWidth, 16, "F");
+  
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text("HSN/SAC", breakdownX + 6, breakdownY + 11);
+  doc.text("Taxable Val", breakdownX + 70, breakdownY + 11);
+  doc.text("Rate", breakdownX + 140, breakdownY + 11);
+  doc.text("GST Amt", breakdownX + 200, breakdownY + 11);
+  
+  breakdownY += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  
+  Object.values(hsnGroups).forEach((group) => {
+    doc.text(String(group.hsnSac), breakdownX + 6, breakdownY + 11);
+    doc.text(formatCurrency(group.taxableValue, currency), breakdownX + 70, breakdownY + 11);
+    doc.text(`${group.gstRate}%`, breakdownX + 140, breakdownY + 11);
+    doc.text(formatCurrency(group.gstAmount, currency), breakdownX + 200, breakdownY + 11);
+    
+    doc.setDrawColor(241, 245, 249);
+    doc.line(breakdownX, breakdownY + 16, breakdownX + breakdownWidth, breakdownY + 16);
+    breakdownY += 16;
+  });
+
   // Summary & Breakdown Panel (aligned right)
   const summaryLeftX = 320;
   
