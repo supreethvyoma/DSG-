@@ -379,6 +379,15 @@ export function generateInvoicePdf(order, options = {}) {
           nameLines.push(`  • ${bi.name} (Qty: ${bi.quantity * item.qty})`);
         });
       }
+      
+      const isDigital = item.hsnSac === "9973";
+      if (isDigital) {
+        if (order?.isGift) {
+          nameLines.push(`  * Gift Access Sent to: ${order.giftRecipientEmail || "Recipient"}`);
+        } else {
+          nameLines.push("  * Web Reader Access Active in My Library");
+        }
+      }
       const wrappedName = doc.splitTextToSize(nameLines.join("\n"), 200);
       const rowHeight = Math.max(22, wrappedName.length * 12 + 10);
       
