@@ -710,6 +710,12 @@ function MyOrders() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="my-order-track-website-link"
+                            onClick={() => {
+                              if (navigator.clipboard && activeTracking[order._id].trackingId) {
+                                void navigator.clipboard.writeText(activeTracking[order._id].trackingId);
+                                showToast("Tracking ID copied to clipboard! Paste it on the tracking page.", "success");
+                              }
+                            }}
                             style={{
                               fontSize: "12.5px",
                               fontWeight: "600",
