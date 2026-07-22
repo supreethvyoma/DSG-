@@ -111,6 +111,56 @@ function Checkout() {
   const [isGift, setIsGift] = useState(false);
   const selectedBillingAddress = addresses[selectedBillingIndex];
   const navigate = useNavigate();
+
+  const [purchasedProducts, setPurchasedProducts] = useState([]);
+
+  useEffect(() => {
+    if (token) {
+      axios.get("/api/orders/my", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then((res) => {
+        const list = [];
+        if (Array.isArray(res.data)) {
+          res.data.forEach((order) => {
+            const isPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+            if (!isPaid || !Array.isArray(order.items)) return;
+            order.items.forEach((item) => {
+              const pId = String(item.product || item._id || item.id || "").trim();
+              if (pId) {
+                list.push(pId);
+              }
+            });
+          });
+        }
+        setPurchasedProducts(list);
+      })
+      .catch((err) => console.error("Error fetching my orders in Checkout:", err));
+    }
+  }, [token]);
+
+  const hasAlreadyPurchasedItemInCart = useMemo(() => {
+    return cartItems.some((item) => {
+      const isDigital = Boolean(
+        item.isDigital ||
+        item.webReaderLink ||
+        item.kindleLink ||
+        String(item.name || "").toLowerCase().includes("web") ||
+        String(item.name || "").toLowerCase().includes("kindle") ||
+        String(item.name || "").toLowerCase().includes("flipbook") ||
+        String(item.format || "").toLowerCase().includes("web") ||
+        String(item.format || "").toLowerCase().includes("flipbook")
+      );
+      const isWeb = isDigital && !String(item.name || "").toLowerCase().includes("kindle") && !item.kindleLink;
+      return isWeb && purchasedProducts.includes(String(item.id || item._id));
+    });
+  }, [cartItems, purchasedProducts]);
+
+  useEffect(() => {
+    if (hasAlreadyPurchasedItemInCart) {
+      setIsGift(true);
+    }
+  }, [hasAlreadyPurchasedItemInCart]);
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
   const isDummyPaymentEnabled =
     String(import.meta.env.VITE_ENABLE_DUMMY_PAYMENT || "").toLowerCase() === "true";
@@ -1224,19 +1274,28 @@ function Checkout() {
           ) : null}
 
           <div style={{ margin: "14px 0", padding: "12px 14px", borderRadius: "10px", border: "1px solid var(--site-border)", backgroundColor: "var(--site-bg-soft)" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", fontWeight: 600, fontSize: "13.5px", color: "var(--site-text)" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: hasAlreadyPurchasedItemInCart ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "13.5px", color: "var(--site-text)" }}>
               <input
                 type="checkbox"
                 checked={isGift}
-                onChange={(e) => setIsGift(e.target.checked)}
+                onChange={(e) => {
+                  if (!hasAlreadyPurchasedItemInCart) {
+                    setIsGift(e.target.checked);
+                  }
+                }}
+                disabled={hasAlreadyPurchasedItemInCart}
               />
               🎁 Purchase digital items in this order as Gift Passes
             </label>
-            {isGift && (
+            {hasAlreadyPurchasedItemInCart ? (
+              <p style={{ margin: "6px 0 0 24px", fontSize: "12.5px", color: "#b91c1c", fontWeight: "bold", lineHeight: 1.4 }}>
+                ⚠️ You already own one or more digital web version products in this order. This order is forced to be purchased as Gift Passes so you can share them.
+              </p>
+            ) : isGift ? (
               <p style={{ margin: "6px 0 0 24px", fontSize: "12px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
                 Unique 1-time Gift Pass Codes (e.g. <code>GIFT-DSG-XXXXXX</code>) will be generated under <strong>My Orders</strong> so you can share them with friends or family!
               </p>
-            )}
+            ) : null}
           </div>
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p className="coupon-selector-empty">Estimated distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>

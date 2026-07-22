@@ -212,6 +212,34 @@ function Product() {
   const [reviewError, setReviewError] = useState("");
   const [selectedMedia, setSelectedMedia] = useState(null);
 
+  const [purchasedProducts, setPurchasedProducts] = useState([]);
+  const [purchaseAsGift, setPurchaseAsGift] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      axios.get("/api/orders/my", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then((res) => {
+        const list = [];
+        if (Array.isArray(res.data)) {
+          res.data.forEach((order) => {
+            const isPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+            if (!isPaid || !Array.isArray(order.items)) return;
+            order.items.forEach((item) => {
+              const pId = String(item.product || item._id || item.id || "").trim();
+              if (pId) {
+                list.push(pId);
+              }
+            });
+          });
+        }
+        setPurchasedProducts(list);
+      })
+      .catch((err) => console.error("Error fetching my orders:", err));
+    }
+  }, [token]);
+
   const isWishlisted = product ? wishlist.some((p) => p._id === product._id) : false;
 
   const handleWishlistToggle = () => {
@@ -488,6 +516,18 @@ function Product() {
     String(product.name || "").toLowerCase().includes("kindle")
   );
 
+  const isWebVersion = product && (
+    product.isDigital && 
+    (String(product.digitalType || "").toLowerCase().includes("web") || 
+     String(product.name || "").toLowerCase().includes("web") ||
+     String(product.name || "").toLowerCase().includes("flipbook") ||
+     String(product.format || "").toLowerCase().includes("web") ||
+     String(product.format || "").toLowerCase().includes("flipbook"))
+  ) && !isKindleBook;
+
+  const alreadyPurchased = product && purchasedProducts.includes(String(product._id));
+  const hasPurchasedWebVersion = isWebVersion && alreadyPurchased;
+
   return (
     <>
       <div className="product-container">
@@ -693,6 +733,23 @@ function Product() {
               </div>
             ) : (
               <>
+                {hasPurchasedWebVersion ? (
+                  <div style={{ margin: "10px 0 16px", padding: "12px", borderRadius: "8px", border: "1px solid #dc2626", backgroundColor: "#fef2f2", color: "#991b1b", fontSize: "13px", lineHeight: "1.4", textAlign: "left" }}>
+                    <p style={{ margin: 0, fontWeight: "bold", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>⚠️</span> You have already purchased this web version.
+                    </p>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px", color: "var(--site-text)", cursor: "pointer", fontSize: "12.5px", fontWeight: "600" }}>
+                      <input
+                        type="checkbox"
+                        checked={purchaseAsGift}
+                        onChange={(e) => setPurchaseAsGift(e.target.checked)}
+                        style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                      />
+                      🎁 Purchase as a gift for someone else
+                    </label>
+                  </div>
+                ) : null}
+
                 <div className="qty-box">
                   <button className="qty-btn" onClick={() => setQty(qty > 1 ? qty - 1 : 1)}>-</button>
                   <span className="qty-number">{qty}</span>
@@ -704,14 +761,14 @@ function Product() {
 
                 <button
                   className="add-cart-btn"
-                  disabled={product.stock === 0}
+                  disabled={product.stock === 0 || (hasPurchasedWebVersion && !purchaseAsGift)}
                   onClick={() => addToCart(product, qty)}
                 >
                   {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
                 </button>
                 <button
                   className="buy-now-btn"
-                  disabled={product.stock === 0}
+                  disabled={product.stock === 0 || (hasPurchasedWebVersion && !purchaseAsGift)}
                   onClick={handleBuyNow}
                 >
                   {product.stock === 0 ? "Out of Stock" : "Buy Now"}
