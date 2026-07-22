@@ -55,7 +55,7 @@ function getCourierTrackingUrl(courierName, trackingId) {
   if (name.includes("delhivery")) {
     return `https://www.delhivery.com/track/package/${trId}`;
   } else if (name.includes("india post") || name.includes("speed post") || name.includes("post")) {
-    return "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx";
+    return "https://www.indiapost.gov.in/";
   } else if (name.includes("dtdc")) {
     return `https://www.dtdc.in/tracking/tracking_results.asp?pinno=${trId}`;
   } else if (name.includes("professional") || name.includes("tpc")) {
