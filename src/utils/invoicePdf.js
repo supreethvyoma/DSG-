@@ -1,5 +1,27 @@
 import { jsPDF } from "jspdf";
 
+function sanitizeIastString(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/[āāā]/g, "a")
+    .replace(/[āĀ]/g, "a")
+    .replace(/[īĪ]/g, "i")
+    .replace(/[ūŪ]/g, "u")
+    .replace(/[ṛṚ]/g, "r")
+    .replace(/[ṝṜ]/g, "r")
+    .replace(/[ḷḶ]/g, "l")
+    .replace(/[ḹḸ]/g, "l")
+    .replace(/[ṃṂ]/g, "m")
+    .replace(/[ḥḤ]/g, "h")
+    .replace(/[śŚ]/g, "s")
+    .replace(/[ṣṢ]/g, "s")
+    .replace(/[ṭṬ]/g, "t")
+    .replace(/[ḍḌ]/g, "d")
+    .replace(/[ṇṆ]/g, "n")
+    .replace(/[ṅṄ]/g, "n")
+    .replace(/[ñÑ]/g, "n");
+}
+
 function toSafeNumber(value) {
   const num = Number(value);
   return Number.isNaN(num) ? 0 : num;
@@ -92,16 +114,16 @@ export function generateInvoicePdf(order, options = {}) {
   const status = String(order?.status || "Pending");
   const items = Array.isArray(order?.items) ? order.items : [];
   const createdAt = formatDateTime(order?.createdAt);
-  const shippingName = order?.shipping?.name || customerName;
+  const shippingName = sanitizeIastString(order?.shipping?.name || customerName);
   const shippingPhone = order?.shipping?.phone || "N/A";
-  const shippingAddressText = formatFullAddress(order?.shipping);
+  const shippingAddressText = sanitizeIastString(formatFullAddress(order?.shipping));
   
-  const billingName = order?.billing?.name || shippingName;
+  const billingName = sanitizeIastString(order?.billing?.name || shippingName);
   const billingPhone = order?.billing?.phone || shippingPhone;
   const billingEmail = order?.billing?.email || customerEmail;
-  const billingAddressText = formatFullAddress(order?.billing || order?.shipping);
+  const billingAddressText = sanitizeIastString(formatFullAddress(order?.billing || order?.shipping));
 
-  const customerState = String(order?.shipping?.state || "").trim();
+  const customerState = sanitizeIastString(String(order?.shipping?.state || "").trim());
   
   const currency = String(
     order?.currencyDisplay?.currency ||
@@ -169,7 +191,7 @@ export function generateInvoicePdf(order, options = {}) {
   let totalItemGst = 0;
   let totalItemBase = 0;
   const enrichedItems = items.map((item, index) => {
-    const name = String(item?.name || item?.product?.name || `Item ${index + 1}`);
+    const name = sanitizeIastString(String(item?.name || item?.product?.name || `Item ${index + 1}`));
     const qty = Math.max(1, toSafeNumber(item?.quantity || 1));
     const price = toSafeNumber(item?.price || 0);
     const lineTotal = qty * price;
