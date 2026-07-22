@@ -127,6 +127,10 @@ function Checkout() {
             const isPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
             if (!isPaid || !Array.isArray(order.items)) return;
             order.items.forEach((item) => {
+              const isGiftItem = Boolean(order.isGift || item.giftCode);
+              if (isGiftItem && !order.isRedeemedGift) {
+                return;
+              }
               const pId = String(item.product || item._id || item.id || "").trim();
               if (pId) {
                 list.push(pId);
