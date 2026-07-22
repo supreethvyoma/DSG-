@@ -297,9 +297,6 @@ router.post("/calculate-totals", protect, async (req, res) => {
       return res.status(400).json({ message: "No valid products found for this calculation." });
     }
 
-    const subtotal = roundMoney(
-      normalizedItems.reduce((sum, item) => sum + Number(item?.price || 0) * Math.max(1, Number(item?.quantity || 1)), 0)
-    );
     const orderCurrency = normalizeCurrencyCode(
       req.body?.currencyDisplay?.currency || normalizedItems[0]?.currency || "INR",
       "INR"
