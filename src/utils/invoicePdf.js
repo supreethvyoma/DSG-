@@ -133,11 +133,13 @@ export function generateInvoicePdf(order, options = {}) {
       category.includes("kindle") ||
       category.includes("web version") ||
       category.includes("web-version") ||
+      category.includes("flipbook") ||
       name.includes("ebook") ||
       name.includes("e-book") ||
       name.includes("kindle") ||
       name.includes("web version") ||
       name.includes("web-version") ||
+      name.includes("flipbook") ||
       name.includes("epub") ||
       name.includes("pdf");
       
@@ -165,7 +167,6 @@ export function generateInvoicePdf(order, options = {}) {
 
   // Calculate items HSN/SAC and dynamic GST
   let totalItemGst = 0;
-  let totalItemBase = 0;
   const enrichedItems = items.map((item, index) => {
     const name = String(item?.name || item?.product?.name || `Item ${index + 1}`);
     const qty = Math.max(1, toSafeNumber(item?.quantity || 1));
@@ -176,12 +177,9 @@ export function generateInvoicePdf(order, options = {}) {
     // Books are exempt (0% GST), other products have standard rate (e.g. 18%)
     const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
     
-    // Price in cart is inclusive of GST. Extract tax-exclusive base price and tax amount:
-    const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;
-    const gstAmount = Math.round((lineTotal - lineBase) * 100) / 100;
-    
+    // Price in cart is exclusive of GST.
+    const gstAmount = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
     totalItemGst += gstAmount;
-    totalItemBase += lineBase;
 
     return {
       name,
@@ -196,25 +194,29 @@ export function generateInvoicePdf(order, options = {}) {
     };
   });
 
-  // Calculate Subtotal (Sum of item base totals, excl. tax)
-  let subtotalValue = totalItemBase;
+  // Calculate Subtotal (Sum of item line totals, excl. tax)
+  let subtotalValue = enrichedItems.reduce((sum, item) => sum + item.lineTotal, 0);
 
   // 3. Delivery Fee Taxation (SAC 9965, always taxed at 18%)
   const deliveryValue = toSafeNumber(order?.deliveryCharge || 0);
-  // Total delivery charge is flat Rs 50. Base = 42.37, GST = 7.63
-  const deliveryBase = deliveryValue > 0 ? Math.round((deliveryValue / 1.18) * 100) / 100 : 0;
-  const deliveryTax = deliveryValue > 0 ? Math.round((deliveryValue - deliveryBase) * 100) / 100 : 0;
+  const deliveryBase = deliveryValue;
 
   // 4. Totals and Tax Splitting
   const discount = toSafeNumber(order?.discount || 0);
   const expectedTotal = toSafeNumber(order?.currencyDisplay?.amount || order?.total || 0);
-  let totalGst = totalItemGst + deliveryTax;
+  
+  // Use exact GST amount and subtotal from database if available
+  let totalGst = order?.gstAmount !== undefined && order?.gstAmount !== null ? toSafeNumber(order.gstAmount) : totalItemGst;
+  if (order?.subtotal !== undefined && order?.subtotal !== null) {
+    subtotalValue = toSafeNumber(order.subtotal);
+  }
 
   // Self-heal any rounding differences (from floating point additions or currency conversion roundings)
   const calculatedTotal = subtotalValue + deliveryBase + totalGst - discount;
   const diff = expectedTotal - calculatedTotal;
   if (Math.abs(diff) < 5) {
-    subtotalValue = Math.round((subtotalValue + diff) * 100) / 100;
+    // absorb rounding mismatch
+    totalGst = Math.round((totalGst + diff) * 100) / 100;
   }
   const compliantTotal = expectedTotal;
 
