@@ -314,6 +314,7 @@ router.post("/calculate-totals", protect, async (req, res) => {
       })
     );
 
+    let totalItemBase = 0;
     let totalItemGst = 0;
     normalizedItems.forEach((item) => {
       const qty = Math.max(1, Number(item.quantity || 1));
@@ -321,10 +322,15 @@ router.post("/calculate-totals", protect, async (req, res) => {
       const lineTotal = qty * price;
       const hsnSac = getItemHsnSac(item);
       const gstRate = hsnSac === "4901" ? 0 : gstPercent;
-      const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
-      totalItemGst += itemGst;
+      
+      const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;
+      const gstAmountVal = Math.round((lineTotal - lineBase) * 100) / 100;
+      
+      totalItemBase += lineBase;
+      totalItemGst += gstAmountVal;
     });
 
+    const subtotal = roundMoney(totalItemBase);
     const gstAmount = roundMoney(totalItemGst);
     const grossTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
 
@@ -618,9 +624,6 @@ router.post("/", protect, async (req, res) => {
     }
   }
 
-  const subtotal = roundMoney(
-    normalizedItems.reduce((sum, item) => sum + Number(item?.price || 0) * Math.max(1, Number(item?.quantity || 1)), 0)
-  );
   const orderCurrency = normalizeCurrencyCode(
     req.body?.currencyDisplay?.currency || normalizedItems[0]?.currency || "INR",
     "INR"
@@ -635,8 +638,7 @@ router.post("/", protect, async (req, res) => {
     })
   );
 
-
-
+  let totalItemBase = 0;
   let totalItemGst = 0;
   normalizedItems.forEach((item) => {
     const qty = Math.max(1, Number(item.quantity || 1));
@@ -644,10 +646,15 @@ router.post("/", protect, async (req, res) => {
     const lineTotal = qty * price;
     const hsnSac = getItemHsnSac(item);
     const gstRate = hsnSac === "4901" ? 0 : gstPercent;
-    const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
-    totalItemGst += itemGst;
+    
+    const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;
+    const gstAmountVal = Math.round((lineTotal - lineBase) * 100) / 100;
+    
+    totalItemBase += lineBase;
+    totalItemGst += gstAmountVal;
   });
 
+  const subtotal = roundMoney(totalItemBase);
   const gstAmount = roundMoney(totalItemGst);
   const grossTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
 

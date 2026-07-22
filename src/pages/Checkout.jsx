@@ -1234,7 +1234,7 @@ function Checkout() {
               const hsnSac = getItemHsnSac(item);
               const defaultGstPercent = Number(charges.gstPercent || 0);
               const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
-              const gstAmount = roundMoney((lineTotal * gstRate) / 100);
+              const gstAmount = roundMoney(lineTotal - (lineTotal / (1 + gstRate / 100)));
 
               return (
                 <div key={index} className="summary-item-wrapper" style={itemStyles.itemWrapper}>
