@@ -48,6 +48,10 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    giftRecipientEmail: {
+      type: String,
+      default: ""
+    },
     giftPasses: Array,
     total: Number,
     currencyDisplay: {

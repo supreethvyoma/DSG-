@@ -454,6 +454,38 @@ async function sendTestEmail(to) {
   return sendEmail({ to, subject: `Test Email — ${SITE_NAME}`, html, type: "test" });
 }
 
+async function sendGiftPassEmail({ to, buyerName, giftCode, productName, orderId }) {
+  const html = htmlWrapper("You've Received a Sanskrit Gift Pass!", `
+    <h2>🎁 You've Received a Sanskrit Gift Pass!</h2>
+    <p>Pranam,</p>
+    <p><strong>${buyerName}</strong> has purchased a Sanskrit digital flipbook for you as a gift!</p>
+    
+    <div style="margin: 24px 0; padding: 18px; border: 2px dashed #ff9900; background-color: #fffbeb; border-radius: 8px; text-align: center;">
+      <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: bold; color: #d97706; text-transform: uppercase; letter-spacing: 0.5px;">Your Gift Item</p>
+      <h3 style="margin: 0 0 14px 0; font-size: 18px; color: #1e293b;">${productName}</h3>
+      <p style="margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Gift Pass Code</p>
+      <code style="font-size: 22px; font-weight: bold; color: #1e293b; letter-spacing: 1px; background-color: #f1f5f9; padding: 6px 12px; border-radius: 4px; border: 1px solid #cbd5e1; display: inline-block;">${giftCode}</code>
+    </div>
+
+    <p><strong>How to redeem your gift:</strong></p>
+    <ol style="padding-left: 20px; margin-bottom: 24px;">
+      <li style="margin-bottom: 8px;">Create or log into your account at <a href="https://digital-sanskrit-guru.vercel.app" style="color: #2563eb; text-decoration: underline;">Digital Sanskrit Guru</a>.</li>
+      <li style="margin-bottom: 8px;">Click on the <strong>🎟️ Redeem Gift Pass</strong> link in the top menu bar (or inside your library).</li>
+      <li style="margin-bottom: 8px;">Enter the unique Gift Pass code shown above to unlock your copy!</li>
+    </ol>
+    
+    <p>Once redeemed, the book will be instantly added to your digital library for browser reading.</p>
+  `);
+
+  return sendEmail({
+    to,
+    subject: `🎁 You received a gift: ${productName} — ${SITE_NAME}`,
+    html,
+    type: "gift-pass",
+    orderId
+  });
+}
+
 module.exports = {
   sendEmail,
   sendOrderConfirmation,
@@ -461,5 +493,6 @@ module.exports = {
   sendLowStockAdminAlert,
   sendWishlistLowStockAlert,
   sendBroadcastEmail,
-  sendTestEmail
+  sendTestEmail,
+  sendGiftPassEmail
 };

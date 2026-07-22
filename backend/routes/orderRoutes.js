@@ -461,12 +461,28 @@ const ensureGiftPassesForOrder = async (order) => {
           productName: item.name || "Digital Item",
           order: order._id,
           buyer: order.user,
+          recipientEmail: order.giftRecipientEmail || "",
           isRedeemed: false
         });
         item.giftCode = code;
         updated = true;
+
+        if (order.giftRecipientEmail) {
+          const User = require("../models/User");
+          const buyerUser = await User.findById(order.user).lean();
+          const buyerName = buyerUser ? (buyerUser.name || buyerUser.email) : "A friend";
+          
+          const { sendGiftPassEmail } = require("../utils/email");
+          await sendGiftPassEmail({
+            to: order.giftRecipientEmail,
+            buyerName,
+            giftCode: code,
+            productName: item.name || "Digital Item",
+            orderId: String(order._id)
+          });
+        }
       } catch (err) {
-        console.error("[GiftPass] Creation error:", err.message);
+        console.error("[GiftPass] Creation/Email error:", err.message);
       }
     }
   }
@@ -800,6 +816,7 @@ router.post("/", protect, async (req, res) => {
         paidAt: rawPaymentStatus === "Paid" ? new Date() : null
       },
       isGift: req.body?.isGift === true,
+      giftRecipientEmail: req.body?.isGift === true ? String(req.body?.giftRecipientEmail || "").trim() : "",
       refundStatus: "Not Applicable",
       currencyDisplay: {
         currency: requestedCurrency || orderCurrency,

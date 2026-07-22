@@ -109,6 +109,7 @@ function Checkout() {
   const [isBillingSame, setIsBillingSame] = useState(true);
   const [selectedBillingIndex, setSelectedBillingIndex] = useState(0);
   const [isGift, setIsGift] = useState(false);
+  const [giftRecipientEmail, setGiftRecipientEmail] = useState("");
   const selectedBillingAddress = addresses[selectedBillingIndex];
   const navigate = useNavigate();
 
@@ -556,6 +557,7 @@ function Checkout() {
         couponCode: couponCode || "",
         discount,
         isGift,
+        giftRecipientEmail: isGift ? String(giftRecipientEmail || "").trim() : "",
         paymentStatus,
         razorpayOrderId: paymentInfo?.razorpayOrderId || "",
         razorpayPaymentId: paymentInfo?.razorpayPaymentId || "",
@@ -593,6 +595,16 @@ function Checkout() {
 
     if (!cartItems.length) {
       setCheckoutMessage("Your cart is empty.");
+      return null;
+    }
+
+    if (isGift && !giftRecipientEmail.trim()) {
+      setCheckoutMessage("Please enter the recipient's email address to purchase as a gift.");
+      return null;
+    }
+
+    if (isGift && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(giftRecipientEmail.trim())) {
+      setCheckoutMessage("Please enter a valid recipient email address.");
       return null;
     }
 
@@ -1287,15 +1299,39 @@ function Checkout() {
               />
               🎁 Purchase digital items in this order as Gift Passes
             </label>
-            {hasAlreadyPurchasedItemInCart ? (
+            {hasAlreadyPurchasedItemInCart && (
               <p style={{ margin: "6px 0 0 24px", fontSize: "12.5px", color: "#b91c1c", fontWeight: "bold", lineHeight: 1.4 }}>
                 ⚠️ You already own one or more digital web version products in this order. This order is forced to be purchased as Gift Passes so you can share them.
               </p>
-            ) : isGift ? (
-              <p style={{ margin: "6px 0 0 24px", fontSize: "12px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
-                Unique 1-time Gift Pass Codes (e.g. <code>GIFT-DSG-XXXXXX</code>) will be generated under <strong>My Orders</strong> so you can share them with friends or family!
-              </p>
-            ) : null}
+            )}
+            {isGift && (
+              <div style={{ marginTop: "10px", paddingLeft: "24px" }}>
+                <p style={{ margin: "0 0 10px", fontSize: "12px", color: "var(--site-text-soft)", lineHeight: 1.4 }}>
+                  Unique 1-time Gift Pass Codes (e.g. <code>GIFT-DSG-XXXXXX</code>) will be generated under <strong>My Orders</strong>.
+                </p>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "bold", color: "var(--site-text)", marginBottom: "4px" }}>
+                  📧 Recipient's Email Address:
+                </label>
+                <input
+                  type="email"
+                  placeholder="recipient@example.com"
+                  value={giftRecipientEmail}
+                  onChange={(e) => setGiftRecipientEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid var(--site-border)",
+                    backgroundColor: "var(--site-card-bg)",
+                    color: "var(--site-text)",
+                    fontSize: "13px"
+                  }}
+                />
+                <p style={{ margin: "4px 0 0", fontSize: "11px", color: "var(--site-text-soft)", lineHeight: 1.3 }}>
+                  We will automatically email the generated Gift Pass code directly to this address upon successful checkout!
+                </p>
+              </div>
+            )}
           </div>
           {deliveryDetails.isDistanceBased && deliveryDetails.distanceKm !== null && (
             <p className="coupon-selector-empty">Estimated distance: {deliveryDetails.distanceKm.toFixed(1)} km</p>

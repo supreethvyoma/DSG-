@@ -33,6 +33,10 @@ const giftPassSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    recipientEmail: {
+      type: String,
+      default: ""
+    },
     redeemedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
