@@ -165,6 +165,7 @@ export function generateInvoicePdf(order, options = {}) {
 
   // Calculate items HSN/SAC and dynamic GST
   let totalItemGst = 0;
+  let totalItemBase = 0;
   const enrichedItems = items.map((item, index) => {
     const name = String(item?.name || item?.product?.name || `Item ${index + 1}`);
     const qty = Math.max(1, toSafeNumber(item?.quantity || 1));
@@ -174,8 +175,13 @@ export function generateInvoicePdf(order, options = {}) {
     
     // Books are exempt (0% GST), other products have standard rate (e.g. 18%)
     const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
-    const gstAmount = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
+    
+    // Price in cart is inclusive of GST. Extract tax-exclusive base price and tax amount:
+    const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;
+    const gstAmount = Math.round((lineTotal - lineBase) * 100) / 100;
+    
     totalItemGst += gstAmount;
+    totalItemBase += lineBase;
 
     return {
       name,
@@ -190,8 +196,8 @@ export function generateInvoicePdf(order, options = {}) {
     };
   });
 
-  // Calculate Subtotal (Sum of item line totals, excl. tax)
-  const subtotalValue = enrichedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  // Calculate Subtotal (Sum of item base totals, excl. tax)
+  let subtotalValue = totalItemBase;
 
   // 3. Delivery Fee Taxation (SAC 9965, always taxed at 18%)
   const deliveryValue = toSafeNumber(order?.deliveryCharge || 0);
@@ -208,7 +214,7 @@ export function generateInvoicePdf(order, options = {}) {
   const calculatedTotal = subtotalValue + deliveryBase + totalGst - discount;
   const diff = expectedTotal - calculatedTotal;
   if (Math.abs(diff) < 5) {
-    totalGst = Math.round((totalGst + diff) * 100) / 100;
+    subtotalValue = Math.round((subtotalValue + diff) * 100) / 100;
   }
   const compliantTotal = expectedTotal;
 
