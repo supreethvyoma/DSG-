@@ -1,6 +1,7 @@
 const express = require("express");
 const GiftPass = require("../models/GiftPass");
 const Product = require("../models/Product");
+const Order = require("../models/Order");
 const protect = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -26,6 +27,25 @@ router.post("/redeem", protect, async (req, res) => {
 
     if (giftPass.isRedeemed) {
       return res.status(400).json({ message: "This Gift Pass has already been redeemed." });
+    }
+
+    // Check if the user already owns this product
+    const alreadyPurchased = await Order.findOne({
+      user: req.user,
+      paymentStatus: "Paid",
+      "items.product": giftPass.product
+    });
+
+    const alreadyRedeemed = await GiftPass.findOne({
+      redeemedBy: req.user,
+      product: giftPass.product,
+      isRedeemed: true
+    });
+
+    if (alreadyPurchased || alreadyRedeemed) {
+      return res.status(400).json({
+        message: "You already own this web version in your library. Please share this Gift Pass code with someone else."
+      });
     }
 
     giftPass.isRedeemed = true;
