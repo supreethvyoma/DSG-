@@ -240,8 +240,15 @@ export function AuthProvider({ children }) {
     window.location.reload();
   };
 
+  const updateProfileState = (updatedData) => {
+    const nextUser = normalizeUser(updatedData);
+    setUser(nextUser);
+    setToken(updatedData.token);
+    persistAuth({ token: updatedData.token, user: nextUser, rememberMe });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, rememberMe, register, login, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, token, rememberMe, register, login, loginWithGoogle, logout, updateProfileState }}>
       {children}
     </AuthContext.Provider>
   );

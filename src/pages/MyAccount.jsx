@@ -191,7 +191,7 @@ async function fetchCoordinatesForAddress(parts = {}) {
 }
 
 function MyAccount() {
-  const { user, token } = useAuth();
+  const { user, token, updateProfileState } = useAuth();
   const { cartItems } = useCart();
   const { wishlist } = useWishlist();
   const { addresses, addAddress, updateAddress, removeAddress, setDefaultAddress } = useDeliveryLocation();
@@ -209,6 +209,72 @@ function MyAccount() {
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
   const [country, setCountry] = useState("India");
+
+  // Profile Edit states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState(user?.name || "");
+  const [profileEmail, setProfileEmail] = useState(user?.email || "");
+  const [profilePassword, setProfilePassword] = useState("");
+  const [profilePasswordConfirm, setProfilePasswordConfirm] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name || "");
+      setProfileEmail(user.email || "");
+    }
+  }, [user]);
+
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    setProfileMessage("");
+    setProfileError("");
+
+    if (!profileName.trim()) {
+      setProfileError("Name is required.");
+      return;
+    }
+    if (!profileEmail.trim()) {
+      setProfileError("Email is required.");
+      return;
+    }
+    if (profilePassword && profilePassword !== profilePasswordConfirm) {
+      setProfileError("Passwords do not match.");
+      return;
+    }
+
+    setIsSavingProfile(true);
+    try {
+      const res = await axios.put(
+        "/api/auth/profile",
+        {
+          name: profileName,
+          email: profileEmail,
+          password: profilePassword || undefined
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      if (res.data?.success) {
+        updateProfileState(res.data);
+        setProfileMessage("Profile updated successfully!");
+        setProfilePassword("");
+        setProfilePasswordConfirm("");
+        setIsEditingProfile(false);
+      } else {
+        setProfileError("Failed to update profile.");
+      }
+    } catch (err) {
+      console.error(err);
+      setProfileError(err.response?.data?.message || "Failed to update profile details.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -504,26 +570,88 @@ function MyAccount() {
             <p className="my-account-section-kicker">Profile</p>
             <h2>Account details</h2>
           </div>
+          {!isEditingProfile && (
+            <button
+              type="button"
+              className="my-account-inline-link my-account-inline-btn"
+              onClick={() => {
+                setIsEditingProfile(true);
+                setProfileMessage("");
+                setProfileError("");
+              }}
+            >
+              Edit Profile
+            </button>
+          )}
         </div>
 
-        <div className="my-account-detail-list">
-          <div className="my-account-detail-row">
-            <span>Name</span>
-            <strong>{user?.name || "Not available"}</strong>
+        {isEditingProfile ? (
+          <form onSubmit={handleProfileSave} className="my-account-address-form" style={{ marginTop: "14px" }}>
+            <label>
+              <span>Full Name</span>
+              <input value={profileName} onChange={(e) => setProfileName(e.target.value)} required />
+            </label>
+            <label>
+              <span>Email Address</span>
+              <input type="email" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} required />
+            </label>
+            <label>
+              <span>New Password (Leave blank to keep current)</span>
+              <input type="password" value={profilePassword} onChange={(e) => setProfilePassword(e.target.value)} placeholder="Minimum 6 characters" />
+            </label>
+            {profilePassword && (
+              <label>
+                <span>Confirm New Password</span>
+                <input type="password" value={profilePasswordConfirm} onChange={(e) => setProfilePasswordConfirm(e.target.value)} required />
+              </label>
+            )}
+
+            {profileError && <p className="my-account-form-error">{profileError}</p>}
+
+            <div className="my-account-address-form-actions">
+              <button type="submit" className="primary" disabled={isSavingProfile}>
+                {isSavingProfile ? "Saving..." : "Save Details"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingProfile(false);
+                  setProfileName(user?.name || "");
+                  setProfileEmail(user?.email || "");
+                  setProfilePassword("");
+                  setProfilePasswordConfirm("");
+                  setProfileError("");
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="my-account-detail-list">
+            <div className="my-account-detail-row">
+              <span>Name</span>
+              <strong>{user?.name || "Not available"}</strong>
+            </div>
+            <div className="my-account-detail-row">
+              <span>Email</span>
+              <strong>{user?.email || "Not available"}</strong>
+            </div>
+            <div className="my-account-detail-row">
+              <span>Account Type</span>
+              <strong>{user?.isAdmin ? "Administrator" : "Customer"}</strong>
+            </div>
+            <div className="my-account-detail-row">
+              <span>Items in Cart</span>
+              <strong>{cartItems.length}</strong>
+            </div>
+            {profileMessage && (
+              <p style={{ margin: "14px 0 0", color: "#15803d", fontWeight: "700", fontSize: "13px" }}>
+                {profileMessage}
+              </p>
+            )}
           </div>
-          <div className="my-account-detail-row">
-            <span>Email</span>
-            <strong>{user?.email || "Not available"}</strong>
-          </div>
-          <div className="my-account-detail-row">
-            <span>Account Type</span>
-            <strong>{user?.isAdmin ? "Administrator" : "Customer"}</strong>
-          </div>
-          <div className="my-account-detail-row">
-            <span>Items in Cart</span>
-            <strong>{cartItems.length}</strong>
-          </div>
-        </div>
+        )}
       </section>
 
       <section className="my-account-panel my-account-panel-compact">

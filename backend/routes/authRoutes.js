@@ -608,6 +608,66 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
+// Update user profile details
+router.put("/profile", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const name = String(req.body.name || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "").trim();
+
+    if (name) {
+      if (name.length < 2) {
+        return res.status(400).json({ message: "Name must be at least 2 characters." });
+      }
+      user.name = name;
+    }
+
+    if (email) {
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ message: "Please provide a valid email address." });
+      }
+      const existingUser = await User.findOne({ email });
+      if (existingUser && String(existingUser._id) !== String(user._id)) {
+        return res.status(400).json({ message: "This email address is already in use by another account." });
+      }
+      user.email = email;
+    }
+
+    if (password) {
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters long." });
+      }
+      user.password = await bcrypt.hash(password, 12);
+    }
+
+    await user.save();
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "12h" }
+    );
+
+    res.json({
+      success: true,
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      isAdmin: Boolean(user.isAdmin),
+      token,
+      message: "Profile details updated successfully."
+    });
+  } catch (err) {
+    console.error("[Auth] Profile update error:", err.message);
+    res.status(500).json({ message: "Failed to update profile details. Please try again." });
+  }
+});
+
 // ── Google Sign-In ───────────────────────────────────────────────────────────
 router.post("/google", async (req, res) => {
   try {
