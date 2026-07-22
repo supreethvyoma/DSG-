@@ -48,6 +48,24 @@ function getReturnWindowInfo(order, item) {
   };
 }
 
+function getCourierTrackingUrl(courierName, trackingId) {
+  if (!trackingId) return "";
+  const name = String(courierName || "").trim().toLowerCase();
+  const trId = String(trackingId).trim();
+  if (name.includes("delhivery")) {
+    return `https://www.delhivery.com/track/package/${trId}`;
+  } else if (name.includes("india post") || name.includes("speed post") || name.includes("post")) {
+    return "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx";
+  } else if (name.includes("dtdc")) {
+    return `https://www.dtdc.in/tracking/tracking_results.asp?pinno=${trId}`;
+  } else if (name.includes("professional") || name.includes("tpc")) {
+    return "https://www.tpcindia.com/";
+  } else if (name.includes("shiprocket")) {
+    return `https://www.shiprocket.in/shipment-tracking/${trId}`;
+  }
+  return `https://www.google.com/search?q=track+${encodeURIComponent(courierName + " " + trId)}`;
+}
+
 function MyOrders() {
   const { token } = useAuth();
   const location = useLocation();
@@ -684,6 +702,30 @@ function MyOrders() {
                           <strong>{activeTracking[order._id].status}</strong>
                         </div>
                       </div>
+
+                      {activeTracking[order._id].trackingId && (
+                        <div style={{ display: "flex", justifyContent: "flex-start", padding: "0 12px 14px 12px", marginTop: "10px" }}>
+                          <a
+                            href={getCourierTrackingUrl(activeTracking[order._id].courier || "Delhivery", activeTracking[order._id].trackingId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="my-order-track-website-link"
+                            style={{
+                              fontSize: "12.5px",
+                              fontWeight: "600",
+                              color: "var(--site-accent, #e94560)",
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              borderBottom: "1px dashed var(--site-accent, #e94560)",
+                              cursor: "pointer"
+                            }}
+                          >
+                            🔗 Track on {activeTracking[order._id].courier || "Delhivery"} Website
+                          </a>
+                        </div>
+                      )}
 
                       <div className="my-order-tracking-stepper">
                         {activeTracking[order._id].checkpoints && activeTracking[order._id].checkpoints.length > 0 ? (
