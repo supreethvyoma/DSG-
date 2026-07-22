@@ -9,6 +9,8 @@ import "./AdminUsers.css";
 
 const ALL_PAGES = [
   { key: "dashboard", label: "📊 Dashboard", desc: "Overview & metrics" },
+  { key: "sales-dashboard", label: "📈 Sales Analytics", desc: "Interactive sales & format metrics" },
+  { key: "financial-dashboard", label: "💰 Finance & Taxes", desc: "Interactive revenue & taxation metrics" },
   { key: "users", label: "👥 User Insights", desc: "User activity metrics" },
   { key: "admin-access", label: "🛡️ Admin Roles", desc: "Admin access control" },
   { key: "orders", label: "📦 Orders & Shipping", desc: "View & fulfill orders" },

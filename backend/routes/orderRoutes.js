@@ -1121,6 +1121,190 @@ router.get("/", protect, admin, async (req, res) => {
     res.status(500).json({ message: error.message || "Failed to load orders." });
   }
 });
+
+// Sales Analytics (Admin only)
+router.get("/analytics/sales", protect, admin, async (req, res) => {
+  try {
+    const orders = await Order.find({ paymentStatus: "Paid" }).lean();
+    
+    let totalItemsSold = 0;
+    let totalRevenue = 0;
+    const formatCounts = {
+      "Web Version": 0,
+      "Flipbook": 0,
+      "Kindle": 0,
+      "Paperback": 0,
+      "E-Book/PDF": 0,
+      "Other": 0
+    };
+    const productSalesMap = {};
+    const countrySalesMap = {};
+    const monthlySalesMap = {};
+
+    orders.forEach((order) => {
+      totalRevenue += Number(order.total || 0);
+      
+      // Items sold
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach((item) => {
+        const qty = Number(item.quantity || 1);
+        totalItemsSold += qty;
+
+        // Product sales aggregation
+        const prodName = String(item.name || "Unknown Product").trim();
+        productSalesMap[prodName] = (productSalesMap[prodName] || 0) + qty;
+
+        // Format detection
+        const nameLower = prodName.toLowerCase();
+        const formatLower = String(item.format || "").toLowerCase();
+        let detectedFormat = "Other";
+
+        if (nameLower.includes("web") || formatLower.includes("web")) {
+          detectedFormat = "Web Version";
+        } else if (nameLower.includes("flipbook") || formatLower.includes("flipbook")) {
+          detectedFormat = "Flipbook";
+        } else if (nameLower.includes("kindle") || formatLower.includes("kindle")) {
+          detectedFormat = "Kindle";
+        } else if (nameLower.includes("paperback") || nameLower.includes("hardcover") || formatLower.includes("paperback")) {
+          detectedFormat = "Paperback";
+        } else if (nameLower.includes("pdf") || nameLower.includes("e-book") || formatLower.includes("pdf") || formatLower.includes("e-book")) {
+          detectedFormat = "E-Book/PDF";
+        }
+        formatCounts[detectedFormat] = (formatCounts[detectedFormat] || 0) + qty;
+      });
+
+      // Geographic aggregation
+      const country = String(order.shipping?.country || order.billing?.country || "India").trim();
+      const normalizedCountry = country.charAt(0).toUpperCase() + country.slice(1).toLowerCase();
+      countrySalesMap[normalizedCountry] = (countrySalesMap[normalizedCountry] || 0) + 1;
+
+      // Monthly sales aggregation
+      const date = new Date(order.createdAt);
+      if (!Number.isNaN(date.getTime())) {
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        monthlySalesMap[monthKey] = (monthlySalesMap[monthKey] || 0) + Number(order.total || 0);
+      }
+    });
+
+    // Formatting top selling products list
+    const topProducts = Object.entries(productSalesMap)
+      .map(([name, qty]) => ({ name, quantity: qty }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 10);
+
+    // Formatting country list
+    const countrySales = Object.entries(countrySalesMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Formatting monthly sales list
+    const monthlySales = Object.entries(monthlySalesMap)
+      .map(([month, amount]) => ({ month, amount: Math.round(amount) }))
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-12);
+
+    res.json({
+      success: true,
+      summary: {
+        totalOrders: orders.length,
+        totalItemsSold,
+        totalRevenue: Math.round(totalRevenue),
+        averageOrderValue: orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0
+      },
+      formatDistribution: formatCounts,
+      topProducts,
+      geographicDistribution: countrySales,
+      monthlySalesTrends: monthlySales
+    });
+  } catch (err) {
+    console.error("Sales analytics error:", err);
+    res.status(500).json({ message: "Failed to generate sales analytics" });
+  }
+});
+
+// Financial Analytics (Admin only)
+router.get("/analytics/finance", protect, admin, async (req, res) => {
+  try {
+    const orders = await Order.find({ paymentStatus: "Paid" })
+      .populate("user", "name email")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let totalGrossRevenue = 0;
+    let totalGST = 0;
+    let totalShipping = 0;
+    let totalDiscounts = 0;
+    const monthlyFinanceMap = {};
+
+    orders.forEach((order) => {
+      totalGrossRevenue += Number(order.total || 0);
+      totalGST += Number(order.gstAmount || 0);
+      totalShipping += Number(order.deliveryCharge || 0);
+      totalDiscounts += Number(order.discount || 0);
+
+      // Monthly breakdown aggregation
+      const date = new Date(order.createdAt);
+      if (!Number.isNaN(date.getTime())) {
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        if (!monthlyFinanceMap[monthKey]) {
+          monthlyFinanceMap[monthKey] = { gross: 0, tax: 0, shipping: 0, discount: 0 };
+        }
+        monthlyFinanceMap[monthKey].gross += Number(order.total || 0);
+        monthlyFinanceMap[monthKey].tax += Number(order.gstAmount || 0);
+        monthlyFinanceMap[monthKey].shipping += Number(order.deliveryCharge || 0);
+        monthlyFinanceMap[monthKey].discount += Number(order.discount || 0);
+      }
+    });
+
+    const netRevenue = totalGrossRevenue - totalGST - totalShipping;
+
+    // Formatting monthly list
+    const monthlyFinance = Object.entries(monthlyFinanceMap)
+      .map(([month, data]) => ({
+        month,
+        gross: Math.round(data.gross),
+        tax: Math.round(data.tax),
+        shipping: Math.round(data.shipping),
+        discount: Math.round(data.discount),
+        net: Math.round(data.gross - data.tax - data.shipping)
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month))
+      .slice(-12);
+
+    // Ledger for the recent 50 orders
+    const ledger = orders.slice(0, 50).map((order) => ({
+      _id: order._id,
+      createdAt: order.createdAt,
+      customer: order.user?.name || order.shipping?.name || "Customer",
+      email: order.user?.email || "N/A",
+      subtotal: Number(order.subtotal || 0),
+      gstAmount: Number(order.gstAmount || 0),
+      deliveryCharge: Number(order.deliveryCharge || 0),
+      discount: Number(order.discount || 0),
+      total: Number(order.total || 0),
+      currency: order.currencyDisplay?.currency || "INR",
+      paymentStatus: order.paymentStatus,
+      refundStatus: order.refundStatus
+    }));
+
+    res.json({
+      success: true,
+      summary: {
+        grossRevenue: Math.round(totalGrossRevenue),
+        taxGST: Math.round(totalGST),
+        shippingCharges: Math.round(totalShipping),
+        discountsGiven: Math.round(totalDiscounts),
+        netRevenue: Math.round(netRevenue)
+      },
+      monthlyTrends: monthlyFinance,
+      recentTransactions: ledger
+    });
+  } catch (err) {
+    console.error("Financial analytics error:", err);
+    res.status(500).json({ message: "Failed to generate financial analytics" });
+  }
+});
+
 // UPDATE order status (ADMIN)
 router.put("/:id/status", protect, admin, async (req, res) => {
   const actor = await getAdminActorSnapshot(req.user);

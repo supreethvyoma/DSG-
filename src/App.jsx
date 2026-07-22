@@ -30,6 +30,8 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const RedeemGift = lazy(() => import("./pages/RedeemGift"));
 const MyLibrary = lazy(() => import("./pages/MyLibrary"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminSalesDashboard = lazy(() => import("./pages/AdminSalesDashboard"));
+const AdminFinancialDashboard = lazy(() => import("./pages/AdminFinancialDashboard"));
 const AdminOrders = lazy(() => import("./pages/AdminOrders"));
 const AdminOrderDetails = lazy(() => import("./pages/AdminOrderDetails"));
 const AdminProducts = lazy(() => import("./pages/AdminProducts"));
@@ -330,6 +332,22 @@ function App() {
             element={
               <AdminRoute requiredPage="dashboard">
                 <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/sales-dashboard"
+            element={
+              <AdminRoute requiredPage="sales-dashboard">
+                <AdminSalesDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/financial-dashboard"
+            element={
+              <AdminRoute requiredPage="financial-dashboard">
+                <AdminFinancialDashboard />
               </AdminRoute>
             }
           />

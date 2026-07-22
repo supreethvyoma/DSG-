@@ -1,0 +1,75 @@
+.sales-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.sales-dashboard-chart-card {
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--premium-shadow-sm);
+  display: flex;
+  flex-direction: column;
+}
+
+.sales-dashboard-chart-card.double-width {
+  grid-column: span 2;
+}
+
+.sales-dashboard-chart-card h3 {
+  margin: 0 0 var(--space-4) 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--site-text);
+  border-bottom: 1px solid rgba(209, 213, 219, 0.2);
+  padding-bottom: var(--space-2);
+}
+
+.sales-dashboard-chart-card .chart-container {
+  position: relative;
+  height: 260px;
+  width: 100%;
+}
+
+.sales-geo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.sales-geo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--site-surface-muted, #f8f9fa);
+  border: 1px solid var(--site-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.sales-geo-name {
+  font-weight: 600;
+  color: var(--site-text);
+}
+
+.sales-geo-count {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+@media (max-width: 1024px) {
+  .sales-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .sales-dashboard-chart-card.double-width {
+    grid-column: span 1;
+  }
+}

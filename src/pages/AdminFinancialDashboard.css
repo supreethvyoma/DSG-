@@ -1,0 +1,49 @@
+.admin-overview-card.highlight-green {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.admin-overview-subnote {
+  font-size: 11px;
+  color: var(--site-text-soft, #64748b);
+  margin-top: 4px;
+}
+
+.financial-ledger-card {
+  background: var(--site-surface);
+  border: 1px solid var(--site-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--premium-shadow-sm);
+  margin-top: var(--space-6);
+}
+
+.financial-ledger-card h3 {
+  margin: 0 0 var(--space-4) 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--site-text);
+  border-bottom: 1px solid rgba(209, 213, 219, 0.2);
+  padding-bottom: var(--space-2);
+}
+
+.finance-payment-pill {
+  display: block;
+  font-size: 10.5px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  padding: 2px 6px;
+  border-radius: 4px;
+  width: fit-content;
+  margin-top: 4px;
+  font-weight: bold;
+}
+
+.text-red {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.text-purple {
+  color: #8b5cf6 !important;
+}

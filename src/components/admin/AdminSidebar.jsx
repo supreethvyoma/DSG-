@@ -5,6 +5,8 @@ import "../../pages/AdminShared.css";
 
 const adminNavItems = [
   { to: "/admin", label: "Dashboard", pageKey: "dashboard" },
+  { to: "/admin/sales-dashboard", label: "Sales Analytics", pageKey: "sales-dashboard" },
+  { to: "/admin/financial-dashboard", label: "Finance & Taxes", pageKey: "financial-dashboard" },
   { to: "/admin/users", label: "User Insights", pageKey: "users" },
   { to: "/admin/admin-access", label: "Admin Roles", pageKey: "admin-access" },
   { to: "/admin/orders", label: "Orders", pageKey: "orders" },
