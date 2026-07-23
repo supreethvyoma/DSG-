@@ -901,7 +901,7 @@
   padding: var(--space-6) !important;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.03) 0%, rgba(217, 119, 6, 0.03) 100%);
   border-radius: var(--radius-xl);
-  margin: var(--space-6) 0;
+  margin: var(--space-6) auto;
   border: 1px solid rgba(209, 213, 219, 0.4);
 }
 
