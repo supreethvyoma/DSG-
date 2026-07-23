@@ -52,6 +52,68 @@ const getItemHsnSac = (item) => {
   return isPrintedBook ? "4901" : "8523";
 };
 
+function CartQtyInput({ item, currentQty, updateQty }) {
+  const [localVal, setLocalVal] = useState(currentQty);
+
+  useEffect(() => {
+    setLocalVal(currentQty);
+  }, [currentQty]);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setLocalVal(val);
+    if (val !== "") {
+      const num = parseInt(val, 10);
+      if (!isNaN(num) && num >= 1) {
+        updateQty(item._id || item.id, Math.min(item.stock || 100, num));
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    const num = parseInt(localVal, 10);
+    if (localVal === "" || isNaN(num) || num < 1) {
+      setLocalVal(1);
+      updateQty(item._id || item.id, 1);
+    }
+  };
+
+  return (
+    <div className="qty-box" style={{ display: "flex", alignItems: "center" }}>
+      <button type="button" onClick={() => {
+        const nextQty = Math.max(1, Number(localVal || 1) - 1);
+        setLocalVal(nextQty);
+        updateQty(item._id || item.id, nextQty);
+      }}>-</button>
+      <input
+        type="number"
+        value={localVal}
+        min="1"
+        max={item.stock || 100}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        style={{
+          width: "50px",
+          textAlign: "center",
+          border: "1px solid var(--border-color, #cbd5e1)",
+          borderRadius: "4px",
+          height: "26px",
+          fontSize: "13.5px",
+          fontWeight: "bold",
+          margin: "0 6px",
+          backgroundColor: "transparent",
+          color: "inherit"
+        }}
+      />
+      <button type="button" onClick={() => {
+        const nextQty = Number(localVal || 1) + 1;
+        setLocalVal(nextQty);
+        updateQty(item._id || item.id, nextQty);
+      }}>+</button>
+    </div>
+  );
+}
+
 function Cart() {
   const {
     cartItems,
@@ -188,34 +250,7 @@ function Cart() {
                       <h3>{item.name}</h3>
                       <p className="cart-item-price-mobile">{formatCurrencyExact(lineTotal, displayCurrency)}</p>
 
-                      <div className="qty-box" style={{ display: "flex", alignItems: "center" }}>
-                        <button type="button" onClick={() => updateQty(item._id || item.id, qty > 1 ? qty - 1 : 1)}>
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          value={qty}
-                          min="1"
-                          max={item.stock || 100}
-                          onChange={(e) => {
-                            const val = Math.max(1, Math.min(item.stock || 100, parseInt(e.target.value) || 1));
-                            updateQty(item._id || item.id, val);
-                          }}
-                          style={{
-                            width: "50px",
-                            textAlign: "center",
-                            border: "1px solid var(--border-color, #cbd5e1)",
-                            borderRadius: "4px",
-                            height: "26px",
-                            fontSize: "13.5px",
-                            fontWeight: "bold",
-                            margin: "0 6px",
-                            backgroundColor: "transparent",
-                            color: "inherit"
-                          }}
-                        />
-                        <button type="button" onClick={() => updateQty(item._id || item.id, qty + 1)}>+</button>
-                      </div>
+                      <CartQtyInput item={item} currentQty={qty} updateQty={updateQty} />
                     </div>
 
                     <div className="cart-item-actions">

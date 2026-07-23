@@ -755,7 +755,7 @@ function Product() {
                 ) : null}
 
                 <div className="qty-box" style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "16px 0" }}>
-                  <button type="button" className="qty-btn" onClick={() => setQty(qty > 1 ? qty - 1 : 1)}>-</button>
+                  <button type="button" className="qty-btn" onClick={() => setQty(Number(qty || 1) > 1 ? Number(qty || 1) - 1 : 1)}>-</button>
                   <input
                     type="number"
                     className="qty-input"
@@ -763,8 +763,21 @@ function Product() {
                     min="1"
                     max={product.stock || 100}
                     onChange={(e) => {
-                      const val = Math.max(1, Math.min(product.stock || 100, parseInt(e.target.value) || 1));
-                      setQty(val);
+                      const val = e.target.value;
+                      if (val === "") {
+                        setQty("");
+                      } else {
+                        const num = parseInt(val, 10);
+                        if (!isNaN(num)) {
+                          setQty(Math.max(1, Math.min(product.stock || 100, num)));
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      const num = parseInt(qty, 10);
+                      if (qty === "" || isNaN(num) || num < 1) {
+                        setQty(1);
+                      }
                     }}
                     style={{
                       width: "60px",
@@ -782,7 +795,7 @@ function Product() {
                   <button
                     type="button"
                     className="qty-btn"
-                    onClick={() => setQty(qty < (product.stock || 100) ? qty + 1 : qty)}
+                    onClick={() => setQty(Number(qty || 1) < (product.stock || 100) ? Number(qty || 1) + 1 : Number(qty || 1))}
                   >+</button>
                 </div>
 
