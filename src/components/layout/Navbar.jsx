@@ -439,16 +439,18 @@ function Navbar({ bannerActive = false }) {
           <div className="navbar-attached-bar-start">
             {!isAdminRoute ? (
               <>
-                <button
-                  type="button"
-                  className="navbar-collection-menu-btn"
-                  aria-label="Open collection filters"
-                  aria-expanded={isCollectionFilterMenuOpen}
-                  onClick={() => setIsCollectionFilterMenuOpen((current) => !current)}
-                >
-                  <Menu size={16} className="lucide-icon" style={{ marginRight: "6px" }} />
-                  <span className="navbar-collection-menu-text">All</span>
-                </button>
+                {location.pathname !== "/collection" && (
+                  <button
+                    type="button"
+                    className="navbar-collection-menu-btn"
+                    aria-label="Open collection filters"
+                    aria-expanded={isCollectionFilterMenuOpen}
+                    onClick={() => setIsCollectionFilterMenuOpen((current) => !current)}
+                  >
+                    <Menu size={16} className="lucide-icon" style={{ marginRight: "6px" }} />
+                    <span className="navbar-collection-menu-text">All</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="navbar-quick-nav-btn"
