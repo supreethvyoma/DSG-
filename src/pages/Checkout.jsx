@@ -26,11 +26,13 @@ const getItemHsnSac = (item) => {
     category.includes("kindle") ||
     category.includes("web version") ||
     category.includes("web-version") ||
+    category.includes("flipbook") ||
     name.includes("ebook") ||
     name.includes("e-book") ||
     name.includes("kindle") ||
     name.includes("web version") ||
     name.includes("web-version") ||
+    name.includes("flipbook") ||
     name.includes("epub") ||
     name.includes("pdf");
     
