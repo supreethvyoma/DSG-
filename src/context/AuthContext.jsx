@@ -199,8 +199,8 @@ export function AuthProvider({ children }) {
     };
   }, [token]);
 
-  const register = async (name, email, password, nextRememberMe = false) => {
-    const res = await axios.post("/api/auth/register", { name, email, password, rememberMe: nextRememberMe });
+  const register = async (name, email, password, phone = "", nextRememberMe = false) => {
+    const res = await axios.post("/api/auth/register", { name, email, password, phone, rememberMe: nextRememberMe });
     const nextUser = normalizeUser(res.data);
 
     setUser(nextUser);

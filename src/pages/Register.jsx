@@ -9,6 +9,7 @@ function Register() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
@@ -20,7 +21,7 @@ function Register() {
     setIsSubmitting(true);
 
     try {
-      await register(name, email, password, rememberMe);
+      await register(name, email, password, phone, rememberMe);
       navigate("/");
     } catch (err) {
       setError(err?.response?.data?.message || "Registration failed");
@@ -63,6 +64,15 @@ function Register() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+            />
+
+            <label htmlFor="register-phone">Phone Number (optional)</label>
+            <input
+              id="register-phone"
+              type="tel"
+              placeholder="Enter your phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
 
             <label htmlFor="register-password">Password</label>

@@ -94,6 +94,7 @@ router.post("/register", registerLimiter, async (req, res) => {
     const name = String(req.body?.name || "").trim();
     const email = String(req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
+    const phone = String(req.body?.phone || "").trim();
     const { rememberMe } = req.body;
 
     if (!name || name.length < 2) {
@@ -104,6 +105,9 @@ router.post("/register", registerLimiter, async (req, res) => {
     }
     if (!isValidEmail(email)) {
       return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+    if (phone && !/^[+\d\s\-()]{5,20}$/.test(phone)) {
+      return res.status(400).json({ message: "Please enter a valid phone number." });
     }
     if (!password || password.length < 8) {
       return res.status(400).json({ message: "Password must be at least 8 characters." });
@@ -118,7 +122,7 @@ router.post("/register", registerLimiter, async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    const user = await User.create({ name, email, password: hashedPassword });
+    const user = await User.create({ name, email, password: hashedPassword, phone });
 
     const token = jwt.sign(
       { id: user._id },
@@ -131,6 +135,7 @@ router.post("/register", registerLimiter, async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone || "",
       isAdmin: user.isAdmin,
       adminLevel,
       adminRole: user.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
