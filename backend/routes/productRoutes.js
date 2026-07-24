@@ -868,6 +868,10 @@ router.post("/:id/reviews", protect, async (req, res) => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
+      // Cap the embedded reviews array to the latest 5 reviews to prevent product document bloat
+      if (product.reviews.length > 5) {
+        product.reviews = product.reviews.slice(-5);
+      }
     }
     product.rating = avgRating;
     product.reviewsCount = reviewsCount;
