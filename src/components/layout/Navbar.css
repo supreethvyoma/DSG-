@@ -594,6 +594,7 @@ html.banner-active .navbar {
 
 .navbar-link:hover {
   background: var(--site-header-border, rgba(255, 255, 255, 0.08));
+  color: var(--site-header-text);
 }
 
 .navbar-link-active {
