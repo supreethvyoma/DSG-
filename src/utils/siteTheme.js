@@ -73,6 +73,24 @@ const BUILT_IN_THEME_DEFINITIONS = [
       sectionBg: "#0277af",
       sectionText: "#ffffff"
     }
+  },
+  {
+    value: "heritage",
+    label: "Sanskrit Heritage",
+    description: "Traditional royal crimson and sandalwood gold theme",
+    palette: {
+      bg: "#fdfbf7",
+      surface: "#ffffff",
+      text: "#450a0a",
+      header: "#7f1d1d",
+      accent: "#b91c1c",
+      button: "#b45309",
+      navBottom: "#450a0a",
+      footerBg: "#450a0a",
+      footerText: "#fef3c7",
+      sectionBg: "#fef2f2",
+      sectionText: "#7f1d1d"
+    }
   }
 ];
 
