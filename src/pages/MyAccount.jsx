@@ -108,31 +108,33 @@ function PushSubscribeSection({ token }) {
           {permission === "granted" ? "Notifications enabled" : permission === "denied" ? "Notifications blocked in browser" : "Notifications not enabled"}
         </div>
         {status && <p className="my-account-push-msg">{status}</p>}
-        <div className="my-account-push-actions">
-          {permission !== "denied" && permission !== "granted" && (
+        <div className="notifications-toggle-row">
+          <label className={`notifications-toggle-label${permission === "denied" ? " disabled" : ""}`}>
             <button
               type="button"
-              className="my-account-push-btn primary"
-              onClick={subscribe}
-              disabled={isSubscribing}
+              className={`notifications-toggle${permission === "granted" ? " on" : ""}`}
+              onClick={permission === "granted" ? unsubscribe : subscribe}
+              disabled={isSubscribing || permission === "denied"}
+              role="switch"
+              aria-checked={permission === "granted"}
+              aria-label="Toggle push notifications"
             >
-              {isSubscribing ? "Subscribing..." : "Enable Push Notifications"}
+              <span className="notifications-toggle-thumb" />
             </button>
-          )}
-          {permission === "granted" && (
-            <button
-              type="button"
-              className="my-account-push-btn"
-              onClick={unsubscribe}
-              disabled={isSubscribing}
-            >
-              {isSubscribing ? "Processing..." : "Disable Notifications"}
-            </button>
-          )}
-          {permission === "denied" && (
-            <p className="my-account-push-hint">To re-enable, click the lock icon in your browser address bar → Notifications → Allow.</p>
-          )}
+            <span className="notifications-toggle-text">
+              {isSubscribing
+                ? "Processing..."
+                : permission === "granted"
+                  ? "Notifications are enabled"
+                  : "Notifications are disabled"}
+            </span>
+          </label>
         </div>
+        {permission === "denied" && (
+          <p className="my-account-push-hint" style={{ marginTop: "8px", fontSize: "13px", color: "var(--site-text-soft)" }}>
+            To re-enable, click the lock icon in your browser address bar → Notifications → Allow.
+          </p>
+        )}
       </div>
     </section>
   );
