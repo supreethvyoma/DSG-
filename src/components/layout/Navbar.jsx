@@ -407,6 +407,11 @@ function Navbar({ bannerActive = false }) {
               <span className="navbar-account-line2">& Orders</span>
             </Link>
 
+            <Link className="navbar-orders navbar-outline" to="/faq">
+              <span className="navbar-account-line1">Help</span>
+              <span className="navbar-account-line2">& FAQs</span>
+            </Link>
+
             <Link className="navbar-cart navbar-outline" to="/cart">
               <span className="navbar-cart-icon" aria-hidden="true">
                 {renderIcon("cart", storeIcons.cart)}
@@ -754,6 +759,9 @@ function Navbar({ bannerActive = false }) {
               Login
             </NavLink>
           )}
+          <NavLink className={linkClassName} to="/faq" onClick={() => setIsMenuOpen(false)}>
+            FAQ
+          </NavLink>
           {user?.isAdmin && (
             <NavLink className={linkClassName} to="/admin" onClick={() => setIsMenuOpen(false)}>
               Admin Dashboard
