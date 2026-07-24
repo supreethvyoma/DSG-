@@ -256,11 +256,11 @@ html.banner-active .navbar {
   width: min(280px, 85vw);
   height: 100vh;
   z-index: 1020;
-  background: rgba(15, 23, 42, 0.97);
+  background: var(--site-header-bg-glass, var(--site-header-bg, rgba(15, 23, 42, 0.97)));
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  box-shadow: -16px 0 48px rgba(15, 23, 42, 0.4);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -16px 0 48px rgba(0, 0, 0, 0.25);
+  border-left: 1px solid var(--site-header-border, rgba(255, 255, 255, 0.08));
   opacity: 1;
   overflow: hidden;
   pointer-events: none;
@@ -592,12 +592,13 @@ html.banner-active .navbar {
 }
 
 .navbar-link:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--site-header-border, rgba(255, 255, 255, 0.08));
 }
 
 .navbar-link-active {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--site-header-border, rgba(255, 255, 255, 0.12));
+  border-color: var(--site-header-border, rgba(255, 255, 255, 0.2));
+  color: var(--site-header-text) !important;
 }
 
 .navbar-inline-count {
@@ -1186,7 +1187,7 @@ html.banner-active .navbar {
   align-items: center;
   justify-content: space-between;
   padding-bottom: var(--space-4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--site-header-border, rgba(255, 255, 255, 0.08));
   margin-bottom: var(--space-2);
 }
 
@@ -1205,7 +1206,7 @@ html.banner-active .navbar {
   height: 32px;
   padding: 0;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--site-header-border, rgba(255, 255, 255, 0.15));
   color: var(--site-header-text);
   font-size: 16px;
   cursor: pointer;
@@ -1214,8 +1215,8 @@ html.banner-active .navbar {
 }
 
 .navbar-subbar-close:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--site-header-border, rgba(255, 255, 255, 0.08));
+  border-color: var(--site-header-border, rgba(255, 255, 255, 0.3));
 }
 
 .navbar-subbar-close:active {
