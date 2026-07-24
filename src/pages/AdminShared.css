@@ -195,12 +195,17 @@ opacity:1;
 }
 
 .sidebar a.active{
-background:transparent;
-color:var(--site-link);
-font-weight:600;
-border:1px solid var(--site-border);
-box-shadow:none;
-opacity:1;
+  background: var(--site-header-border, rgba(255, 255, 255, 0.12));
+  color: var(--site-header-text);
+  font-weight:600;
+  border:1px solid var(--site-header-border, var(--site-border));
+  box-shadow:none;
+  opacity:1;
+}
+
+.sidebar a.active:hover {
+  background: var(--site-header-border, rgba(255, 255, 255, 0.16));
+  color: var(--site-header-text);
 }
 
 .theme-toggle{
