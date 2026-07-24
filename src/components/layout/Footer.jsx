@@ -55,7 +55,7 @@ function Footer() {
               <a href="#/refund-policy">Shipping and Refund Policy</a>
             </li>
             <li>
-              <a href="mailto:sanskritfromhome@vyomalabs.in">Contact Us</a>
+              <Link to="/contact">Contact Us</Link>
             </li>
           </ul>
         </div>

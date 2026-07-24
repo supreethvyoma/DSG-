@@ -43,6 +43,7 @@ const AdminThemeSettings = lazy(() => import("./pages/AdminThemeSettings"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
 const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const Contact = lazy(() => import("./pages/Contact"));
 
 function RouteLoadingFallback() {
   return (
@@ -428,6 +429,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/faq" element={<FAQ />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </Suspense>
 

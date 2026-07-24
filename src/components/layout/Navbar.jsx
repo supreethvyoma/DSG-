@@ -762,6 +762,9 @@ function Navbar({ bannerActive = false }) {
           <NavLink className={linkClassName} to="/faq" onClick={() => setIsMenuOpen(false)}>
             FAQ
           </NavLink>
+          <NavLink className={linkClassName} to="/contact" onClick={() => setIsMenuOpen(false)}>
+            Contact Us
+          </NavLink>
           {user?.isAdmin && (
             <NavLink className={linkClassName} to="/admin" onClick={() => setIsMenuOpen(false)}>
               Admin Dashboard
