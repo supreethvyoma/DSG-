@@ -300,7 +300,7 @@ html.banner-active .navbar {
 }
 
 .navbar-outline:hover {
-  border-color: rgba(248, 250, 252, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .navbar-outline:focus-visible {
@@ -333,7 +333,7 @@ html.banner-active .navbar {
   font-size: 10px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 500;
 }
 
@@ -372,7 +372,7 @@ html.banner-active .navbar {
 }
 
 .navbar-location-label {
-  color: rgba(248, 250, 252, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 11px;
   line-height: 1.1;
   font-weight: 500;
@@ -483,7 +483,7 @@ html.banner-active .navbar {
 
 .navbar-account-line1 {
   font-size: 11px;
-  color: rgba(248, 250, 252, 0.6);
+  color: rgba(255, 255, 255, 0.75);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -976,7 +976,7 @@ html.banner-active .navbar {
 
   .navbar-mobile-location {
     display: block;
-    color: rgba(248, 250, 252, 0.65);
+    color: rgba(255, 255, 255, 0.8);
     font-size: 13px;
     padding: 8px 10px 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
