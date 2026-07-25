@@ -139,7 +139,7 @@ function toRgba(color, alpha = 1) {
 function getReadableTextColor(color) {
   const { r, g, b } = hexToRgb(color);
   const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  return luminance > 0.62 ? "#111827" : "#f8fafc";
+  return luminance > 0.62 ? "#111827" : "#ffffff";
 }
 
 function buildThemeVariables(theme) {
