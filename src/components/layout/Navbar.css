@@ -773,7 +773,7 @@ html.banner-active .navbar {
   color: var(--site-text);
 }
 
-.navbar-address-option p + p {
+.navbar-address-option p+p {
   margin-top: 4px;
 }
 

@@ -121,7 +121,7 @@ function Login() {
     <section className="login-page">
       <div className="login-shell">
         <div className="login-brand">
-          <p className="login-kicker">Welcome Back</p>
+          <p className="login-kicker">Namaste, Welcome Back</p>
           <h1>Sign in to your account</h1>
           <p>Access your cart, wishlist, orders, and faster checkout in one place.</p>
         </div>
@@ -133,7 +133,7 @@ function Login() {
               <p style={{ fontSize: "14px", color: "var(--site-text-soft)", marginBottom: "15px" }}>
                 Enter your email address and we'll send you a link to reset your password.
               </p>
-              
+
               {forgotError && <p className="login-error">{forgotError}</p>}
               {forgotSuccess && (
                 <p style={{ color: "#2e7d32", backgroundColor: "#e8f5e9", padding: "10px", borderRadius: "10px", marginBottom: "15px", fontSize: "0.9rem" }}>
@@ -151,15 +151,15 @@ function Login() {
                   onChange={(e) => setForgotEmail(e.target.value)}
                   required
                 />
-                
+
                 <button type="submit" disabled={isForgotSubmitting}>
                   {isForgotSubmitting ? "Sending Reset Link..." : "Send Reset Link"}
                 </button>
               </form>
 
               <p className="login-footer-text">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => {
                     setIsForgotPassword(false);
                     setForgotError("");

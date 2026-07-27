@@ -232,27 +232,27 @@ function Product() {
       axios.get("/api/orders/my", {
         headers: { Authorization: `Bearer ${token}` }
       })
-      .then((res) => {
-        const list = [];
-        if (Array.isArray(res.data)) {
-          res.data.forEach((order) => {
-            const isPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
-            if (!isPaid || !Array.isArray(order.items)) return;
-            order.items.forEach((item) => {
-              const isGiftItem = Boolean(order.isGift || item.giftCode);
-              if (isGiftItem && !order.isRedeemedGift) {
-                return;
-              }
-              const pId = String(item.product || item._id || item.id || "").trim();
-              if (pId) {
-                list.push(pId);
-              }
+        .then((res) => {
+          const list = [];
+          if (Array.isArray(res.data)) {
+            res.data.forEach((order) => {
+              const isPaid = String(order.paymentStatus || "").toLowerCase() === "paid";
+              if (!isPaid || !Array.isArray(order.items)) return;
+              order.items.forEach((item) => {
+                const isGiftItem = Boolean(order.isGift || item.giftCode);
+                if (isGiftItem && !order.isRedeemedGift) {
+                  return;
+                }
+                const pId = String(item.product || item._id || item.id || "").trim();
+                if (pId) {
+                  list.push(pId);
+                }
+              });
             });
-          });
-        }
-        setPurchasedProducts(list);
-      })
-      .catch((err) => console.error("Error fetching my orders:", err));
+          }
+          setPurchasedProducts(list);
+        })
+        .catch((err) => console.error("Error fetching my orders:", err));
     }
   }, [token]);
 
@@ -575,12 +575,12 @@ function Product() {
   );
 
   const isWebVersion = product && (
-    product.isDigital && 
-    (String(product.digitalType || "").toLowerCase().includes("web") || 
-     String(product.name || "").toLowerCase().includes("web") ||
-     String(product.name || "").toLowerCase().includes("flipbook") ||
-     String(product.format || "").toLowerCase().includes("web") ||
-     String(product.format || "").toLowerCase().includes("flipbook"))
+    product.isDigital &&
+    (String(product.digitalType || "").toLowerCase().includes("web") ||
+      String(product.name || "").toLowerCase().includes("web") ||
+      String(product.name || "").toLowerCase().includes("flipbook") ||
+      String(product.format || "").toLowerCase().includes("web") ||
+      String(product.format || "").toLowerCase().includes("flipbook"))
   ) && !isKindleBook;
 
   const alreadyPurchased = product && purchasedProducts.includes(String(product._id));
@@ -757,8 +757,8 @@ function Product() {
         <div className="product-right">
           <div className="buy-box">
             <p className="buy-price">{formatResolvedPrice(pricing)}</p>
-            <p className="delivery">Fast Delivery</p>
-            <p className="buy-box-note">Fastest delivery available at your selected location.</p>
+            {/* <p className="delivery">Fast Delivery</p> */}
+            <p className="buy-box-note">Fast delivery available at your selected location.</p>
 
             {isKindleBook ? (
               <div style={{ marginTop: "12px" }}>
