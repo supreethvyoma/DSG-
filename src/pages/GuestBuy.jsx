@@ -57,6 +57,17 @@ function GuestBuy() {
     fetchProductAndSettings();
   }, [id]);
 
+  const isDigital = product ? Boolean(
+    product.isDigital ||
+    product.webReaderLink ||
+    product.kindleLink ||
+    String(product.name || "").toLowerCase().includes("web") ||
+    String(product.name || "").toLowerCase().includes("kindle") ||
+    String(product.name || "").toLowerCase().includes("flipbook") ||
+    String(product.format || "").toLowerCase().includes("web") ||
+    String(product.format || "").toLowerCase().includes("flipbook")
+  ) : false;
+
   useEffect(() => {
     if (isDigital) return;
     if (!pincode.trim() || !city.trim() || !state.trim()) {
@@ -102,17 +113,6 @@ function GuestBuy() {
 
     return () => clearTimeout(timer);
   }, [city, state, pincode, country, isDigital]);
-
-  const isDigital = product ? Boolean(
-    product.isDigital ||
-    product.webReaderLink ||
-    product.kindleLink ||
-    String(product.name || "").toLowerCase().includes("web") ||
-    String(product.name || "").toLowerCase().includes("kindle") ||
-    String(product.name || "").toLowerCase().includes("flipbook") ||
-    String(product.format || "").toLowerCase().includes("web") ||
-    String(product.format || "").toLowerCase().includes("flipbook")
-  ) : false;
 
   const handlePayment = async (e) => {
     e.preventDefault();
