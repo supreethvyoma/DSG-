@@ -10,6 +10,7 @@ const admin = require("../middleware/adminMiddleware");
 const { getProductPriceDetails } = require("../utils/productPricing");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 const { appCache, TTL, invalidateProductCache, cacheAside } = require("../utils/cache");
+const { honeypotMiddleware, reviewRateLimiter } = require("../utils/spamFilter");
 
 const router = express.Router();
 
@@ -818,7 +819,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Add product review (logged-in user)
-router.post("/:id/reviews", protect, async (req, res) => {
+router.post("/:id/reviews", protect, reviewRateLimiter, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -934,7 +935,7 @@ router.delete("/:id", protect, admin, async (req, res) => {
 const { sendBulkEnquiryEmail } = require("../utils/email");
 
 // POST /api/products/:id/bulk-enquiry (PUBLIC)
-router.post("/:id/bulk-enquiry", async (req, res) => {
+router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {

@@ -226,6 +226,7 @@ function Product() {
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkSuccess, setBulkSuccess] = useState(false);
   const [bulkError, setBulkError] = useState("");
+  const [honeyValue, setHoneyValue] = useState("");
 
   useEffect(() => {
     if (token) {
@@ -503,12 +504,14 @@ function Product() {
         phone: bulkPhone,
         quantity: Number(bulkQty),
         institution: bulkInst,
-        message: bulkMsg
+        message: bulkMsg,
+        honey_pot_field: honeyValue
       });
       setBulkSuccess(true);
       setBulkPhone("");
       setBulkInst("");
       setBulkMsg("");
+      setHoneyValue("");
       setTimeout(() => {
         setShowBulkModal(false);
         setBulkSuccess(false);
@@ -1333,6 +1336,18 @@ function Product() {
                         color: "inherit",
                         resize: "none"
                       }}
+                    />
+                  </div>
+
+                  {/* Honeypot field hidden from humans */}
+                  <div style={{ display: "none" }}>
+                    <input
+                      type="text"
+                      name="honey_pot_field"
+                      value={honeyValue}
+                      onChange={(e) => setHoneyValue(e.target.value)}
+                      tabIndex="-1"
+                      autoComplete="off"
                     />
                   </div>
 
