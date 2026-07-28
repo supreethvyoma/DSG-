@@ -9,12 +9,7 @@ const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { getProductPriceDetails } = require("../utils/productPricing");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
-const {
-  spamFilterMiddleware,
-  rateLimitReviews,
-  rateLimitEnquiries,
-  verifyTurnstile
-} = require("../utils/spamFilter");
+const { appCache, TTL, invalidateProductCache, cacheAside } = require("../utils/cache");
 
 const router = express.Router();
 
@@ -823,13 +818,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // Add product review (logged-in user)
-router.post(
-  "/:id/reviews",
-  protect,
-  rateLimitReviews,
-  spamFilterMiddleware(["comment"]),
-  verifyTurnstile,
-  async (req, res) => {
+router.post("/:id/reviews", protect, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {
@@ -945,12 +934,7 @@ router.delete("/:id", protect, admin, async (req, res) => {
 const { sendBulkEnquiryEmail } = require("../utils/email");
 
 // POST /api/products/:id/bulk-enquiry (PUBLIC)
-router.post(
-  "/:id/bulk-enquiry",
-  rateLimitEnquiries,
-  spamFilterMiddleware(["message", "institution", "name"]),
-  verifyTurnstile,
-  async (req, res) => {
+router.post("/:id/bulk-enquiry", async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {

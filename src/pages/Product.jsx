@@ -227,63 +227,6 @@ function Product() {
   const [bulkSuccess, setBulkSuccess] = useState(false);
   const [bulkError, setBulkError] = useState("");
 
-  const [captchaToken, setCaptchaToken] = useState("");
-  const [honeyValue, setHoneyValue] = useState("");
-  const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || "";
-
-  // ── Spam Engine Captcha Loader & Render ──
-  useEffect(() => {
-    if (!turnstileSiteKey) return;
-
-    const renderWidget = () => {
-      if (!window.turnstile) return;
-      try {
-        if (document.getElementById("turnstile-review-container")) {
-          window.turnstile.render("#turnstile-review-container", {
-            sitekey: turnstileSiteKey,
-            callback: (token) => setCaptchaToken(token)
-          });
-        }
-      } catch (e) {
-        console.error("Turnstile review render error:", e);
-      }
-    };
-
-    if (window.turnstile) {
-      renderWidget();
-    } else {
-      const scriptId = "cloudflare-turnstile-script";
-      if (!document.getElementById(scriptId)) {
-        const script = document.createElement("script");
-        script.id = scriptId;
-        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-        script.async = true;
-        script.defer = true;
-        script.onload = renderWidget;
-        document.body.appendChild(script);
-      }
-    }
-  }, [turnstileSiteKey, user]);
-
-  useEffect(() => {
-    if (!turnstileSiteKey || !showBulkModal) return;
-
-    const timer = setTimeout(() => {
-      if (window.turnstile && document.getElementById("turnstile-bulk-container")) {
-        try {
-          window.turnstile.render("#turnstile-bulk-container", {
-            sitekey: turnstileSiteKey,
-            callback: (token) => setCaptchaToken(token)
-          });
-        } catch (e) {
-          console.error("Turnstile bulk render error:", e);
-        }
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [turnstileSiteKey, showBulkModal]);
-
   useEffect(() => {
     if (token) {
       axios.get("/api/orders/my", {
@@ -497,35 +440,18 @@ function Product() {
     try {
       await axios.post(
         `/api/products/${id}/reviews`,
-        { 
-          rating: Number(rating), 
-          comment,
-          honey_pot_field: honeyValue,
-          captchaToken
-        },
+        { rating: Number(rating), comment },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setRating("5");
       setComment("");
       setReviewError("");
-      setCaptchaToken("");
-      setHoneyValue("");
-      if (window.turnstile) {
-        try {
-          window.turnstile.reset("#turnstile-review-container");
-        } catch (e) {}
-      }
       showToast("Review submitted!");
       await loadData();
     } catch (err) {
       const message = err?.response?.data?.message || "Failed to submit review";
       setReviewError(message);
-      if (window.turnstile) {
-        try {
-          window.turnstile.reset("#turnstile-review-container");
-        } catch (e) {}
-      }
     }
   };
 
@@ -577,32 +503,18 @@ function Product() {
         phone: bulkPhone,
         quantity: Number(bulkQty),
         institution: bulkInst,
-        message: bulkMsg,
-        honey_pot_field: honeyValue,
-        captchaToken
+        message: bulkMsg
       });
       setBulkSuccess(true);
       setBulkPhone("");
       setBulkInst("");
       setBulkMsg("");
-      setCaptchaToken("");
-      setHoneyValue("");
-      if (window.turnstile) {
-        try {
-          window.turnstile.reset("#turnstile-bulk-container");
-        } catch (e) {}
-      }
       setTimeout(() => {
         setShowBulkModal(false);
         setBulkSuccess(false);
       }, 2500);
     } catch (err) {
       setBulkError(err.response?.data?.message || "Failed to submit wholesale quote request. Please try again.");
-      if (window.turnstile) {
-        try {
-          window.turnstile.reset("#turnstile-bulk-container");
-        } catch (e) {}
-      }
     } finally {
       setBulkSubmitting(false);
     }
@@ -1149,27 +1061,6 @@ function Product() {
                 rows={3}
                 placeholder="Write your review..."
               />
-
-              {/* Honeypot field hidden from humans */}
-              <div style={{ display: "none" }}>
-                <input
-                  type="text"
-                  name="honey_pot_field"
-                  value={honeyValue}
-                  onChange={(e) => setHoneyValue(e.target.value)}
-                  tabIndex="-1"
-                  autoComplete="off"
-                />
-              </div>
-
-              {/* Turnstile Captcha Container */}
-              {turnstileSiteKey && (
-                <div 
-                  id="turnstile-review-container" 
-                  style={{ marginBottom: "15px", display: "flex", justifyContent: "flex-start" }}
-                />
-              )}
-
               {reviewError && <p className="review-form-error">{reviewError}</p>}
               <button className="add-cart-btn" onClick={submitReview}>
                 Submit Review
@@ -1444,26 +1335,6 @@ function Product() {
                       }}
                     />
                   </div>
-
-                  {/* Honeypot field hidden from humans */}
-                  <div style={{ display: "none" }}>
-                    <input
-                      type="text"
-                      name="honey_pot_field"
-                      value={honeyValue}
-                      onChange={(e) => setHoneyValue(e.target.value)}
-                      tabIndex="-1"
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  {/* Turnstile Captcha Container */}
-                  {turnstileSiteKey && (
-                    <div 
-                      id="turnstile-bulk-container" 
-                      style={{ marginBottom: "16px", display: "flex", justifyContent: "flex-start" }}
-                    />
-                  )}
 
                   <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
                     <button
