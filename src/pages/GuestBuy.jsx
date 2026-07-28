@@ -4,6 +4,7 @@ import axios from "axios";
 import { loadRazorpayCheckout } from "../utils/loadRazorpay";
 import { formatResolvedPrice, convertCurrencyAmount } from "../utils/currency";
 import { getProductPriceDetails } from "../utils/productPricing";
+import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
 import "./Checkout.css";
 
 function GuestBuy() {
@@ -32,22 +33,27 @@ function GuestBuy() {
   // Success state
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [credentialsSent, setCredentialsSent] = useState(false);
+  const [settings, setSettings] = useState(null);
 
   const isDummyPaymentEnabled = import.meta.env.VITE_ENABLE_DUMMY_PAYMENT === "true";
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndSettings = async () => {
       try {
-        const res = await axios.get(`/api/products/${id}`);
-        setProduct(res.data);
+        const [prodRes, settRes] = await Promise.all([
+          axios.get(`/api/products/${id}`),
+          axios.get("/api/settings/public")
+        ]);
+        setProduct(prodRes.data);
+        setSettings(settRes.data);
       } catch (err) {
-        setError(err.response?.data?.message || "Failed to load product details.");
+        setError(err.response?.data?.message || "Failed to load checkout details.");
       } finally {
         setLoading(false);
       }
     };
-    fetchProduct();
+    fetchProductAndSettings();
   }, [id]);
 
   const isDigital = product ? Boolean(
@@ -102,6 +108,27 @@ function GuestBuy() {
     const finalTotal = Number(pricing.price || 0);
     const displayCurrency = pricing.currency || "INR";
 
+    const deliveryDetails = getDeliveryPricingDetails(
+      settings,
+      isDigital ? {} : { address: address.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(), country: country.trim() },
+      product ? [{
+        product: product._id,
+        _id: product._id,
+        id: product._id,
+        name: product.name,
+        image: product.image,
+        price: finalTotal,
+        quantity: 1,
+        isDigital,
+        weight: product.weight,
+        height: product.height,
+        width: product.width,
+        length: product.length
+      }] : []
+    );
+    const deliveryCharge = Number(deliveryDetails?.deliveryCharge || 0);
+    const grandTotal = finalTotal + deliveryCharge;
+
     try {
       let RazorpayConstructor = window.Razorpay;
       if (!isDummyPaymentEnabled) {
@@ -109,7 +136,7 @@ function GuestBuy() {
       }
 
       // 1. Create Razorpay Order (converting to INR paise)
-      const amountInInr = convertCurrencyAmount(finalTotal, {
+      const amountInInr = convertCurrencyAmount(grandTotal, {
         sourceCurrency: displayCurrency,
         currency: "INR"
       });
@@ -163,7 +190,7 @@ function GuestBuy() {
           razorpayPaymentId: response.razorpay_payment_id,
           currencyDisplay: {
             currency: displayCurrency,
-            amount: finalTotal,
+            amount: grandTotal,
             detectedCountry: isDigital ? "India" : country.trim()
           }
         });
@@ -224,7 +251,7 @@ function GuestBuy() {
               razorpayPaymentId: response.razorpay_payment_id,
               currencyDisplay: {
                 currency: displayCurrency,
-                amount: finalTotal,
+                amount: grandTotal,
                 detectedCountry: isDigital ? "India" : country.trim()
               }
             });
@@ -309,6 +336,27 @@ function GuestBuy() {
   const finalTotal = Number(pricing.price || 0);
   const displayCurrency = pricing.currency || "INR";
 
+  const deliveryDetails = getDeliveryPricingDetails(
+    settings,
+    isDigital ? {} : { address, city, state, pincode, country },
+    product ? [{
+      product: product._id,
+      _id: product._id,
+      id: product._id,
+      name: product.name,
+      image: product.image,
+      price: finalTotal,
+      quantity: 1,
+      isDigital,
+      weight: product.weight,
+      height: product.height,
+      width: product.width,
+      length: product.length
+    }] : []
+  );
+  const deliveryCharge = Number(deliveryDetails?.deliveryCharge || 0);
+  const grandTotal = finalTotal + deliveryCharge;
+
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px", minHeight: "100vh", backgroundColor: "var(--site-bg, #fafafa)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: "24px", maxWidth: "800px", width: "100%" }}>
@@ -354,6 +402,24 @@ function GuestBuy() {
                     {displayCurrency} {Math.round(finalTotal / (1 - Number(product.festiveDiscountPercent || 0) / 100))}
                   </span>
                 )}
+              </div>
+              <div style={{ borderTop: "1px dashed #e2e8f0", paddingTop: "12px", width: "100%", textAlign: "left", fontSize: "14px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ color: "#64748b" }}>Price:</span>
+                  <span style={{ fontWeight: "600" }}>{displayCurrency} {Math.round(finalTotal)}</span>
+                </div>
+                {!isDigital && (
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span style={{ color: "#64748b" }}>Delivery Charge:</span>
+                    <span style={{ fontWeight: "600" }}>
+                      {deliveryCharge > 0 ? `${displayCurrency} ${Math.round(deliveryCharge)}` : "Calculated at checkout"}
+                    </span>
+                  </div>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", fontSize: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "6px", marginTop: "6px" }}>
+                  <span>Total:</span>
+                  <span style={{ color: "var(--site-primary, #d97706)" }}>{displayCurrency} {Math.round(grandTotal)}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -475,7 +541,7 @@ function GuestBuy() {
               className="checkout-btn"
               style={{ width: "100%", padding: "12px 16px", marginTop: "8px" }}
             >
-              {isPaying ? "Processing Payment..." : `Pay Now (${displayCurrency} ${Math.round(finalTotal)})`}
+              {isPaying ? "Processing Payment..." : `Pay Now (${displayCurrency} ${Math.round(grandTotal)})`}
             </button>
           </form>
         </div>
