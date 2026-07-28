@@ -98,7 +98,7 @@ function GuestBuy() {
     };
 
     // Construct pricing based on configuration
-    const finalTotal = Number(product.salePrice ?? product.regularPrice ?? 0);
+    const finalTotal = Number(getProductPriceDetails(product).price || 0);
 
     try {
       let RazorpayConstructor = window.Razorpay;
@@ -298,7 +298,7 @@ function GuestBuy() {
     );
   }
 
-  const finalTotal = product.salePrice ?? product.regularPrice ?? 0;
+  const finalTotal = Number(getProductPriceDetails(product).price || 0);
 
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px", minHeight: "100vh", backgroundColor: "var(--site-bg, #fafafa)" }}>
@@ -340,9 +340,9 @@ function GuestBuy() {
                 <span style={{ fontSize: "24px", fontWeight: "800", color: "var(--site-primary, #d97706)" }}>
                   Rs {Math.round(finalTotal)}
                 </span>
-                {product.salePrice && product.regularPrice && (
+                {product?.festiveOffer === true && product?.festiveDiscountPercent > 0 && (
                   <span style={{ textDecoration: "line-through", color: "#94a3b8" }}>
-                    Rs {Math.round(product.regularPrice)}
+                    Rs {Math.round(finalTotal / (1 - Number(product.festiveDiscountPercent || 0) / 100))}
                   </span>
                 )}
               </div>
