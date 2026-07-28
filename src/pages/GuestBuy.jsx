@@ -34,6 +34,7 @@ function GuestBuy() {
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [credentialsSent, setCredentialsSent] = useState(false);
   const [settings, setSettings] = useState(null);
+  const [coords, setCoords] = useState({ latitude: null, longitude: null });
 
   const isDummyPaymentEnabled = import.meta.env.VITE_ENABLE_DUMMY_PAYMENT === "true";
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
@@ -55,6 +56,53 @@ function GuestBuy() {
     };
     fetchProductAndSettings();
   }, [id]);
+
+  useEffect(() => {
+    if (isDigital) return;
+    if (!pincode.trim() || !city.trim() || !state.trim()) {
+      setCoords({ latitude: null, longitude: null });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const query = [
+        address.trim(),
+        city.trim(),
+        state.trim(),
+        pincode.trim(),
+        country.trim()
+      ]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .join(", ");
+
+      if (!query) return;
+
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          format: "jsonv2",
+          limit: "1"
+        });
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+          headers: { Accept: "application/json" }
+        });
+        if (response.ok) {
+          const results = await response.json();
+          const first = results[0];
+          const lat = Number(first?.lat);
+          const lon = Number(first?.lon);
+          if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+            setCoords({ latitude: lat, longitude: lon });
+          }
+        }
+      } catch (err) {
+        console.error("Geocoding failed:", err);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [address, city, state, pincode, country, isDigital]);
 
   const isDigital = product ? Boolean(
     product.isDigital ||
@@ -100,7 +148,9 @@ function GuestBuy() {
       city: city.trim(),
       state: state.trim(),
       pincode: pincode.trim(),
-      country: country.trim()
+      country: country.trim(),
+      latitude: coords.latitude,
+      longitude: coords.longitude
     };
 
     // Construct pricing based on configuration
@@ -110,7 +160,7 @@ function GuestBuy() {
 
     const deliveryDetails = getDeliveryPricingDetails(
       settings,
-      isDigital ? {} : { address: address.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(), country: country.trim() },
+      isDigital ? {} : { address: address.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(), country: country.trim(), latitude: coords.latitude, longitude: coords.longitude },
       product ? [{
         product: product._id,
         _id: product._id,
@@ -351,7 +401,7 @@ function GuestBuy() {
   const deliveryDetails = hasShippingAddress
     ? getDeliveryPricingDetails(
         settings,
-        isDigital ? {} : { address: address.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(), country: country.trim() },
+        isDigital ? {} : { address: address.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(), country: country.trim(), latitude: coords.latitude, longitude: coords.longitude },
         product ? [{
           product: product._id,
           _id: product._id,
