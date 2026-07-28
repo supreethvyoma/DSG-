@@ -78,22 +78,22 @@ function AdminSecurityLogs() {
         </div>
 
         {/* Threat Stats Cards */}
-        <div className="metrics-grid" style={{ marginBottom: "24px" }}>
-          <div className="metric-card" style={{ borderLeft: "4px solid #3b82f6" }}>
-            <span className="metric-title">Total Threats Intercepted</span>
-            <span className="metric-value">{stats.total}</span>
+        <div className="revenue-kpi-grid" style={{ marginBottom: "24px" }}>
+          <div className="card revenue-kpi-card" style={{ borderLeft: "4px solid #3b82f6" }}>
+            <h4>Total Threats Intercepted</h4>
+            <p>{stats.total}</p>
           </div>
-          <div className="metric-card" style={{ borderLeft: "4px solid #ef4444" }}>
-            <span className="metric-title">NoSQL Injection Attempts</span>
-            <span className="metric-value" style={{ color: "#ef4444" }}>{stats.nosql}</span>
+          <div className="card revenue-kpi-card" style={{ borderLeft: "4px solid #ef4444" }}>
+            <h4>NoSQL Injection Attempts</h4>
+            <p style={{ color: "#ef4444" }}>{stats.nosql}</p>
           </div>
-          <div className="metric-card" style={{ borderLeft: "4px solid #f97316" }}>
-            <span className="metric-title">XSS Script exploits</span>
-            <span className="metric-value" style={{ color: "#f97316" }}>{stats.xss}</span>
+          <div className="card revenue-kpi-card" style={{ borderLeft: "4px solid #f97316" }}>
+            <h4>XSS Script exploits</h4>
+            <p style={{ color: "#f97316" }}>{stats.xss}</p>
           </div>
         </div>
 
-        <div className="admin-table-container">
+        <section className="card">
           <div className="table-controls" style={{ padding: "16px", display: "flex", gap: "12px" }}>
             <input
               type="text"
@@ -187,7 +187,7 @@ function AdminSecurityLogs() {
               </table>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Inspect Details Modal overlay */}
         {selectedThreat && (
