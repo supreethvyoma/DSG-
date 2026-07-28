@@ -426,192 +426,295 @@ function GuestBuy() {
   const grandTotal = finalTotal + deliveryCharge;
 
   return (
-    <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px", minHeight: "100vh", backgroundColor: "var(--site-bg, #fafafa)" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px", maxWidth: "800px", width: "100%" }}>
-        <div style={{ textAlign: "center" }}>
-          <h2 style={{ fontSize: "28px", fontWeight: "700" }}>Express Student Purchase</h2>
-          <p style={{ color: "#64748b", marginTop: "4px" }}>Fill out the form below to complete checkout via Razorpay</p>
-        </div>
+    <div style={{ minHeight: "100vh", position: "relative", backgroundColor: "#f8fafc", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
+      <style>{`
+        @keyframes modalSlideUp {
+          from {
+            opacity: 0;
+            transform: scale(0.96) translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+        .popup-modal-card {
+          animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @media (max-width: 768px) {
+          .checkout-grid-mobile {
+            grid-template-columns: 1fr !important;
+          }
+          .popup-modal-card {
+            padding: 20px !important;
+            margin: 10px !important;
+            max-height: 96vh !important;
+          }
+        }
+      `}</style>
+      {/* Background brand overlay */}
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.05, userSelect: "none", pointerEvents: "none" }}>
+        <h1 style={{ fontSize: "80px", fontWeight: "900", margin: 0 }}>VYOMA</h1>
+        <p style={{ fontSize: "24px", fontWeight: "700", tracking: "2px" }}>DIGITAL SANSKRIT GURU</p>
+      </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }} className="checkout-grid-mobile">
-          {/* Left Side: Product Card info */}
-          <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Product Details</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px", alignItems: "center", textAlign: "center" }}>
-              {product.image && (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  style={{ width: "150px", height: "150px", objectFit: "contain", borderRadius: "8px" }}
-                />
-              )}
+      {/* Floating Modal Popup Overlay */}
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.4)",
+        backdropFilter: "blur(12px)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 9999,
+        padding: "24px 16px"
+      }}>
+        <div 
+          className="popup-modal-card"
+          style={{
+            backgroundColor: "#ffffff",
+            borderRadius: "20px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            maxWidth: "850px",
+            width: "100%",
+            maxHeight: "92vh",
+            overflowY: "auto",
+            position: "relative",
+            padding: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "24px"
+          }}
+        >
+          {/* Close Button */}
+          <button 
+            type="button"
+            onClick={() => {
+              if (window.history.length > 2) {
+                navigate(-1);
+              } else {
+                navigate("/");
+              }
+            }}
+            style={{
+              position: "absolute",
+              top: "20px",
+              right: "20px",
+              background: "#f1f5f9",
+              border: "none",
+              borderRadius: "50%",
+              width: "36px",
+              height: "36px",
+              fontSize: "20px",
+              fontWeight: "bold",
+              color: "#64748b",
+              cursor: "pointer",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#e2e8f0"; e.currentTarget.style.color = "#1e293b"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.color = "#64748b"; }}
+          >
+            &times;
+          </button>
+
+          {/* Modal Header */}
+          <div style={{ textAlign: "center", paddingRight: "40px", paddingLeft: "40px" }}>
+            <h2 style={{ fontSize: "24px", fontWeight: "800", color: "#0f172a", margin: 0 }}>Express Student Purchase</h2>
+            <p style={{ color: "#64748b", fontSize: "14px", marginTop: "4px", margin: "4px 0 0" }}>Complete your enrollment instantly via secure payment</p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "24px" }} className="checkout-grid-mobile">
+            {/* Left Side: Product Card info */}
+            <div style={{ backgroundColor: "#f8fafc", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
-                <h4 style={{ fontWeight: "700", fontSize: "16px" }}>{product.name}</h4>
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    backgroundColor: "#f1f5f9",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    marginTop: "8px"
-                  }}
-                >
-                  {isDigital ? "💻 Digital Course" : "📚 Physical Format"}
-                </span>
+                <h3 style={{ fontSize: "16px", fontWeight: "700", marginBottom: "16px", color: "#475569" }}>Product Details</h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px", alignItems: "center", textAlign: "center" }}>
+                  {product.image && (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      style={{ width: "120px", height: "120px", objectFit: "contain", borderRadius: "8px" }}
+                    />
+                  )}
+                  <div>
+                    <h4 style={{ fontWeight: "700", fontSize: "15px", color: "#1e293b" }}>{product.name}</h4>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        padding: "4px 8px",
+                        borderRadius: "4px",
+                        backgroundColor: "#cbd5e1",
+                        color: "#334155",
+                        fontSize: "11px",
+                        fontWeight: "700",
+                        marginTop: "8px"
+                      }}
+                    >
+                      {isDigital ? "💻 Digital Course" : "📚 Physical Format"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", gap: "12px", alignItems: "baseline", marginTop: "8px" }}>
+                    <span style={{ fontSize: "22px", fontWeight: "800", color: "var(--site-primary, #d97706)" }}>
+                      {displayCurrency} {Math.round(finalTotal)}
+                    </span>
+                    {product?.festiveOffer === true && product?.festiveDiscountPercent > 0 && (
+                      <span style={{ textDecoration: "line-through", color: "#94a3b8" }}>
+                        {displayCurrency} {Math.round(finalTotal / (1 - Number(product.festiveDiscountPercent || 0) / 100))}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div style={{ display: "flex", gap: "12px", alignItems: "baseline", marginTop: "8px" }}>
-                <span style={{ fontSize: "24px", fontWeight: "800", color: "var(--site-primary, #d97706)" }}>
-                  {displayCurrency} {Math.round(finalTotal)}
-                </span>
-                {product?.festiveOffer === true && product?.festiveDiscountPercent > 0 && (
-                  <span style={{ textDecoration: "line-through", color: "#94a3b8" }}>
-                    {displayCurrency} {Math.round(finalTotal / (1 - Number(product.festiveDiscountPercent || 0) / 100))}
-                  </span>
-                )}
-              </div>
-              <div style={{ borderTop: "1px dashed #e2e8f0", paddingTop: "12px", width: "100%", textAlign: "left", fontSize: "14px" }}>
+
+              <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "16px", width: "100%", textAlign: "left", fontSize: "13px", marginTop: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                   <span style={{ color: "#64748b" }}>Price:</span>
-                  <span style={{ fontWeight: "600" }}>{displayCurrency} {Math.round(finalTotal)}</span>
+                  <span style={{ fontWeight: "600", color: "#334155" }}>{displayCurrency} {Math.round(finalTotal)}</span>
                 </div>
                 {!isDigital && (
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                     <span style={{ color: "#64748b" }}>Delivery Charge:</span>
-                    <span style={{ fontWeight: "600" }}>
+                    <span style={{ fontWeight: "600", color: "#334155" }}>
                       {hasShippingAddress ? `${displayCurrency} ${Math.round(deliveryCharge)}` : "Enter address to calculate"}
                     </span>
                   </div>
                 )}
-                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", fontSize: "16px", borderTop: "1px solid #e2e8f0", paddingTop: "6px", marginTop: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "700", fontSize: "15px", borderTop: "1px solid #cbd5e1", paddingTop: "6px", marginTop: "6px" }}>
                   <span>Total:</span>
                   <span style={{ color: "var(--site-primary, #d97706)" }}>{displayCurrency} {Math.round(grandTotal)}</span>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Right Side: Simple Guest Checkout Form */}
-          <form onSubmit={handlePayment} style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "16px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "700" }}>Checkout Details</h3>
-            
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Full Name <span style={{ color: "#ef4444" }}>*</span></label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Supreeth Kumar"
-                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-              />
-            </div>
+            {/* Right Side: Simple Guest Checkout Form */}
+            <form onSubmit={handlePayment} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#475569" }}>Checkout Details</h3>
+              
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Full Name <span style={{ color: "#ef4444" }}>*</span></label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Supreeth Kumar"
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                />
+              </div>
 
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. test@gmail.com"
-                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g. +91 9999999999"
-                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-              />
-            </div>
-
-            {/* Address fields ONLY shown for non-digital products */}
-            {!isDigital && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
-                <h4 style={{ fontWeight: "700", fontSize: "14px" }}>Shipping Address</h4>
-                
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Street Address <span style={{ color: "#ef4444" }}>*</span></label>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
-                    type="text"
-                    required={!isDigital}
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="House/Flat No, Apartment, Street"
-                    style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. test@gmail.com"
+                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
                   />
                 </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>City <span style={{ color: "#ef4444" }}>*</span></label>
-                    <input
-                      type="text"
-                      required={!isDigital}
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="City"
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>State <span style={{ color: "#ef4444" }}>*</span></label>
-                    <input
-                      type="text"
-                      required={!isDigital}
-                      value={state}
-                      onChange={(e) => setState(e.target.value)}
-                      placeholder="State"
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Pincode <span style={{ color: "#ef4444" }}>*</span></label>
-                    <input
-                      type="text"
-                      required={!isDigital}
-                      value={pincode}
-                      onChange={(e) => setPincode(e.target.value)}
-                      placeholder="Pincode"
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Country <span style={{ color: "#ef4444" }}>*</span></label>
-                    <input
-                      type="text"
-                      required={!isDigital}
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      placeholder="Country"
-                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
-                    />
-                  </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
+                  <input
+                    type="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +91 9999999999"
+                    style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                  />
                 </div>
               </div>
-            )}
 
-            {checkoutMessage && <p style={{ color: "#ef4444", fontSize: "13px", margin: 0 }}>{checkoutMessage}</p>}
+              {/* Address fields ONLY shown for non-digital products */}
+              {!isDigital && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+                  <h4 style={{ fontWeight: "700", fontSize: "13px", color: "#475569", margin: 0 }}>Shipping Address</h4>
+                  
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Street Address <span style={{ color: "#ef4444" }}>*</span></label>
+                    <input
+                      type="text"
+                      required={!isDigital}
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="House/Flat No, Apartment, Street"
+                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                    />
+                  </div>
 
-            <button
-              type="submit"
-              disabled={isPaying}
-              className="checkout-btn"
-              style={{ width: "100%", padding: "12px 16px", marginTop: "8px" }}
-            >
-              {isPaying ? "Processing Payment..." : `Pay Now (${displayCurrency} ${Math.round(grandTotal)})`}
-            </button>
-          </form>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>City <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input
+                        type="text"
+                        required={!isDigital}
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="City"
+                        style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>State <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input
+                        type="text"
+                        required={!isDigital}
+                        value={state}
+                        onChange={(e) => setState(e.target.value)}
+                        placeholder="State"
+                        style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Pincode <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input
+                        type="text"
+                        required={!isDigital}
+                        value={pincode}
+                        onChange={(e) => setPincode(e.target.value)}
+                        placeholder="Pincode"
+                        style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Country <span style={{ color: "#ef4444" }}>*</span></label>
+                      <input
+                        type="text"
+                        required={!isDigital}
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        placeholder="Country"
+                        style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {checkoutMessage && <p style={{ color: "#ef4444", fontSize: "13px", margin: 0 }}>{checkoutMessage}</p>}
+
+              <button
+                type="submit"
+                disabled={isPaying}
+                className="checkout-btn"
+                style={{ width: "100%", padding: "12px 16px", marginTop: "8px" }}
+              >
+                {isPaying ? "Processing Payment..." : `Pay Now (${displayCurrency} ${Math.round(grandTotal)})`}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
