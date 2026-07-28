@@ -126,7 +126,12 @@ function GuestBuy() {
         length: product.length
       }] : []
     );
-    const deliveryCharge = Number(deliveryDetails?.deliveryCharge || 0);
+    const deliveryChargeInInr = Number(deliveryDetails?.deliveryCharge || 0);
+    const deliveryCharge = convertCurrencyAmount(deliveryChargeInInr, {
+      sourceCurrency: "INR",
+      currency: displayCurrency,
+      rates: settings?.currencyConversionRates || {}
+    });
     const grandTotal = finalTotal + deliveryCharge;
 
     try {
@@ -363,7 +368,12 @@ function GuestBuy() {
         }] : []
       )
     : null;
-  const deliveryCharge = deliveryDetails ? Number(deliveryDetails.deliveryCharge || 0) : 0;
+  const deliveryChargeInInr = deliveryDetails ? Number(deliveryDetails.deliveryCharge || 0) : 0;
+  const deliveryCharge = convertCurrencyAmount(deliveryChargeInInr, {
+    sourceCurrency: "INR",
+    currency: displayCurrency,
+    rates: settings?.currencyConversionRates || {}
+  });
   const grandTotal = finalTotal + deliveryCharge;
 
   return (
