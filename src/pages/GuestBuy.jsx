@@ -336,25 +336,34 @@ function GuestBuy() {
   const finalTotal = Number(pricing.price || 0);
   const displayCurrency = pricing.currency || "INR";
 
-  const deliveryDetails = getDeliveryPricingDetails(
-    settings,
-    isDigital ? {} : { address, city, state, pincode, country },
-    product ? [{
-      product: product._id,
-      _id: product._id,
-      id: product._id,
-      name: product.name,
-      image: product.image,
-      price: finalTotal,
-      quantity: 1,
-      isDigital,
-      weight: product.weight,
-      height: product.height,
-      width: product.width,
-      length: product.length
-    }] : []
+  const hasShippingAddress = isDigital || (
+    address.trim() &&
+    city.trim() &&
+    state.trim() &&
+    pincode.trim()
   );
-  const deliveryCharge = Number(deliveryDetails?.deliveryCharge || 0);
+
+  const deliveryDetails = hasShippingAddress
+    ? getDeliveryPricingDetails(
+        settings,
+        isDigital ? {} : { address: address.trim(), city: city.trim(), state: state.trim(), pincode: pincode.trim(), country: country.trim() },
+        product ? [{
+          product: product._id,
+          _id: product._id,
+          id: product._id,
+          name: product.name,
+          image: product.image,
+          price: finalTotal,
+          quantity: 1,
+          isDigital,
+          weight: product.weight,
+          height: product.height,
+          width: product.width,
+          length: product.length
+        }] : []
+      )
+    : null;
+  const deliveryCharge = deliveryDetails ? Number(deliveryDetails.deliveryCharge || 0) : 0;
   const grandTotal = finalTotal + deliveryCharge;
 
   return (
@@ -412,7 +421,7 @@ function GuestBuy() {
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
                     <span style={{ color: "#64748b" }}>Delivery Charge:</span>
                     <span style={{ fontWeight: "600" }}>
-                      {deliveryCharge > 0 ? `${displayCurrency} ${Math.round(deliveryCharge)}` : "Calculated at checkout"}
+                      {hasShippingAddress ? `${displayCurrency} ${Math.round(deliveryCharge)}` : "Enter address to calculate"}
                     </span>
                   </div>
                 )}
