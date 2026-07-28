@@ -206,7 +206,8 @@ const ALL_ADMIN_PAGES = [
   "add-products",
   "coupons",
   "marketing",
-  "theme"
+  "theme",
+  "security-logs"
 ];
 
 function sanitizeAllowedPages(inputPages = [], isSuperAdmin = false) {
@@ -408,6 +409,33 @@ router.get("/admin/audit-logs", protect, admin, async (req, res) => {
   } catch (err) {
     console.error("[Auth] Audit logs pagination error:", err.message);
     res.status(500).json({ message: "Failed to load audit logs." });
+  }
+});
+
+router.get("/admin/security-logs", protect, admin, async (req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const logFile = path.resolve(__dirname, "../../logs/security_threats.log");
+
+    if (!fs.existsSync(logFile)) {
+      return res.json({ logs: [] });
+    }
+
+    const data = fs.readFileSync(logFile, "utf8");
+    const lines = data.split("\n").filter(line => line.trim().length > 0);
+    const parsedLogs = lines.map(line => {
+      try {
+        return JSON.parse(line);
+      } catch (e) {
+        return null;
+      }
+    }).filter(log => log !== null).reverse();
+
+    res.json({ logs: parsedLogs });
+  } catch (err) {
+    console.error("[Auth] Security logs fetch error:", err.message);
+    res.status(500).json({ message: "Failed to load security logs." });
   }
 });
 

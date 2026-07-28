@@ -41,6 +41,7 @@ const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminAccessControl = lazy(() => import("./pages/AdminAccessControl"));
 const AdminThemeSettings = lazy(() => import("./pages/AdminThemeSettings"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
+const AdminSecurityLogs = lazy(() => import("./pages/AdminSecurityLogs"));
 const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -422,6 +423,14 @@ function App() {
             element={
               <AdminRoute requiredPage="marketing">
                 <AdminMarketing />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/security-logs"
+            element={
+              <AdminRoute requiredPage="security-logs">
+                <AdminSecurityLogs />
               </AdminRoute>
             }
           />

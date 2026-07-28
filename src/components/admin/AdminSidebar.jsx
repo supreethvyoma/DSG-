@@ -15,6 +15,7 @@ const adminNavItems = [
   { to: "/admin/coupons", label: "Coupons", pageKey: "coupons" },
   { to: "/admin/marketing", label: "Marketing", pageKey: "marketing" },
   { to: "/admin/theme", label: "Theme & Site", pageKey: "theme" },
+  { to: "/admin/security-logs", label: "Security Logs", pageKey: "security-logs" },
   { to: "/", label: "Store Front", pageKey: "always" }
 ];
 
