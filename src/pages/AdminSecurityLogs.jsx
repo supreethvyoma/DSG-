@@ -58,7 +58,7 @@ function AdminSecurityLogs() {
   }, [logs, searchQuery]);
 
   return (
-    <div className="admin-container">
+    <div className="admin-layout">
       <AdminSidebar />
       <main className="admin-main">
         <div className="admin-header">
