@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { loadRazorpayCheckout } from "../utils/loadRazorpay";
-import { formatResolvedPrice } from "../utils/currency";
+import { formatResolvedPrice, convertCurrencyAmount } from "../utils/currency";
 import { getProductPriceDetails } from "../utils/productPricing";
 import "./Checkout.css";
 
@@ -98,7 +98,9 @@ function GuestBuy() {
     };
 
     // Construct pricing based on configuration
-    const finalTotal = Number(getProductPriceDetails(product).price || 0);
+    const pricing = getProductPriceDetails(product, isDigital ? undefined : country.trim());
+    const finalTotal = Number(pricing.price || 0);
+    const displayCurrency = pricing.currency || "INR";
 
     try {
       let RazorpayConstructor = window.Razorpay;
@@ -106,9 +108,14 @@ function GuestBuy() {
         RazorpayConstructor = await loadRazorpayCheckout();
       }
 
-      // 1. Create Razorpay Order
+      // 1. Create Razorpay Order (converting to INR paise)
+      const amountInInr = convertCurrencyAmount(finalTotal, {
+        sourceCurrency: displayCurrency,
+        currency: "INR"
+      });
+
       const { data: rpOrder } = await axios.post("/api/payment/create-order", {
-        amount: Math.round(finalTotal * 100) // in paise
+        amount: Math.round(amountInInr * 100) // in paise
       });
 
       // 2. Process payment (Dummy / Live)
@@ -155,9 +162,9 @@ function GuestBuy() {
           razorpayOrderId: response.razorpay_order_id,
           razorpayPaymentId: response.razorpay_payment_id,
           currencyDisplay: {
-            currency: "INR",
+            currency: displayCurrency,
             amount: finalTotal,
-            detectedCountry: "India"
+            detectedCountry: isDigital ? "India" : country.trim()
           }
         });
 
@@ -216,9 +223,9 @@ function GuestBuy() {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               currencyDisplay: {
-                currency: "INR",
+                currency: displayCurrency,
                 amount: finalTotal,
-                detectedCountry: "India"
+                detectedCountry: isDigital ? "India" : country.trim()
               }
             });
 
@@ -273,7 +280,7 @@ function GuestBuy() {
             <h4 style={{ fontWeight: "700", marginBottom: "12px" }}>Purchase Summary</h4>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span>{product.name} (x1)</span>
-              <strong style={{ color: "#1e293b" }}>Rs {Math.round(orderSuccess.total)}</strong>
+              <strong style={{ color: "#1e293b" }}>{orderSuccess.currencyDisplay?.currency || "INR"} {Math.round(orderSuccess.total)}</strong>
             </div>
           </div>
 
@@ -298,7 +305,9 @@ function GuestBuy() {
     );
   }
 
-  const finalTotal = Number(getProductPriceDetails(product).price || 0);
+  const pricing = getProductPriceDetails(product, isDigital ? undefined : country);
+  const finalTotal = Number(pricing.price || 0);
+  const displayCurrency = pricing.currency || "INR";
 
   return (
     <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px", minHeight: "100vh", backgroundColor: "var(--site-bg, #fafafa)" }}>
@@ -338,11 +347,11 @@ function GuestBuy() {
               </div>
               <div style={{ display: "flex", gap: "12px", alignItems: "baseline", marginTop: "8px" }}>
                 <span style={{ fontSize: "24px", fontWeight: "800", color: "var(--site-primary, #d97706)" }}>
-                  Rs {Math.round(finalTotal)}
+                  {displayCurrency} {Math.round(finalTotal)}
                 </span>
                 {product?.festiveOffer === true && product?.festiveDiscountPercent > 0 && (
                   <span style={{ textDecoration: "line-through", color: "#94a3b8" }}>
-                    Rs {Math.round(finalTotal / (1 - Number(product.festiveDiscountPercent || 0) / 100))}
+                    {displayCurrency} {Math.round(finalTotal / (1 - Number(product.festiveDiscountPercent || 0) / 100))}
                   </span>
                 )}
               </div>
@@ -466,7 +475,7 @@ function GuestBuy() {
               className="checkout-btn"
               style={{ width: "100%", padding: "12px 16px", marginTop: "8px" }}
             >
-              {isPaying ? "Processing Payment..." : `Pay Now (Rs ${Math.round(finalTotal)})`}
+              {isPaying ? "Processing Payment..." : `Pay Now (${displayCurrency} ${Math.round(finalTotal)})`}
             </button>
           </form>
         </div>
