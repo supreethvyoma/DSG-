@@ -66,10 +66,9 @@ function GuestBuy() {
 
     const timer = setTimeout(async () => {
       const query = [
-        address.trim(),
+        pincode.trim(),
         city.trim(),
         state.trim(),
-        pincode.trim(),
         country.trim()
       ]
         .map((item) => String(item || "").trim())
@@ -102,7 +101,7 @@ function GuestBuy() {
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [address, city, state, pincode, country, isDigital]);
+  }, [city, state, pincode, country, isDigital]);
 
   const isDigital = product ? Boolean(
     product.isDigital ||
