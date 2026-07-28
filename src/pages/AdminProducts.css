@@ -104,12 +104,10 @@ opacity:.7;
 cursor:not-allowed;
 }
 
-.warehouse-zone-row,
-.warehouse-restock-row,
-.warehouse-manager-row{
+.warehouse-zone-row {
 display:grid;
-grid-template-columns:minmax(0,1fr) auto;
-gap:12px;
+grid-template-columns:minmax(0,1.2fr) 1.5fr auto;
+gap:16px;
 align-items:center;
 padding:14px;
 border:1px solid var(--admin-border);
@@ -117,9 +115,20 @@ border-radius:var(--radius-md);
 background:var(--admin-surface);
 }
 
-.warehouse-zone-row div,
-.warehouse-restock-row div,
-.warehouse-manager-row div{
+.warehouse-restock-row,
+.warehouse-manager-row {
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:16px;
+flex-wrap:wrap;
+padding:14px;
+border:1px solid var(--admin-border);
+border-radius:var(--radius-md);
+background:var(--admin-surface);
+}
+
+.warehouse-info-col {
 display:grid;
 gap:4px;
 }

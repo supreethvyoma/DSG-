@@ -255,7 +255,7 @@ function AdminProducts() {
                 ) : (
                   warehouseAnalytics.zones.map((zone) => (
                     <div key={zone.zone} className="warehouse-zone-row">
-                      <div>
+                      <div className="warehouse-info-col">
                         <strong>{zone.zone}</strong>
                         <span>{zone.category}</span>
                       </div>
@@ -292,7 +292,7 @@ function AdminProducts() {
                 ) : (
                   warehouseAnalytics.restockQueue.map((product) => (
                     <div key={product._id} className="warehouse-restock-row">
-                      <div>
+                      <div className="warehouse-info-col">
                         <strong>{product.name}</strong>
                         <span>{product.category || "General"}</span>
                       </div>
@@ -369,7 +369,7 @@ function AdminProducts() {
             ) : (
               warehouseStockRows.map((product) => (
                 <div key={product._id} className="warehouse-manager-row">
-                  <div>
+                  <div className="warehouse-info-col">
                     <strong>{product.name}</strong>
                     <span>{product.category || "General"}</span>
                   </div>
