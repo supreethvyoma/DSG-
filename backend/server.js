@@ -58,6 +58,7 @@ if (IS_PRODUCTION && cluster.isPrimary) {
   const wishlistRoutes = require("./routes/wishlistRoutes");
   const marketingRoutes = require("./routes/marketingRoutes");
   const { initVapid } = require("./utils/webPush");
+  const vulnerabilityGuard = require("./middleware/vulnerabilityGuard");
 
   const app = express();
   app.set("trust proxy", 1); // Trust Render's load balancer for rate limiting client IPs
@@ -93,6 +94,7 @@ if (IS_PRODUCTION && cluster.isPrimary) {
   // 2. Global JSON body limit: increased to 25mb to support Base64 product image uploads
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+  app.use(vulnerabilityGuard);
 
   // ── Health check ────────────────────────────────────────────────────────────
   app.get("/api/health", (req, res) => {
