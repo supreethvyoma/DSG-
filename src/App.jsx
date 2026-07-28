@@ -42,6 +42,7 @@ const AdminAccessControl = lazy(() => import("./pages/AdminAccessControl"));
 const AdminThemeSettings = lazy(() => import("./pages/AdminThemeSettings"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
 const AdminSecurityLogs = lazy(() => import("./pages/AdminSecurityLogs"));
+const GuestBuy = lazy(() => import("./pages/GuestBuy"));
 const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -439,6 +440,7 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/buy/:id" element={<GuestBuy />} />
         </Routes>
       </Suspense>
 

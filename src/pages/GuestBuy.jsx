@@ -1,0 +1,478 @@
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { loadRazorpayCheckout } from "../utils/loadRazorpay";
+import { formatResolvedPrice } from "../utils/currency";
+import { getProductPriceDetails } from "../utils/productPricing";
+import "./Checkout.css";
+
+function GuestBuy() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Customer guest details
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  // Shipping details (only required for physical products)
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [country, setCountry] = useState("India");
+
+  const [isPaying, setIsPaying] = useState(false);
+  const [checkoutMessage, setCheckoutMessage] = useState("");
+
+  // Success state
+  const [orderSuccess, setOrderSuccess] = useState(null);
+  const [credentialsSent, setCredentialsSent] = useState(false);
+
+  const isDummyPaymentEnabled = import.meta.env.VITE_ENABLE_DUMMY_PAYMENT === "true";
+  const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const res = await axios.get(`/api/products/${id}`);
+        setProduct(res.data);
+      } catch (err) {
+        setError(err.response?.data?.message || "Failed to load product details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProduct();
+  }, [id]);
+
+  const isDigital = product ? Boolean(
+    product.isDigital ||
+    product.webReaderLink ||
+    product.kindleLink ||
+    String(product.name || "").toLowerCase().includes("web") ||
+    String(product.name || "").toLowerCase().includes("kindle") ||
+    String(product.name || "").toLowerCase().includes("flipbook") ||
+    String(product.format || "").toLowerCase().includes("web") ||
+    String(product.format || "").toLowerCase().includes("flipbook")
+  ) : false;
+
+  const handlePayment = async (e) => {
+    e.preventDefault();
+
+    if (!name.trim() || !email.trim() || !phone.trim()) {
+      setCheckoutMessage("Please fill in your name, email, and phone number.");
+      return;
+    }
+
+    if (!isDigital && (!address.trim() || !city.trim() || !state.trim() || !pincode.trim())) {
+      setCheckoutMessage("Please fill in your complete shipping address.");
+      return;
+    }
+
+    setCheckoutMessage("");
+    setIsPaying(true);
+
+    const shippingInfo = isDigital ? {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      address: "Digital Delivery",
+      city: "Digital",
+      state: "Digital",
+      pincode: "000000",
+      country: "India"
+    } : {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      pincode: pincode.trim(),
+      country: country.trim()
+    };
+
+    // Construct pricing based on configuration
+    const finalTotal = Number(product.salePrice ?? product.regularPrice ?? 0);
+
+    try {
+      let RazorpayConstructor = window.Razorpay;
+      if (!isDummyPaymentEnabled) {
+        RazorpayConstructor = await loadRazorpayCheckout();
+      }
+
+      // 1. Create Razorpay Order
+      const { data: rpOrder } = await axios.post("/api/payment/create-order", {
+        amount: Math.round(finalTotal * 100) // in paise
+      });
+
+      // 2. Process payment (Dummy / Live)
+      if (isDummyPaymentEnabled) {
+        const wantsToProceed = window.confirm(
+          "Dummy payment mode is enabled. Click OK to simulate a successful payment."
+        );
+
+        if (!wantsToProceed) {
+          setIsPaying(false);
+          setCheckoutMessage("Payment was cancelled.");
+          return;
+        }
+
+        const response = {
+          razorpay_order_id: rpOrder.id || `dummy_order_${Date.now()}`,
+          razorpay_payment_id: `dummy_pay_${Date.now()}`,
+          razorpay_signature: "dummy_signature",
+          dummy: true
+        };
+
+        const verify = await axios.post("/api/payment/verify", response);
+        if (!verify.data?.success) {
+          setIsPaying(false);
+          setCheckoutMessage("Payment verification failed.");
+          return;
+        }
+
+        // 3. Create Direct Buy Order on Backend
+        const orderRes = await axios.post("/api/orders/direct-buy", {
+          items: [{
+            product: product._id,
+            _id: product._id,
+            id: product._id,
+            name: product.name,
+            image: product.image,
+            price: finalTotal,
+            quantity: 1,
+            isDigital
+          }],
+          shipping: shippingInfo,
+          billing: shippingInfo,
+          paymentStatus: "Paid",
+          razorpayOrderId: response.razorpay_order_id,
+          razorpayPaymentId: response.razorpay_payment_id,
+          currencyDisplay: {
+            currency: "INR",
+            amount: finalTotal,
+            detectedCountry: "India"
+          }
+        });
+
+        setOrderSuccess(orderRes.data?.order);
+        setCredentialsSent(orderRes.data?.accountCreated);
+        setIsPaying(false);
+        return;
+      }
+
+      // Live payment mode
+      const rzp = new RazorpayConstructor({
+        key: razorpayKey,
+        amount: rpOrder.amount,
+        currency: rpOrder.currency,
+        name: "Digital Sanskrit Guru",
+        description: `Direct purchase: ${product.name}`,
+        order_id: rpOrder.id,
+        prefill: {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          contact: phone.trim()
+        },
+        notes: {
+          address: shippingInfo.address
+        },
+        modal: {
+          ondismiss: () => {
+            setIsPaying(false);
+            setCheckoutMessage("Payment was cancelled.");
+          }
+        },
+        handler: async (response) => {
+          try {
+            const verify = await axios.post("/api/payment/verify", response);
+            if (!verify.data?.success) {
+              setCheckoutMessage("Payment verification failed.");
+              setIsPaying(false);
+              return;
+            }
+
+            // Create Direct Buy Order
+            const orderRes = await axios.post("/api/orders/direct-buy", {
+              items: [{
+                product: product._id,
+                _id: product._id,
+                id: product._id,
+                name: product.name,
+                image: product.image,
+                price: finalTotal,
+                quantity: 1,
+                isDigital
+              }],
+              shipping: shippingInfo,
+              billing: shippingInfo,
+              paymentStatus: "Paid",
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              currencyDisplay: {
+                currency: "INR",
+                amount: finalTotal,
+                detectedCountry: "India"
+              }
+            });
+
+            setOrderSuccess(orderRes.data?.order);
+            setCredentialsSent(orderRes.data?.accountCreated);
+          } catch (err) {
+            setCheckoutMessage(err.response?.data?.message || "Failed to finalize order on server.");
+          } finally {
+            setIsPaying(false);
+          }
+        }
+      });
+
+      rzp.open();
+    } catch (err) {
+      setCheckoutMessage(err.response?.data?.message || "Failed to initialize payment gateway.");
+      setIsPaying(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <p>Loading checkout details...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <h3>Error Loading Product</h3>
+        <p>{error || "Product not found."}</p>
+        <button onClick={() => navigate("/")} className="checkout-btn" style={{ maxWidth: "200px", marginTop: "16px" }}>
+          Return to Store
+        </button>
+      </div>
+    );
+  }
+
+  if (orderSuccess) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px", minHeight: "100vh", backgroundColor: "var(--site-bg, #fafafa)" }}>
+        <div style={{ maxWidth: "600px", width: "100%", backgroundColor: "#ffffff", padding: "32px", borderRadius: "12px", border: "1px solid #e2e8f0", boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}>
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
+            <span style={{ fontSize: "48px" }}>🎉</span>
+            <h2 style={{ fontSize: "24px", color: "#22c55e", fontWeight: "700", marginTop: "12px" }}>Order Placed Successfully!</h2>
+            <p style={{ color: "#64748b", marginTop: "8px" }}>Order Number: #{orderSuccess.orderNumber || orderSuccess._id}</p>
+          </div>
+
+          <div style={{ borderTop: "1px dashed #cbd5e1", borderBottom: "1px dashed #cbd5e1", padding: "16px 0", marginBottom: "24px" }}>
+            <h4 style={{ fontWeight: "700", marginBottom: "12px" }}>Purchase Summary</h4>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{product.name} (x1)</span>
+              <strong style={{ color: "#1e293b" }}>Rs {Math.round(orderSuccess.total)}</strong>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", padding: "16px", borderRadius: "8px", marginBottom: "24px" }}>
+            <h4 style={{ fontWeight: "700", color: "#1e293b", marginBottom: "8px" }}>🔑 Account Provisioning</h4>
+            {credentialsSent ? (
+              <p style={{ fontSize: "14px", color: "#475569", lineHeight: "1.5" }}>
+                Welcome to the platform! Since you are a new user, we have automatically created a student account for you. Your <strong>temporary password</strong> has been sent to <strong>{email}</strong>.
+              </p>
+            ) : (
+              <p style={{ fontSize: "14px", color: "#475569", lineHeight: "1.5" }}>
+                This order has been linked to your existing account registered under <strong>{email}</strong>. Log in with your password to access your courses immediately.
+              </p>
+            )}
+          </div>
+
+          <button onClick={() => navigate("/login")} className="checkout-btn" style={{ width: "100%", padding: "12px" }}>
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const finalTotal = product.salePrice ?? product.regularPrice ?? 0;
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "40px 16px", minHeight: "100vh", backgroundColor: "var(--site-bg, #fafafa)" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "24px", maxWidth: "800px", width: "100%" }}>
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ fontSize: "28px", fontWeight: "700" }}>Express Student Purchase</h2>
+          <p style={{ color: "#64748b", marginTop: "4px" }}>Fill out the form below to complete checkout via Razorpay</p>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }} className="checkout-grid-mobile">
+          {/* Left Side: Product Card info */}
+          <div style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Product Details</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px", alignItems: "center", textAlign: "center" }}>
+              {product.image && (
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  style={{ width: "150px", height: "150px", objectFit: "contain", borderRadius: "8px" }}
+                />
+              )}
+              <div>
+                <h4 style={{ fontWeight: "700", fontSize: "16px" }}>{product.name}</h4>
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "4px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: "#f1f5f9",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    marginTop: "8px"
+                  }}
+                >
+                  {isDigital ? "💻 Digital Course" : "📚 Physical Format"}
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: "12px", alignItems: "baseline", marginTop: "8px" }}>
+                <span style={{ fontSize: "24px", fontWeight: "800", color: "var(--site-primary, #d97706)" }}>
+                  Rs {Math.round(finalTotal)}
+                </span>
+                {product.salePrice && product.regularPrice && (
+                  <span style={{ textDecoration: "line-through", color: "#94a3b8" }}>
+                    Rs {Math.round(product.regularPrice)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side: Simple Guest Checkout Form */}
+          <form onSubmit={handlePayment} style={{ backgroundColor: "#ffffff", padding: "24px", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: "700" }}>Checkout Details</h3>
+            
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Full Name <span style={{ color: "#ef4444" }}>*</span></label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Supreeth Kumar"
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Email Address <span style={{ color: "#ef4444" }}>*</span></label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. test@gmail.com"
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "600", marginBottom: "6px" }}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +91 9999999999"
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+              />
+            </div>
+
+            {/* Address fields ONLY shown for non-digital products */}
+            {!isDigital && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
+                <h4 style={{ fontWeight: "700", fontSize: "14px" }}>Shipping Address</h4>
+                
+                <div>
+                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Street Address <span style={{ color: "#ef4444" }}>*</span></label>
+                  <input
+                    type="text"
+                    required={!isDigital}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="House/Flat No, Apartment, Street"
+                    style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>City <span style={{ color: "#ef4444" }}>*</span></label>
+                    <input
+                      type="text"
+                      required={!isDigital}
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="City"
+                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>State <span style={{ color: "#ef4444" }}>*</span></label>
+                    <input
+                      type="text"
+                      required={!isDigital}
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      placeholder="State"
+                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Pincode <span style={{ color: "#ef4444" }}>*</span></label>
+                    <input
+                      type="text"
+                      required={!isDigital}
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value)}
+                      placeholder="Pincode"
+                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "4px" }}>Country <span style={{ color: "#ef4444" }}>*</span></label>
+                    <input
+                      type="text"
+                      required={!isDigital}
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      placeholder="Country"
+                      style={{ width: "100%", padding: "8px 10px", border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {checkoutMessage && <p style={{ color: "#ef4444", fontSize: "13px", margin: 0 }}>{checkoutMessage}</p>}
+
+            <button
+              type="submit"
+              disabled={isPaying}
+              className="checkout-btn"
+              style={{ width: "100%", padding: "12px 16px", marginTop: "8px" }}
+            >
+              {isPaying ? "Processing Payment..." : `Pay Now (Rs ${Math.round(finalTotal)})`}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default GuestBuy;

@@ -14,11 +14,14 @@ const { getProductPriceDetails } = require("../utils/productPricing");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const {
   sendOrderConfirmation,
   sendOrderStatusUpdate,
   sendLowStockAdminAlert,
-  sendWishlistLowStockAlert
+  sendWishlistLowStockAlert,
+  sendWelcomeCredentialsEmail
 } = require("../utils/email");
 const {
   sendPushToUser,
@@ -1885,6 +1888,320 @@ router.get("/:id/tracking", protect, async (req, res) => {
   } catch (err) {
     console.error("[OrderRoutes] Error fetching tracking:", err.message);
     res.status(500).json({ message: "Failed to load tracking details" });
+  }
+});
+
+// POST /api/orders/direct-buy (PUBLIC)
+router.post("/direct-buy", async (req, res) => {
+  const shipping = req.body.shipping || {};
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  const shippingCountry = String(shipping?.country || "").trim();
+  const requestedProductIds = [...new Set(
+    items.map((item) => String(item?._id || item?.id || item?.product || "").trim()).filter(Boolean)
+  )];
+
+  if (requestedProductIds.length === 0) {
+    return res.status(400).json({ message: "No products specified." });
+  }
+
+  const products = await Product.find({ _id: { $in: requestedProductIds } })
+    .populate("bundleItems.product")
+    .lean();
+  const productsById = new Map(products.map((product) => [String(product._id), product]));
+  
+  const settings =
+    (await StoreSettings.findOne()) || {
+      gstPercent: 0,
+      deliveryCharge: 0,
+      pricingMarkets: [],
+      internationalPricingDefaults: { currency: "USD" },
+      currencyConversionRates: {}
+    };
+  const pricingConfig = {
+    pricingMarkets: settings?.pricingMarkets || [],
+    internationalPricingDefaults: settings?.internationalPricingDefaults || {},
+    currencyConversionRates: settings?.currencyConversionRates || {}
+  };
+
+  const normalizedItems = items.reduce((acc, item) => {
+    const productId = String(item?._id || item?.id || item?.product || "").trim();
+    const product = productsById.get(productId);
+    if (!product) return acc;
+
+    const quantity = Math.max(1, Number(item?.quantity || 1));
+    const pricing = getProductPriceDetails(product, shippingCountry, pricingConfig);
+
+    acc.push({
+      product: productId,
+      _id: productId,
+      id: productId,
+      name: String(product?.name || item?.name || "").trim(),
+      image: String(product?.image || item?.image || "").trim(),
+      category: String(product?.category || item?.category || "General").trim() || "General",
+      format: String(item?.format || item?.selectedFormat || product?.format || "").trim(),
+      isDigital: Boolean(product?.isDigital || item?.isDigital),
+      digitalType: String(product?.digitalType || item?.digitalType || "Web Version").trim(),
+      webReaderLink: String(product?.webReaderLink || item?.webReaderLink || "").trim(),
+      kindleLink: String(product?.kindleLink || item?.kindleLink || "").trim(),
+      kindleAsin: String(product?.kindleAsin || item?.kindleAsin || "").trim(),
+      digitalInstructions: String(product?.digitalInstructions || item?.digitalInstructions || "").trim(),
+      quantity,
+      price: roundMoney(pricing.price),
+      currency: String(pricing.currency || "INR").trim().toUpperCase(),
+      weight: Number(product?.weight || 0),
+      height: Number(product?.height || 0),
+      width: Number(product?.width || 0),
+      length: Number(product?.length || 0),
+      domesticPrice: roundMoney(pricing.domesticPrice),
+      internationalPrice: roundMoney(pricing.internationalPrice),
+      internationalCountryPrices: Array.isArray(product?.internationalCountryPrices)
+        ? product.internationalCountryPrices.map((entry) => ({
+            country: String(entry?.country || "").trim(),
+            price: roundMoney(Number(entry?.price || 0))
+          }))
+        : [],
+      marketPrices: Array.isArray(product?.marketPrices)
+        ? product.marketPrices.map((entry) => ({
+            market: String(entry?.market || "").trim(),
+            regularPrice: roundMoney(Number(entry?.regularPrice || 0)),
+            salePrice: entry?.salePrice === null || entry?.salePrice === undefined ? null : roundMoney(Number(entry?.salePrice || 0)),
+            startDate: entry?.startDate || null,
+            endDate: entry?.endDate || null
+          }))
+        : [],
+      appliedPriceType: pricing.priceType,
+      matchedMarket: pricing.matchedMarket || "",
+      productType: String(product?.productType || "single"),
+      bundleItems: Array.isArray(product?.bundleItems)
+        ? product.bundleItems.map((bi) => {
+            const bp = bi.product;
+            return {
+              product: bp?._id ? String(bp._id) : String(bp),
+              name: bp?.name || "Product",
+              image: bp?.image || "",
+              quantity: Number(bi.quantity || 1),
+              isDigital: Boolean(bp?.isDigital),
+              digitalType: String(bp?.digitalType || "Web Version").trim(),
+              webReaderLink: String(bp?.webReaderLink || "").trim(),
+              kindleLink: String(bp?.kindleLink || "").trim(),
+              kindleAsin: String(bp?.kindleAsin || "").trim(),
+              digitalInstructions: String(bp?.digitalInstructions || "").trim()
+            };
+          })
+        : [],
+      deliveredAt: null,
+      returnRequest: {
+        status: "Not Requested",
+        requestedAt: null,
+        resolvedAt: null,
+        reason: ""
+      }
+    });
+    return acc;
+  }, []);
+
+  if (normalizedItems.length === 0) {
+    return res.status(400).json({ message: "No valid products found for this order." });
+  }
+
+  const rawPaymentStatusEarly = String(req.body?.paymentStatus || "").trim();
+  if (!allowedPaymentStatuses.has(rawPaymentStatusEarly)) {
+    return res.status(400).json({ message: "Invalid payment status." });
+  }
+
+  if (rawPaymentStatusEarly !== "Failed") {
+    const outOfStock = await decrementStock(normalizedItems);
+    if (outOfStock.length > 0) {
+      return res.status(409).json({
+        message: "Some items are out of stock: " + outOfStock.join("; ")
+      });
+    }
+  }
+
+  const orderCurrency = normalizeCurrencyCode(
+    req.body?.currencyDisplay?.currency || normalizedItems[0]?.currency || "INR",
+    "INR"
+  );
+
+  const gstPercent = Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
+  const deliveryCharge = roundMoney(
+    convertCurrencyAmount(resolveDeliveryCharge(settings, shipping, normalizedItems), {
+      sourceCurrency: "INR",
+      currency: orderCurrency,
+      rates: settings?.currencyConversionRates || {}
+    })
+  );
+
+  let totalItemBase = 0;
+  let totalItemGst = 0;
+  normalizedItems.forEach((item) => {
+    const qty = Math.max(1, Number(item.quantity || 1));
+    const price = Number(item.price || 0);
+    const lineTotal = qty * price;
+    const hsnSac = getItemHsnSac(item);
+    const gstRate = hsnSac === "4901" ? 0 : gstPercent;
+    
+    const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;
+    const gstAmountVal = Math.round((lineTotal - lineBase) * 100) / 100;
+    
+    totalItemBase += lineBase;
+    totalItemGst += gstAmountVal;
+  });
+
+  const subtotal = roundMoney(totalItemBase);
+  const gstAmount = roundMoney(totalItemGst);
+  const grossTotal = roundMoney(subtotal + gstAmount + deliveryCharge);
+  const discount = 0;
+  const appliedCouponCode = "";
+  const total = roundMoney(grossTotal - discount);
+
+  const rawPaymentStatus = String(req.body?.paymentStatus || "Pending").trim();
+  const razorpayOrderId = String(req.body?.razorpayOrderId || "").trim();
+  const razorpayPaymentId = String(req.body?.razorpayPaymentId || "").trim();
+  
+  if (rawPaymentStatus === "Paid" && (!razorpayOrderId || !razorpayPaymentId)) {
+    await restoreStockForOrder({ items: normalizedItems });
+    return res.status(400).json({ message: "Payment reference is required to place paid order." });
+  }
+
+  const requestedCurrency = String(req.body?.currencyDisplay?.currency || "").trim().toUpperCase();
+  const requestedDisplayAmount = Number(req.body?.currencyDisplay?.amount);
+  const requestedDetectedCountry = String(req.body?.currencyDisplay?.detectedCountry || "").trim().toUpperCase();
+
+  const requestedBilling = req.body.billing || req.body.shipping || {};
+  const guestEmail = String(requestedBilling?.email || shipping?.email || "").trim().toLowerCase();
+  const guestName = String(requestedBilling?.name || shipping?.name || "Customer").trim();
+  const guestPhone = String(requestedBilling?.phone || shipping?.phone || "").trim();
+
+  if (!guestEmail) {
+    if (rawPaymentStatus !== "Failed") {
+      await restoreStockForOrder({ items: normalizedItems });
+    }
+    return res.status(400).json({ message: "Email is required for direct purchase." });
+  }
+
+  let targetUser = null;
+  let tempPassword = "";
+  let isNewUserCreated = false;
+
+  try {
+    targetUser = await User.findOne({ email: guestEmail });
+    if (!targetUser) {
+      tempPassword = crypto.randomBytes(5).toString("hex");
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash(tempPassword, salt);
+      
+      targetUser = await User.create({
+        name: guestName,
+        email: guestEmail,
+        password: hashedPassword,
+        phone: guestPhone,
+        isAdmin: false
+      });
+      isNewUserCreated = true;
+    }
+  } catch (userErr) {
+    console.error("[Order] User provisioning error:", userErr.message);
+    if (rawPaymentStatus !== "Failed") {
+      await restoreStockForOrder({ items: normalizedItems });
+    }
+    return res.status(500).json({ message: "Failed to create user account. Please try again." });
+  }
+
+  const isDigitalOnlyOrder = normalizedItems.length > 0 && normalizedItems.every((item) =>
+    Boolean(
+      item.isDigital ||
+      item.webReaderLink ||
+      item.kindleLink ||
+      String(item.name || "").toLowerCase().includes("web") ||
+      String(item.name || "").toLowerCase().includes("kindle") ||
+      String(item.name || "").toLowerCase().includes("flipbook") ||
+      String(item.format || "").toLowerCase().includes("web") ||
+      String(item.format || "").toLowerCase().includes("flipbook")
+    )
+  );
+
+  const initialOrderStatus = rawPaymentStatus === "Paid" && isDigitalOnlyOrder
+    ? "Completed"
+    : rawPaymentStatus === "Paid"
+    ? "Pending"
+    : "On Hold";
+
+  const warehouseState = String(settings?.warehouseAddress?.state || "Karnataka").trim().toLowerCase();
+  const billingState = String(requestedBilling?.state || shipping?.state || "Karnataka").trim().toLowerCase();
+  const isLocal = billingState === warehouseState;
+
+  let cgstPercent = 0;
+  let sgstPercent = 0;
+  let igstPercent = 0;
+  let cgstAmount = 0;
+  let sgstAmount = 0;
+  let igstAmount = 0;
+
+  if (isLocal) {
+    cgstPercent = gstPercent / 2;
+    sgstPercent = gstPercent / 2;
+    cgstAmount = roundMoney(gstAmount / 2);
+    sgstAmount = roundMoney(gstAmount / 2);
+  } else {
+    igstPercent = gstPercent;
+    igstAmount = gstAmount;
+  }
+
+  let order;
+  try {
+    order = await Order.create({
+      user: targetUser._id,
+      items: normalizedItems,
+      subtotal,
+      gstPercent,
+      gstAmount,
+      couponCode: appliedCouponCode,
+      discount,
+      deliveryCharge,
+      total,
+      orderStatus: initialOrderStatus,
+      paymentStatus: rawPaymentStatus,
+      razorpayOrderId,
+      razorpayPaymentId,
+      shipping,
+      billing: requestedBilling,
+      cgstPercent,
+      sgstPercent,
+      igstPercent,
+      cgstAmount,
+      sgstAmount,
+      igstAmount,
+      currencyDisplay: {
+        currency: requestedCurrency || orderCurrency,
+        amount: requestedDisplayAmount || total,
+        detectedCountry: requestedDetectedCountry || shippingCountry
+      }
+    });
+
+    const orderSeq = order.orderNumber || order._id;
+
+    fireNotifications(async () => {
+      await sendOrderConfirmation(order, targetUser);
+
+      if (isNewUserCreated && tempPassword) {
+        await sendWelcomeCredentialsEmail(targetUser, tempPassword);
+      }
+
+      await fireLowStockAlerts(normalizedItems);
+    });
+
+    res.status(201).json({
+      order,
+      accountCreated: isNewUserCreated,
+      email: guestEmail
+    });
+  } catch (err) {
+    console.error("[Order] Direct buy create error:", err.message);
+    if (rawPaymentStatus !== "Failed") {
+      await restoreStockForOrder({ items: normalizedItems });
+    }
+    res.status(500).json({ message: "Failed to place order. Please try again." });
   }
 });
 
