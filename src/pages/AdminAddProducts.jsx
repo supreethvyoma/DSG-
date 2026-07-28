@@ -118,6 +118,16 @@ function AdminAddProducts() {
   const formSectionRef = useRef(null);
   const nameInputRef = useRef(null);
   const [products, setProducts] = useState([]);
+  const [copiedProductId, setCopiedProductId] = useState("");
+
+  const copyBuyLink = (productId) => {
+    const buyLink = `${window.location.origin}${window.location.pathname}#/buy/${productId}`;
+    navigator.clipboard.writeText(buyLink).then(() => {
+      setCopiedProductId(productId);
+      setTimeout(() => setCopiedProductId(""), 2000);
+    });
+  };
+
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [internationalPrice, setInternationalPrice] = useState("");
@@ -2266,6 +2276,12 @@ function AdminAddProducts() {
                     </span>
                     <div className="actions">
                       <button onClick={() => startEdit(product)}>Edit</button>
+                      <button 
+                        style={{ background: "var(--admin-primary, #d97706)", color: "#fff", border: "none" }}
+                        onClick={() => copyBuyLink(product._id)}
+                      >
+                        {copiedProductId === product._id ? "Copied!" : "🔗 Link"}
+                      </button>
                       <button className="danger" onClick={() => deleteProduct(product._id)}>
                         Delete
                       </button>

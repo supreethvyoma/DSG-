@@ -13,15 +13,6 @@ function AdminProducts() {
   const [warehouseMessage, setWarehouseMessage] = useState("");
   const [warehouseSearch, setWarehouseSearch] = useState("");
   const [warehouseZoneFilter, setWarehouseZoneFilter] = useState("All");
-  const [copiedProductId, setCopiedProductId] = useState("");
-
-  const copyBuyLink = (productId) => {
-    const buyLink = `${window.location.origin}${window.location.pathname}#/buy/${productId}`;
-    navigator.clipboard.writeText(buyLink).then(() => {
-      setCopiedProductId(productId);
-      setTimeout(() => setCopiedProductId(""), 2000);
-    });
-  };
 
   useEffect(() => {
     axios
@@ -413,13 +404,6 @@ function AdminProducts() {
                       onClick={() => applySetStock(product)}
                     >
                       {stockActionLoading === product._id ? "..." : "Set"}
-                    </button>
-                    <button
-                      className="set-btn"
-                      style={{ marginLeft: "8px", background: "var(--admin-primary, #d97706)", color: "#fff" }}
-                      onClick={() => copyBuyLink(product._id)}
-                    >
-                      {copiedProductId === product._id ? "Copied!" : "🔗 Link"}
                     </button>
                   </div>
                 </div>
