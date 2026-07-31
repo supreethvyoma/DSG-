@@ -61,6 +61,155 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function SearchableProductSelect({ products = [], value = "", onChange, placeholder = "Search and select product..." }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const containerRef = useRef(null);
+
+  const selectedProduct = useMemo(
+    () => products.find((p) => String(p._id) === String(value)),
+    [products, value]
+  );
+
+  const filteredProducts = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return products;
+    return products.filter(
+      (p) =>
+        String(p.name || "").toLowerCase().includes(query) ||
+        String(p.category || "").toLowerCase().includes(query)
+    );
+  }, [products, searchTerm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="searchable-product-select" ref={containerRef}>
+      <div
+        className={`searchable-select-trigger ${isOpen ? "active" : ""} ${selectedProduct ? "has-value" : ""}`}
+        onClick={() => setIsOpen((prev) => !prev)}
+      >
+        <div className="searchable-select-content">
+          {selectedProduct ? (
+            <div className="searchable-select-selected-item">
+              <img
+                src={selectedProduct.image || "/no-image.webp"}
+                alt=""
+                className="searchable-select-thumb"
+              />
+              <div className="searchable-select-details">
+                <strong className="searchable-select-title">{selectedProduct.name}</strong>
+                <span className="searchable-select-sub">
+                  {selectedProduct.category || "General"} • ₹{selectedProduct.price}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <span className="searchable-select-placeholder">🔍 {placeholder}</span>
+          )}
+        </div>
+        <div className="searchable-select-actions">
+          {selectedProduct && (
+            <button
+              type="button"
+              className="searchable-select-clear-btn"
+              title="Clear selection"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+                setSearchTerm("");
+              }}
+            >
+              ✕
+            </button>
+          )}
+          <span className="searchable-select-arrow">{isOpen ? "▲" : "▼"}</span>
+        </div>
+      </div>
+
+      {isOpen && (
+        <div className="searchable-select-dropdown">
+          <div className="searchable-select-search-header">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="searchable-select-input"
+              placeholder="Type to search product name or category..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                className="searchable-select-input-clear"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSearchTerm("");
+                }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          <div className="searchable-select-results">
+            <div
+              className={`searchable-select-option ${!value ? "selected" : ""}`}
+              onClick={() => {
+                onChange("");
+                setIsOpen(false);
+                setSearchTerm("");
+              }}
+            >
+              <em>-- None / Select product --</em>
+            </div>
+
+            {filteredProducts.length > 0 ? (
+              filteredProducts.map((p) => {
+                const isSelected = String(p._id) === String(value);
+                return (
+                  <div
+                    key={p._id}
+                    className={`searchable-select-option ${isSelected ? "selected" : ""}`}
+                    onClick={() => {
+                      onChange(p._id);
+                      setIsOpen(false);
+                      setSearchTerm("");
+                    }}
+                  >
+                    <img src={p.image || "/no-image.webp"} alt="" className="searchable-select-thumb" />
+                    <div className="searchable-select-option-info">
+                      <strong className="searchable-select-option-name">{p.name}</strong>
+                      <span className="searchable-select-option-meta">
+                        {p.category || "General"} • ₹{p.price}
+                      </span>
+                    </div>
+                    {isSelected && <span className="searchable-select-checkmark">✓</span>}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="searchable-select-empty">
+                No products found matching "{searchTerm}"
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function loadImageElement(src) {
   return new Promise((resolve, reject) => {
     const image = new window.Image();
@@ -1744,17 +1893,12 @@ function AdminAddProducts() {
                         <div className="admin-bundle-builder-list">
                           {bundleItems.map((item, index) => (
                             <div key={`bundle-item-${index}`} className="admin-bundle-builder-row">
-                              <select
+                              <SearchableProductSelect
+                                products={availableBundleProducts}
                                 value={item.productId}
-                                onChange={(e) => updateBundleItem(index, "productId", e.target.value)}
-                              >
-                                <option value="">Select existing product</option>
-                                {availableBundleProducts.map((product) => (
-                                  <option key={product._id} value={product._id}>
-                                    {product.name}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(val) => updateBundleItem(index, "productId", val)}
+                                placeholder="Search & select bundle product..."
+                              />
 
                               <input
                                 type="number"
@@ -1804,17 +1948,12 @@ function AdminAddProducts() {
                       <div className="admin-bundle-builder-list">
                         {relatedProductItems.map((item, index) => (
                           <div key={`related-product-${index}`} className="admin-bundle-builder-row related-product-row">
-                            <select
+                            <SearchableProductSelect
+                              products={availableBundleProducts}
                               value={item.productId}
-                              onChange={(e) => updateRelatedProductItem(index, e.target.value)}
-                            >
-                              <option value="">Select related product</option>
-                              {availableBundleProducts.map((product) => (
-                                <option key={product._id} value={product._id}>
-                                  {product.name}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(val) => updateRelatedProductItem(index, val)}
+                              placeholder="Search & select related product..."
+                            />
 
                             <button type="button" className="danger" onClick={() => removeRelatedProductItem(index)}>
                               Remove

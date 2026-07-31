@@ -556,3 +556,222 @@ cursor:pointer;
     justify-content:space-between;
   }
 }
+
+/* ── Searchable Product Select Dropdown ─────────────────────────────────── */
+
+.searchable-product-select {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--admin-surface, #ffffff);
+  border: 1px solid var(--admin-border, #cbd5e1);
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 42px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.searchable-select-trigger:hover,
+.searchable-select-trigger.active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.searchable-select-content {
+  flex: 1;
+  min-width: 0;
+  margin-right: 8px;
+}
+
+.searchable-select-placeholder {
+  color: var(--admin-muted, #94a3b8);
+  font-size: 13.5px;
+}
+
+.searchable-select-selected-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchable-select-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  flex-shrink: 0;
+  background: #f8fafc;
+}
+
+.searchable-select-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.searchable-select-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--admin-text, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchable-select-sub {
+  font-size: 11px;
+  color: var(--admin-muted, #64748b);
+}
+
+.searchable-select-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.searchable-select-clear-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.searchable-select-clear-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.searchable-select-arrow {
+  font-size: 10px;
+  color: var(--admin-muted, #94a3b8);
+}
+
+.searchable-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--admin-surface, #ffffff);
+  border: 1px solid var(--admin-border, #cbd5e1);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
+  animation: searchableDropdownFade 0.15s ease-out;
+}
+
+@keyframes searchableDropdownFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.searchable-select-search-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+  background: var(--admin-surface-2, #f8fafc);
+  gap: 8px;
+}
+
+.searchable-select-search-header .search-icon {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.searchable-select-input {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  padding: 4px 0 !important;
+  font-size: 13.5px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--admin-text, #1e293b) !important;
+}
+
+.searchable-select-input-clear {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px;
+}
+
+.searchable-select-input-clear:hover {
+  color: #e11d48;
+}
+
+.searchable-select-results {
+  overflow-y: auto;
+  max-height: 280px;
+  padding: 4px;
+}
+
+.searchable-select-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.searchable-select-option:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.searchable-select-option.selected {
+  background: rgba(37, 99, 235, 0.12);
+  font-weight: 600;
+}
+
+.searchable-select-option-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.searchable-select-option-name {
+  font-size: 13px;
+  color: var(--admin-text, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.searchable-select-option-meta {
+  font-size: 11px;
+  color: var(--admin-muted, #64748b);
+}
+
+.searchable-select-checkmark {
+  color: #2563eb;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.searchable-select-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--admin-muted, #64748b);
+}
