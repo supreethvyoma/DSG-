@@ -196,12 +196,13 @@ function Cart() {
           gstPercent: Number(res.data?.gstPercent || 0),
           deliveryCharge: Number(res.data?.deliveryCharge || 0),
           warehouseLocation: res.data?.warehouseLocation || {},
-          distancePricing: res.data?.distancePricing || {}
+          distancePricing: res.data?.distancePricing || {},
+          internationalDelivery: res.data?.internationalDelivery || {}
         });
       })
       .catch(() => {
         if (!active) return;
-        setCharges({ gstPercent: 0, deliveryCharge: 0, warehouseLocation: {}, distancePricing: {} });
+        setCharges({ gstPercent: 0, deliveryCharge: 0, warehouseLocation: {}, distancePricing: {}, internationalDelivery: {} });
       });
     return () => {
       active = false;
