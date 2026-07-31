@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { loadRazorpayCheckout } from "../utils/loadRazorpay";
 import { formatResolvedPrice, convertCurrencyAmount } from "../utils/currency";
-import { getProductPriceDetails } from "../utils/productPricing";
+import { getProductPriceDetails, isInternationalCountry } from "../utils/productPricing";
 import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
 import "./Checkout.css";
 
@@ -124,6 +124,11 @@ function GuestBuy() {
 
     if (!isDigital && (!address.trim() || !city.trim() || !state.trim() || !pincode.trim())) {
       setCheckoutMessage("Please fill in your complete shipping address.");
+      return;
+    }
+
+    if (!isDigital && isInternationalCountry(country.trim()) && settings?.internationalDelivery?.enabled === false) {
+      setCheckoutMessage("Physical product delivery to international locations is currently disabled. Only digital products (E-books, Flipbooks & Web versions) can be ordered internationally.");
       return;
     }
 

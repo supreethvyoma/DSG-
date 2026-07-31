@@ -4,7 +4,7 @@ import axios from "axios";
 import { useCart } from "../hooks/useCart";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { convertCurrencyAmount, formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
-import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
+import { getDeliveryPricingDetails, isDigitalItem } from "../utils/deliveryPricing";
 import { getProductPriceDetails, isInternationalCountry, storePricingConfig } from "../utils/productPricing";
 import "./Cart.css";
 
@@ -244,6 +244,17 @@ function Cart() {
     };
   }, [cartItems, subtotal, charges.gstPercent, deliveryDetails.deliveryCharge, displayCurrency, selectedAddress?.country]);
 
+  const hasPhysicalItems = useMemo(
+    () => cartItems.some((item) => !isDigitalItem(item)),
+    [cartItems]
+  );
+
+  const isIntlPhysicalRestricted = useMemo(() => {
+    const isInternational = isInternationalCountry(selectedAddress?.country);
+    const intlDeliveryEnabled = charges?.internationalDelivery?.enabled === true;
+    return isInternational && !intlDeliveryEnabled && hasPhysicalItems;
+  }, [selectedAddress?.country, charges?.internationalDelivery?.enabled, hasPhysicalItems]);
+
   if (cartItems.length === 0 && savedForLaterItems.length === 0) {
     return (
       <div className="cart-page">
@@ -367,10 +378,36 @@ function Cart() {
           )}
           <h3>Order Total: {formatCurrencyExact(totals.grandTotal, displayCurrency)}</h3>
 
+          {isIntlPhysicalRestricted && (
+            <div style={{
+              margin: "14px 0",
+              padding: "12px 14px",
+              borderRadius: "8px",
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeeba",
+              color: "#856404",
+              fontSize: "13px",
+              lineHeight: "1.4"
+            }}>
+              <strong>⚠️ International Shipping Notice:</strong> Physical product delivery to {selectedAddress?.country || "international addresses"} is currently disabled. Only digital products (E-books, Flipbooks & Web versions) can be ordered internationally. Please remove physical items to proceed.
+            </div>
+          )}
+
           {cartItems.length > 0 ? (
-            <Link to="/checkout" className="checkout-link">
-              <button className="checkout-btn">Proceed to checkout</button>
-            </Link>
+            isIntlPhysicalRestricted ? (
+              <button
+                className="checkout-btn"
+                disabled
+                style={{ backgroundColor: "#94a3b8", cursor: "not-allowed" }}
+                title="Remove physical items or change delivery location to proceed"
+              >
+                Physical Items Restricted Internationally
+              </button>
+            ) : (
+              <Link to="/checkout" className="checkout-link">
+                <button className="checkout-btn">Proceed to checkout</button>
+              </Link>
+            )
           ) : null}
         </div>
       </div>

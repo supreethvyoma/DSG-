@@ -8,7 +8,8 @@ import { useToast } from "../hooks/useToast";
 import { useWishlist } from "../hooks/useWishlist";
 import "./Product.css";
 import { formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
-import { getProductPriceDetails } from "../utils/productPricing";
+import { getProductPriceDetails, isInternationalCountry } from "../utils/productPricing";
+import { isDigitalItem } from "../utils/deliveryPricing";
 import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
 
 const PRODUCT_EXTRA_DETAILS = {
@@ -214,6 +215,20 @@ function Product() {
 
   const [purchasedProducts, setPurchasedProducts] = useState([]);
   const [purchaseAsGift, setPurchaseAsGift] = useState(false);
+  const [storeSettings, setStoreSettings] = useState(null);
+
+  useEffect(() => {
+    axios.get("/api/settings/public")
+      .then((res) => setStoreSettings(res.data))
+      .catch(() => setStoreSettings(null));
+  }, []);
+
+  const isIntlPhysicalRestricted = Boolean(
+    product &&
+    !isDigitalItem(product) &&
+    isInternationalCountry(selectedAddress?.country) &&
+    storeSettings?.internationalDelivery?.enabled === false
+  );
 
   // Bulk Enquiry Form States
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -883,19 +898,36 @@ function Product() {
                   </div>
                 )}
 
+                {isIntlPhysicalRestricted && (
+                  <div style={{
+                    margin: "10px 0 14px",
+                    padding: "10px 12px",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff3cd",
+                    border: "1px solid #ffeeba",
+                    color: "#856404",
+                    fontSize: "12.5px",
+                    lineHeight: "1.4"
+                  }}>
+                    <strong>⚠️ International Delivery Unavailable:</strong> Physical product shipping to {selectedAddress?.country || "international addresses"} is currently disabled. Only digital products (E-books, Flipbooks & Web versions) can be ordered internationally.
+                  </div>
+                )}
+
                 <button
                   className="add-cart-btn"
-                  disabled={product.stock === 0 || (hasPurchasedWebVersion && !purchaseAsGift)}
+                  disabled={product.stock === 0 || (hasPurchasedWebVersion && !purchaseAsGift) || isIntlPhysicalRestricted}
                   onClick={() => addToCart(product, qty)}
+                  style={isIntlPhysicalRestricted ? { backgroundColor: "#94a3b8", cursor: "not-allowed" } : {}}
                 >
-                  {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                  {product.stock === 0 ? "Out of Stock" : isIntlPhysicalRestricted ? "Not Available Internationally" : "Add to Cart"}
                 </button>
                 <button
                   className="buy-now-btn"
-                  disabled={product.stock === 0 || (hasPurchasedWebVersion && !purchaseAsGift)}
+                  disabled={product.stock === 0 || (hasPurchasedWebVersion && !purchaseAsGift) || isIntlPhysicalRestricted}
                   onClick={handleBuyNow}
+                  style={isIntlPhysicalRestricted ? { backgroundColor: "#94a3b8", cursor: "not-allowed" } : {}}
                 >
-                  {product.stock === 0 ? "Out of Stock" : "Buy Now"}
+                  {product.stock === 0 ? "Out of Stock" : isIntlPhysicalRestricted ? "Not Available Internationally" : "Buy Now"}
                 </button>
 
                 {product.stock > 0 && product.productType !== "bulk" && (

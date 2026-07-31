@@ -5,9 +5,9 @@ import { useCart } from "../hooks/useCart";
 import { useAuth } from "../hooks/useAuth";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { convertCurrencyAmount, formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
-import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
+import { getDeliveryPricingDetails, isDigitalItem } from "../utils/deliveryPricing";
 import { loadRazorpayCheckout } from "../utils/loadRazorpay";
-import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
+import { getProductPriceDetails, isInternationalCountry, storePricingConfig } from "../utils/productPricing";
 import "./Checkout.css";
 
 const getAddressLocationText = (item) => {
@@ -497,6 +497,13 @@ function Checkout() {
   }, [serverTotals]);
 
   const finalTotal = serverTotals.total;
+
+  const isIntlPhysicalRestricted = useMemo(() => {
+    const isInternational = isInternationalCountry(selectedAddress?.country);
+    const intlDeliveryEnabled = charges?.internationalDelivery?.enabled === true;
+    const hasPhysicalItems = cartItems.some((item) => !isDigitalItem(item));
+    return isInternational && !intlDeliveryEnabled && hasPhysicalItems;
+  }, [selectedAddress?.country, charges?.internationalDelivery?.enabled, cartItems]);
 
   const availableCoupons = useMemo(() => {
     const now = Date.now();
@@ -1360,9 +1367,28 @@ function Checkout() {
           {discount > 0 && <p className="discount">Discount: -{formatCurrencyExact(discount, displayCurrency)}</p>}
 
           <h3 className="final-total">Final Total: {formatCurrencyExact(finalTotal, displayCurrency)}</h3>
+          {isIntlPhysicalRestricted && (
+            <div style={{
+              margin: "14px 0",
+              padding: "12px 14px",
+              borderRadius: "8px",
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeeba",
+              color: "#856404",
+              fontSize: "13px",
+              lineHeight: "1.4"
+            }}>
+              <strong>⚠️ International Shipping Notice:</strong> Physical product delivery to {selectedAddress?.country || "international addresses"} is currently disabled. Only digital products (E-books, Flipbooks & Web versions) can be ordered internationally. Please remove physical items from your cart to proceed.
+            </div>
+          )}
           <p className="checkout-policy-note">Order is placed only after successful payment.</p>
-          <button className="pay-now-btn" onClick={processCheckout} disabled={isPaying}>
-            {isPaying ? "Processing..." : "Pay Now"}
+          <button
+            className="pay-now-btn"
+            onClick={processCheckout}
+            disabled={isPaying || isIntlPhysicalRestricted}
+            style={isIntlPhysicalRestricted ? { backgroundColor: "#94a3b8", cursor: "not-allowed" } : {}}
+          >
+            {isPaying ? "Processing..." : isIntlPhysicalRestricted ? "Physical Products Restricted" : "Pay Now"}
           </button>
         </aside>
       </div>

@@ -8,7 +8,7 @@ const User = require("../models/User");
 const Wishlist = require("../models/Wishlist");
 const GiftPass = require("../models/GiftPass");
 const { generateGiftCode } = require("./giftRoutes");
-const { resolveDeliveryCharge } = require("../utils/deliveryPricing");
+const { resolveDeliveryCharge, isDigitalItem } = require("../utils/deliveryPricing");
 const { convertCurrencyAmount, normalizeCurrencyCode } = require("../utils/currency");
 const { getProductPriceDetails, isInternationalCountry } = require("../utils/productPricing");
 const protect = require("../middleware/authMiddleware");
@@ -298,6 +298,16 @@ router.post("/calculate-totals", protect, async (req, res) => {
 
     if (normalizedItems.length === 0) {
       return res.status(400).json({ message: "No valid products found for this calculation." });
+    }
+
+    const isInternational = isInternationalCountry(shippingCountry);
+    if (isInternational && settings?.internationalDelivery?.enabled === false) {
+      const hasPhysicalItems = normalizedItems.some((item) => !isDigitalItem(item));
+      if (hasPhysicalItems) {
+        return res.status(400).json({
+          message: "Physical product delivery is currently disabled for international locations. Only digital products (E-books, Flipbooks & Web versions) can be ordered internationally."
+        });
+      }
     }
 
     const orderCurrency = normalizeCurrencyCode(
@@ -615,6 +625,16 @@ router.post("/", protect, async (req, res) => {
 
   if (normalizedItems.length === 0) {
     return res.status(400).json({ message: "No valid products found for this order." });
+  }
+
+  const isInternationalOrderCheck = isInternationalCountry(shippingCountry);
+  if (isInternationalOrderCheck && settings?.internationalDelivery?.enabled === false) {
+    const hasPhysicalItems = normalizedItems.some((item) => !isDigitalItem(item));
+    if (hasPhysicalItems) {
+      return res.status(400).json({
+        message: "Physical product delivery is currently disabled for international locations. Only digital products (E-books, Flipbooks & Web versions) can be ordered internationally."
+      });
+    }
   }
 
   // ── Stock check + atomic decrement ───────────────────────────────────────
