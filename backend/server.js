@@ -18,11 +18,12 @@ const os = require("os");
 // ── Cluster: only in production — nodemon (dev) doesn't support multi-worker ─
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-if (IS_PRODUCTION && cluster.isPrimary) {
-  const cpuCount = os.cpus().length;
-  console.log(`[Cluster] Primary ${process.pid} running. Forking ${cpuCount} workers.`);
+const maxWorkers = Number(process.env.WEB_CONCURRENCY || 0);
 
-  for (let i = 0; i < cpuCount; i++) {
+if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
+  console.log(`[Cluster] Primary ${process.pid} running. Forking ${maxWorkers} workers.`);
+
+  for (let i = 0; i < maxWorkers; i++) {
     cluster.fork();
   }
 
