@@ -87,6 +87,28 @@ function AnalyticsTracker() {
   return null;
 }
 
+function ScrollToTop() {
+  const { pathname, search, hash } = useLocation();
+
+  useEffect(() => {
+    // If navigating to home with a specific scrollTo query param (e.g. ?scrollTo=top-rated), don't force top scroll
+    const params = new URLSearchParams(search);
+    if (pathname === "/" && params.has("scrollTo")) {
+      return;
+    }
+
+    // If navigating with a specific section hash (e.g. #manage-address), don't force top scroll
+    if (hash && hash !== "#/") {
+      return;
+    }
+
+    // Reset window scroll position back to top (0, 0) on route change
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname, search, hash]);
+
+  return null;
+}
+
 function App() {
   const [festiveAnimation, setFestiveAnimation] = useState({
     enabled: false, type: "diwali", intensity: "subtle", customColors: []
@@ -264,6 +286,7 @@ function App() {
   return (
     <HashRouter>
       <AnalyticsTracker />
+      <ScrollToTop />
       {isBannerActive && (
         <FestiveBanner
           text={festiveBanner.text}
