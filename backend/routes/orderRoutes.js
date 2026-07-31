@@ -315,7 +315,6 @@ router.post("/calculate-totals", protect, async (req, res) => {
       "INR"
     );
 
-    const isInternational = isInternationalCountry(shippingCountry);
     const gstPercent = isInternational ? 0 : Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
     const deliveryCharge = roundMoney(
       convertCurrencyAmount(resolveDeliveryCharge(settings, shipping, normalizedItems), {
@@ -460,7 +459,7 @@ const ensureGiftPassesForOrder = async (order) => {
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const isDigitalItem = Boolean(
+    const isDigital = Boolean(
       item.isDigital ||
       item.webReaderLink ||
       item.kindleLink ||
