@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { isInternationalCountry } from "./productPricing";
 
 function sanitizeIastString(str) {
   if (!str) return "";
@@ -197,8 +198,10 @@ export function generateInvoicePdf(order, options = {}) {
     const lineTotal = qty * price;
     const hsnSac = getItemHsnSac(item);
     
-    // Books are exempt (0% GST), other products have standard rate (e.g. 18%)
-    const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
+    // International orders outside India are zero-rated export (0% GST); Books are exempt (0% GST)
+    const shippingCountry = order?.shippingAddress?.country || order?.shipping?.country || "";
+    const isInternationalOrder = isInternationalCountry(shippingCountry) || (order?.currencyDisplay?.currency && order.currencyDisplay.currency !== "INR");
+    const gstRate = isInternationalOrder ? 0 : (hsnSac === "4901" ? 0 : defaultGstPercent);
     
     // Price in cart is inclusive of GST. Extract tax-exclusive base price and tax amount:
     const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;

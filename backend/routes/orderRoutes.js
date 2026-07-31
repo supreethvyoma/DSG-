@@ -10,7 +10,7 @@ const GiftPass = require("../models/GiftPass");
 const { generateGiftCode } = require("./giftRoutes");
 const { resolveDeliveryCharge } = require("../utils/deliveryPricing");
 const { convertCurrencyAmount, normalizeCurrencyCode } = require("../utils/currency");
-const { getProductPriceDetails } = require("../utils/productPricing");
+const { getProductPriceDetails, isInternationalCountry } = require("../utils/productPricing");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
@@ -305,7 +305,8 @@ router.post("/calculate-totals", protect, async (req, res) => {
       "INR"
     );
 
-    const gstPercent = Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
+    const isInternational = isInternationalCountry(shippingCountry);
+    const gstPercent = isInternational ? 0 : Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
     const deliveryCharge = roundMoney(
       convertCurrencyAmount(resolveDeliveryCharge(settings, shipping, normalizedItems), {
         sourceCurrency: "INR",
@@ -638,7 +639,8 @@ router.post("/", protect, async (req, res) => {
     "INR"
   );
 
-  const gstPercent = Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
+  const isInternational = isInternationalCountry(shippingCountry);
+  const gstPercent = isInternational ? 0 : Math.min(50, Math.max(0, Number(settings.gstPercent || 0)));
   const deliveryCharge = roundMoney(
     convertCurrencyAmount(resolveDeliveryCharge(settings, shipping, normalizedItems), {
       sourceCurrency: "INR",

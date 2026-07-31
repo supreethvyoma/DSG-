@@ -189,6 +189,16 @@
   font-weight: 600;
 }
 
+.cart-item-category {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--site-text-soft, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
 .cart-item-meta {
   margin: -2px 0 var(--space-2);
   font-size: 12px;

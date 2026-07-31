@@ -1,14 +1,32 @@
 import React, { useContext } from "react";
 import { Link } from "react-router-dom";
 import { CartContext } from "../../context/CartContext";
+import { useDeliveryLocation } from "../../hooks/useDeliveryLocation";
+import { formatCurrencyExact, formatResolvedPrice } from "../../utils/currency";
+import { getProductPriceDetails } from "../../utils/productPricing";
 import "./CartPopup.css";
 
 const CartPopup = () => {
-  const { isPopupOpen, addedItem, cartItems, totalPrice, setIsPopupOpen } = useContext(CartContext);
+  const { isPopupOpen, addedItem, cartItems, setIsPopupOpen } = useContext(CartContext);
+  const { selectedAddress } = useDeliveryLocation();
 
   if (!isPopupOpen || !addedItem) return null;
 
-  const totalItemsCount = cartItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
+  const country = selectedAddress?.country;
+  const addedItemPricing = getProductPriceDetails(addedItem, country);
+
+  const getItemUnitPrice = (item) => Number(getProductPriceDetails(item, country).price || 0);
+  const displayCurrency =
+    cartItems.length > 0
+      ? String(getProductPriceDetails(cartItems[0], country).currency || "INR")
+      : String(addedItemPricing.currency || "INR");
+
+  const totalItemsCount = cartItems.reduce((acc, item) => acc + Math.max(1, Number(item.quantity || 1)), 0);
+
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + getItemUnitPrice(item) * Math.max(1, Number(item.quantity || 1)),
+    0
+  );
 
   return (
     <div className="cart-popup-overlay" onClick={() => setIsPopupOpen(false)}>
@@ -37,7 +55,7 @@ const CartPopup = () => {
               <h4 className="cart-popup-product-name">{addedItem.name}</h4>
               <p className="cart-popup-product-qty">Qty: {addedItem.quantity}</p>
               <p className="cart-popup-product-price">
-                Rs {Math.round(addedItem.price).toLocaleString("en-IN")}
+                {formatResolvedPrice(addedItemPricing)}
               </p>
             </div>
           </div>
@@ -45,7 +63,7 @@ const CartPopup = () => {
           <div className="cart-popup-summary">
             <div className="cart-popup-summary-row">
               <span>Cart Subtotal ({totalItemsCount} {totalItemsCount === 1 ? "item" : "items"}):</span>
-              <strong>Rs {Math.round(totalPrice).toLocaleString("en-IN")}</strong>
+              <strong>{formatCurrencyExact(subtotal, displayCurrency)}</strong>
             </div>
           </div>
         </div>

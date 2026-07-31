@@ -5,7 +5,7 @@ import { useCart } from "../hooks/useCart";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { convertCurrencyAmount, formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
 import { getDeliveryPricingDetails } from "../utils/deliveryPricing";
-import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
+import { getProductPriceDetails, isInternationalCountry, storePricingConfig } from "../utils/productPricing";
 import "./Cart.css";
 
 const getItemHsnSac = (item) => {
@@ -214,9 +214,11 @@ function Cart() {
   );
 
   const totals = useMemo(() => {
-    const defaultGstPercent = Number(charges.gstPercent || 0);
+    const isInternational = isInternationalCountry(selectedAddress?.country);
+    const defaultGstPercent = isInternational ? 0 : Number(charges.gstPercent || 0);
     let totalItemGst = 0;
     cartItems.forEach((item) => {
+      if (isInternational) return;
       const qty = Math.max(1, Number(item.quantity || 1));
       const price = getItemUnitPrice(item);
       const lineTotal = qty * price;
@@ -237,7 +239,8 @@ function Cart() {
       subtotal,
       gstAmount,
       deliveryCharge,
-      grandTotal: roundMoney(subtotal + gstAmount + deliveryCharge)
+      grandTotal: roundMoney(subtotal + gstAmount + deliveryCharge),
+      isInternational
     };
   }, [cartItems, subtotal, charges.gstPercent, deliveryDetails.deliveryCharge, displayCurrency, selectedAddress?.country]);
 
@@ -277,6 +280,7 @@ function Cart() {
                     />
 
                     <div className="cart-info">
+                      <span className="cart-item-category">{item.category || item.product?.category || "General"}</span>
                       <h3>{item.name}</h3>
                       <p className="cart-item-price-mobile">{formatCurrencyExact(lineTotal, displayCurrency)}</p>
 
@@ -318,6 +322,7 @@ function Cart() {
                       className="saved-later-image"
                     />
                     <div className="saved-later-info">
+                      <span className="cart-item-category">{item.category || item.product?.category || "General"}</span>
                       <strong>{item.name}</strong>
                       <span>{formatResolvedPrice(getProductPriceDetails(item, selectedAddress?.country))}</span>
                     </div>
@@ -336,7 +341,11 @@ function Cart() {
           <p className="cart-total">
             Subtotal ({itemCount} items): <strong>{formatCurrencyExact(totals.subtotal, displayCurrency)}</strong>
           </p>
-          <p>GST ({charges.gstPercent}%): {formatCurrencyExact(totals.gstAmount, displayCurrency)}</p>
+          <p>
+            {totals.isInternational
+              ? `GST (Export 0%): ${formatCurrencyExact(0, displayCurrency)}`
+              : `GST (${charges.gstPercent}%): ${formatCurrencyExact(totals.gstAmount, displayCurrency)}`}
+          </p>
           {deliveryDetails.pricingMode === "digital" || deliveryDetails.isDigitalOnly ? (
             <p className="cart-delivery-charge-info">
               Delivery: <strong style={{ color: "#2e7d32" }}>FREE (Instant Digital Access)</strong>

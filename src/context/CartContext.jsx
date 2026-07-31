@@ -240,6 +240,9 @@ export function CartProvider({ children }) {
         ];
       });
       setAddedItem({
+        ...product,
+        id: productId,
+        _id: productId,
         name: String(product?.name || "").trim(),
         price: Number(product?.price || 0),
         image: String(product?.image || "").trim(),
@@ -259,6 +262,9 @@ export function CartProvider({ children }) {
 
       setCartItems(Array.isArray(res.data?.items) ? res.data.items : []);
       setAddedItem({
+        ...product,
+        id: productId,
+        _id: productId,
         name: String(product?.name || "").trim(),
         price: Number(product?.price || 0),
         image: String(product?.image || "").trim(),

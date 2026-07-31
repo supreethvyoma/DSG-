@@ -493,6 +493,7 @@ router.put("/:id", protect, admin, largeJson, async (req, res) => {
 router.get("/home", async (req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    appCache.del("home:payload");
     const data = await cacheAside("home:payload", TTL.PRODUCTS_HOME, async () => {
       const [products, settings] = await Promise.all([
         Product.find()
@@ -962,5 +963,7 @@ router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
     res.status(500).json({ message: "Failed to submit enquiry", error: error.message });
   }
 });
+
+invalidateProductCache();
 
 module.exports = router;
