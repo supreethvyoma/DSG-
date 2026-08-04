@@ -281,7 +281,8 @@ function Cart() {
               <div className="cart-items">
               {cartItems.map((item, index) => {
                 const qty = Math.max(1, Number(item.quantity || 1));
-                const lineTotal = roundMoney(getItemUnitPrice(item) * qty);
+                const unitPrice = getItemUnitPrice(item);
+                const lineTotal = roundMoney(unitPrice * qty);
 
                 return (
                   <div key={item._id || item.id || index} className="cart-item">
@@ -294,7 +295,10 @@ function Cart() {
                     <div className="cart-info">
                       <span className="cart-item-category">{item.category || item.product?.category || "General"}</span>
                       <h3>{item.name}</h3>
-                      <p className="cart-item-price-mobile">{formatCurrencyExact(lineTotal, displayCurrency)}</p>
+                      <p className="cart-item-price-mobile">
+                        {formatCurrencyExact(lineTotal, displayCurrency)}
+                        {qty > 1 ? ` (${formatCurrencyExact(unitPrice, displayCurrency)} × ${qty})` : ""}
+                      </p>
 
                       <CartQtyInput item={item} currentQty={qty} updateQty={updateQty} />
                     </div>
@@ -306,7 +310,14 @@ function Cart() {
                       <button className="save-later-btn" onClick={() => saveForLater(item)}>
                         Save for later
                       </button>
-                      <strong className="cart-item-price">{formatCurrencyExact(lineTotal, displayCurrency)}</strong>
+                      <div style={{ textAlign: "right" }}>
+                        <strong className="cart-item-price">{formatCurrencyExact(lineTotal, displayCurrency)}</strong>
+                        {qty > 1 ? (
+                          <span style={{ display: "block", fontSize: "12px", color: "var(--site-text-soft)", fontWeight: "normal" }}>
+                            ({formatCurrencyExact(unitPrice, displayCurrency)} × {qty})
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 );

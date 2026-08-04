@@ -562,6 +562,8 @@ function Product() {
   const pricing = getProductPriceDetails(product, selectedAddress?.country);
   const displayPrice = Number(pricing.price || 0);
   const displayCurrency = pricing.currency || "INR";
+  const currentQty = Math.max(1, Number(qty || 1));
+  const calculatedTotalPrice = Math.round(displayPrice * currentQty * 100) / 100;
   const bundleOriginalTotal = bundleItems.reduce((sum, item) => {
     const bundledProduct = item?.product;
     return sum + Number(getProductPriceDetails(bundledProduct, selectedAddress?.country).price || 0) * Math.max(1, Number(item?.quantity || 1));
@@ -744,7 +746,12 @@ function Product() {
           <hr />
           <div className="price-block">
             <p className="price">
-              <strong>{formatResolvedPrice(pricing)}</strong>
+              <strong>{formatCurrencyExact(calculatedTotalPrice, displayCurrency)}</strong>
+              {currentQty > 1 ? (
+                <span style={{ fontSize: "14px", fontWeight: "600", color: "var(--site-text-soft)", marginLeft: "8px" }}>
+                  ({formatResolvedPrice(pricing)} × {currentQty} copies)
+                </span>
+              ) : null}
               {pricing.priceType === "international-country"
                 ? <small>{pricing.matchedCountry} price</small>
                 : pricing.isInternational
@@ -774,7 +781,14 @@ function Product() {
 
         <div className="product-right">
           <div className="buy-box">
-            <p className="buy-price">{formatResolvedPrice(pricing)}</p>
+            <p className="buy-price">
+              {formatCurrencyExact(calculatedTotalPrice, displayCurrency)}
+              {currentQty > 1 ? (
+                <span style={{ display: "block", fontSize: "13px", fontWeight: "normal", color: "var(--site-text-soft)", marginTop: "4px" }}>
+                  ({formatResolvedPrice(pricing)} × {currentQty} copies)
+                </span>
+              ) : null}
+            </p>
             {/* <p className="delivery">Fast Delivery</p> */}
             <p className="buy-box-note">Fast delivery available at your selected location.</p>
 

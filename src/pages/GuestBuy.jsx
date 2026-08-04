@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import axios from "axios";
 import { loadRazorpayCheckout } from "../utils/loadRazorpay";
 import { formatResolvedPrice, convertCurrencyAmount } from "../utils/currency";
@@ -10,10 +10,15 @@ import "./Checkout.css";
 function GuestBuy() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const rawQty = searchParams.get("qty") || location.state?.qty;
+  const buyQuantity = Math.max(1, Number(rawQty || (product?.productType === "bulk" ? 10 : 1)));
 
   // Customer guest details
   const [name, setName] = useState("");
@@ -159,7 +164,8 @@ function GuestBuy() {
 
     // Construct pricing based on configuration
     const pricing = getProductPriceDetails(product, isDigital ? undefined : country.trim());
-    const finalTotal = Number(pricing.price || 0);
+    const unitPrice = Number(pricing.price || 0);
+    const finalTotal = unitPrice * buyQuantity;
     const displayCurrency = pricing.currency || "INR";
 
     const deliveryDetails = getDeliveryPricingDetails(
@@ -171,8 +177,8 @@ function GuestBuy() {
         id: product._id,
         name: product.name,
         image: product.image,
-        price: finalTotal,
-        quantity: 1,
+        price: unitPrice,
+        quantity: buyQuantity,
         isDigital,
         weight: product.weight,
         height: product.height,
@@ -238,8 +244,8 @@ function GuestBuy() {
             id: product._id,
             name: product.name,
             image: product.image,
-            price: finalTotal,
-            quantity: 1,
+            price: unitPrice,
+            quantity: buyQuantity,
             isDigital
           }],
           shipping: shippingInfo,
@@ -299,8 +305,8 @@ function GuestBuy() {
                 id: product._id,
                 name: product.name,
                 image: product.image,
-                price: finalTotal,
-                quantity: 1,
+                price: unitPrice,
+                quantity: buyQuantity,
                 isDigital
               }],
               shipping: shippingInfo,
@@ -580,7 +586,11 @@ function GuestBuy() {
 
               <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "16px", width: "100%", textAlign: "left", fontSize: "13px", marginTop: "16px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span style={{ color: "#64748b" }}>Price:</span>
+                  <span style={{ color: "#64748b" }}>Quantity:</span>
+                  <span style={{ fontWeight: "600", color: "#334155" }}>{buyQuantity} copies</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ color: "#64748b" }}>Price ({buyQuantity} × {displayCurrency} {Math.round(unitPrice)}):</span>
                   <span style={{ fontWeight: "600", color: "#334155" }}>{displayCurrency} {Math.round(finalTotal)}</span>
                 </div>
                 {!isDigital && (
