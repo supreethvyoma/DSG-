@@ -1,0 +1,276 @@
+/* Shipping & Refund Policy Page Styles */
+
+.policy-page {
+  min-height: 80vh;
+  padding: 40px 20px 60px;
+  background-color: var(--site-bg, #f8fafc);
+  color: var(--site-text, #0f172a);
+}
+
+.policy-container {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+/* Header Section */
+.policy-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.policy-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background-color: rgba(217, 119, 6, 0.12);
+  color: var(--site-primary, #d97706);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.policy-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--site-text, #0f172a);
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.policy-subtitle {
+  font-size: 1.05rem;
+  color: var(--site-text-soft, #64748b);
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Alert Banner */
+.policy-alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background-color: #fffbeb;
+  border: 1px solid #fef08a;
+  color: #854d0e;
+  margin-bottom: 36px;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.06);
+}
+
+.alert-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Policy Grid */
+.policy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 580px) {
+  .policy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.policy-card {
+  background: var(--site-surface, #ffffff);
+  border: 1px solid var(--site-border, #e2e8f0);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.policy-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.policy-card-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.card-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.policy-card-header h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--site-text, #0f172a);
+}
+
+.policy-text {
+  font-size: 0.95rem;
+  color: var(--site-text, #334155);
+  line-height: 1.6;
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.policy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.policy-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.93rem;
+  line-height: 1.55;
+  color: var(--site-text, #334155);
+}
+
+.list-icon {
+  color: #10b981;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* Special Audio Device Box */
+.policy-special-box {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 32px;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.15);
+}
+
+.special-head h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #f59e0b;
+}
+
+.special-body p {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  margin: 0 0 10px;
+  color: #e2e8f0;
+}
+
+.special-note {
+  font-size: 0.85rem !important;
+  color: #94a3b8 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Contact Seva Box */
+.policy-contact-box {
+  background: var(--site-surface, #ffffff);
+  border: 1px solid var(--site-border, #e2e8f0);
+  border-radius: 16px;
+  padding: 32px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 32px;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+@media (max-width: 768px) {
+  .policy-contact-box {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 24px;
+  }
+}
+
+.contact-box-left h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--site-text, #0f172a);
+}
+
+.contact-box-left p {
+  font-size: 0.93rem;
+  color: var(--site-text-soft, #64748b);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.contact-box-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background-color: var(--site-bg, #f8fafc);
+  border: 1px solid var(--site-border, #e2e8f0);
+}
+
+.contact-icon {
+  color: var(--site-primary, #d97706);
+  flex-shrink: 0;
+}
+
+.contact-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--site-text-soft, #64748b);
+  letter-spacing: 0.5px;
+}
+
+.contact-val {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--site-text, #0f172a);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.contact-val:hover {
+  color: var(--site-primary, #d97706);
+}
+
+.contact-link {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.contact-link:hover {
+  text-decoration: underline;
+}

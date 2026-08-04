@@ -46,6 +46,7 @@ const GuestBuy = lazy(() => import("./pages/GuestBuy"));
 const About = lazy(() => import("./pages/About"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const Contact = lazy(() => import("./pages/Contact"));
+const ShippingPolicy = lazy(() => import("./pages/ShippingPolicy"));
 
 function RouteLoadingFallback() {
   return (
@@ -463,6 +464,8 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/shipping-refund-policy" element={<ShippingPolicy />} />
+          <Route path="/refund-policy" element={<ShippingPolicy />} />
           <Route path="/buy/:id" element={<GuestBuy />} />
         </Routes>
       </Suspense>

@@ -52,7 +52,7 @@ function Footer() {
               </a>
             </li>
             <li>
-              <a href="#/refund-policy">Shipping and Refund Policy</a>
+              <Link to="/shipping-refund-policy">Shipping and Refund Policy</Link>
             </li>
             <li>
               <Link to="/contact">Contact Us</Link>
