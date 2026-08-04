@@ -139,6 +139,11 @@ function ProductCard({ product, showDescription = true, variant = "default" }) {
 
         <div className="price-box">
           <span className="discount-price">{formatResolvedPrice(pricing)}</span>
+          {String(product?.productType || "").toLowerCase() === "bulk" ? (
+            <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", marginLeft: "2px" }}>
+              / copy
+            </span>
+          ) : null}
           <span className="original-price">
             {formatCurrencyExact(listPrice, displayCurrency)}
           </span>
