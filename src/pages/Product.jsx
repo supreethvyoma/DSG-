@@ -584,6 +584,9 @@ function Product() {
       : festiveOriginalPrice > displayPrice
         ? festiveOriginalPrice
         : fallbackOriginalPrice;
+  const calculatedTotalListPrice = Math.round(listPrice * currentQty * 100) / 100;
+  const calculatedBundleOriginalTotal = Math.round(bundleOriginalTotal * currentQty * 100) / 100;
+  const calculatedBundleSavings = Math.max(0, calculatedBundleOriginalTotal - calculatedTotalPrice);
   const discountPercent = listPrice > 0 ? Math.max(0, Math.round(((listPrice - displayPrice) / listPrice) * 100)) : 0;
   const trailerVideo = getProductTrailerEmbed(product.trailerVideoUrl);
   const mediaItems = buildProductMediaItems(product, galleryImages, trailerVideo);
@@ -760,12 +763,12 @@ function Product() {
             </p>
             {isBundle && bundleOriginalTotal > displayPrice ? (
               <div className="bundle-savings-box">
-                <span>Individual total: {formatCurrencyExact(bundleOriginalTotal, displayCurrency)}</span>
-                <strong>You save {formatCurrencyExact(bundleSavings, displayCurrency)}</strong>
+                <span>Individual total: {formatCurrencyExact(calculatedBundleOriginalTotal, displayCurrency)}</span>
+                <strong>You save {formatCurrencyExact(calculatedBundleSavings, displayCurrency)}</strong>
               </div>
             ) : null}
             <p className="price-meta">
-              M.R.P.: <span>{formatCurrencyExact(listPrice, displayCurrency)}</span> ({discountPercent}% off)
+              M.R.P.: <span>{formatCurrencyExact(calculatedTotalListPrice, displayCurrency)}</span> ({discountPercent}% off)
             </p>
             <p className="tax-note">Inclusive of all taxes</p>
           </div>
