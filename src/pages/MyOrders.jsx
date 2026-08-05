@@ -521,7 +521,7 @@ function MyOrders() {
                                 ⚡ Digital Reader Access Granted
                               </div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                                {(item.webReaderLink || String(item.name || "").toLowerCase().includes("web") || item.isDigital) && (
+                                {(item.webReaderLink || String(item.name || "").toLowerCase().includes("web") || String(item.name || "").toLowerCase().includes("flipbook") || item.isDigital) && (
                                   <button
                                     onClick={() => {
                                       const readerLink = item.webReaderLink || item.product?.webReaderLink;
@@ -529,7 +529,7 @@ function MyOrders() {
                                     }}
                                     style={{ padding: "6px 12px", borderRadius: "6px", backgroundColor: "#2563eb", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                                   >
-                                    📖 Read Web Version
+                                    {String(item.name || "").toLowerCase().includes("flipbook") || String(item.digitalType || item.product?.digitalType || "").toLowerCase().includes("flipbook") ? "📖 Read Flipbook" : "📖 Read Web Version"}
                                   </button>
                                 )}
                                 {(item.kindleLink || String(item.name || "").toLowerCase().includes("kindle")) && (

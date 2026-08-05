@@ -249,6 +249,12 @@ function MyLibrary() {
             {filteredBooks.map((book, idx) => {
               const readerUrl = book.webReaderLink || book.product?.webReaderLink;
               const isKindle = String(book.name || "").toLowerCase().includes("kindle") || Boolean(book.kindleLink);
+              const isFlipbook = Boolean(
+                String(book.digitalType || book.product?.digitalType || "").toLowerCase().includes("flipbook") ||
+                String(book.format || book.product?.format || "").toLowerCase().includes("flipbook") ||
+                String(book.category || book.product?.category || "").toLowerCase().includes("flipbook") ||
+                String(book.name || "").toLowerCase().includes("flipbook")
+              );
 
               return (
                 <div key={`${book.name}-${idx}`} className="my-library-card">
@@ -262,7 +268,7 @@ function MyLibrary() {
                       }}
                     />
                     <span className="my-library-format-badge">
-                      {isKindle ? "📱 Kindle Edition" : "⚡ Web Version"}
+                      {isKindle ? "📱 Kindle Edition" : isFlipbook ? "📖 Flipbook" : "⚡ Web Version"}
                     </span>
                   </div>
 
@@ -287,11 +293,11 @@ function MyLibrary() {
                             if (readerUrl) {
                               setActiveWebReaderUrl(readerUrl);
                             } else {
-                              showToast("Web Reader link is being configured. Please contact support.");
+                              showToast("Digital Reader link is being configured. Please contact support.");
                             }
                           }}
                         >
-                          📖 Read Web Version
+                          {isFlipbook ? "📖 Read Flipbook" : "📖 Read Web Version"}
                         </button>
                       ) : (
                         <a

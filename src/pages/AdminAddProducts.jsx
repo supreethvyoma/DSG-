@@ -1701,6 +1701,7 @@ function AdminAddProducts() {
                           <span>Digital Format Type</span>
                           <select value={digitalType} onChange={(e) => setDigitalType(e.target.value)}>
                             <option value="Web Version">Web Version (Online Reader)</option>
+                            <option value="Flipbook">Flipbook (Interactive Book)</option>
                             <option value="Kindle">Kindle E-Book</option>
                             <option value="E-Book">Standard E-Book (EPUB/PDF)</option>
                             <option value="PDF">PDF Download</option>
