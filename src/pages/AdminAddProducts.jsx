@@ -1471,28 +1471,6 @@ function AdminAddProducts() {
               <span>You are editing an existing product. Cancel to start a fresh product form.</span>
             </div>
           )}
-          <div className="product-composer-overview">
-            <div className="product-composer-metric">
-              <span>About Points</span>
-              <strong>{productComposerStats.aboutPointCount}</strong>
-            </div>
-            <div className="product-composer-metric">
-              <span>Extra Images</span>
-              <strong>{productComposerStats.extraImageCount}</strong>
-            </div>
-            <div className="product-composer-metric">
-              <span>Country Overrides</span>
-              <strong>{productComposerStats.countryOverrideCount}</strong>
-            </div>
-            <div className="product-composer-metric">
-              <span>Market Prices</span>
-              <strong>{productComposerStats.marketPriceCount}</strong>
-            </div>
-            <div className="product-composer-metric">
-              <span>Related Products</span>
-              <strong>{productComposerStats.relatedCount}</strong>
-            </div>
-          </div>
 
           <div className="product-composer-layout">
             <div className="product-composer-main">
@@ -1680,7 +1658,7 @@ function AdminAddProducts() {
                       placeholder="Add a short, clear product description"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      rows={3}
+                      rows={2}
                     />
                   </label>
                   <label className="admin-field admin-field-wide">
@@ -1697,7 +1675,7 @@ function AdminAddProducts() {
                       placeholder={"Add one point per line\nExample: Published in Sanskrit\nExample: 848 page edition"}
                       value={aboutProduct}
                       onChange={(e) => setAboutProduct(e.target.value)}
-                      rows={5}
+                      rows={3}
                     />
                   </label>
                 </div>

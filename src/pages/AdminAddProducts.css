@@ -174,59 +174,62 @@ background:var(--admin-surface);
 
 .product-composer-layout{
 display:grid;
-grid-template-columns:minmax(0,1.25fr) minmax(320px,0.75fr);
-gap:18px;
-padding:20px;
+grid-template-columns:minmax(0,1.3fr) minmax(280px,0.7fr);
+gap:14px;
+padding:14px 16px;
 }
 
-.product-composer-main{display:grid;gap:18px;}
+.product-composer-main{display:grid;gap:12px;}
 
 .product-composer-panel{
 display:grid;
-gap:14px;
-padding:18px;
+gap:10px;
+padding:14px 16px;
 border:1px solid var(--admin-border);
-border-radius:16px;
+border-radius:14px;
 background:var(--admin-surface);
 }
 
 .product-composer-panel-head{
 display:flex;
 justify-content:space-between;
-align-items:flex-start;
+align-items:center;
 gap:12px;
+border-bottom:1px solid color-mix(in srgb, var(--admin-border) 60%, transparent);
+padding-bottom:8px;
+margin-bottom:2px;
 }
 
-.product-composer-panel-head h4{margin:0;}
-.product-composer-panel-head p{margin:4px 0 0;color:var(--admin-muted);font-size:13px;}
+.product-composer-panel-head h4{margin:0;font-size:14.5px;font-weight:700;color:var(--admin-text);}
+.product-composer-panel-head p{margin:1px 0 0;color:var(--admin-muted);font-size:12px;}
 
 .product-composer-side{
 display:grid;
-gap:18px;
+gap:12px;
 position:sticky;
-top:24px;
+top:20px;
 align-self:start;
 }
 
 .product-composer-side-card{
 display:grid;
-gap:12px;
-padding:18px;
+gap:10px;
+padding:14px 16px;
 border:1px solid var(--admin-border);
-border-radius:16px;
+border-radius:14px;
 background:linear-gradient(145deg,var(--admin-surface) 0%,var(--admin-surface-2) 100%);
 }
 
 .product-composer-side-kicker{
-font-size:11px;
+font-size:10.5px;
 font-weight:700;
 letter-spacing:.08em;
 text-transform:uppercase;
 color:var(--admin-primary);
 }
 
-.product-composer-side-card h4{margin:0;font-size:22px;line-height:1.1;}
-.product-composer-side-card p{margin:0;color:var(--admin-muted);font-size:13px;}
+.product-composer-side-card h4{margin:0;font-size:18px;line-height:1.1;}
+.product-composer-side-card p{margin:0;color:var(--admin-muted);font-size:12.5px;}
 
 .product-composer-price-line{
 display:flex;
@@ -235,10 +238,10 @@ justify-content:space-between;
 gap:12px;
 }
 
-.product-composer-price-line strong{font-size:30px;line-height:1;}
-.product-composer-price-line small{color:var(--admin-muted);}
+.product-composer-price-line strong{font-size:24px;line-height:1;}
+.product-composer-price-line small{color:var(--admin-muted);font-size:12px;}
 
-.product-composer-side-list{display:grid;gap:8px;}
+.product-composer-side-list{display:grid;gap:6px;font-size:12.5px;}
 
 .product-composer-side-list div{
 display:flex;
