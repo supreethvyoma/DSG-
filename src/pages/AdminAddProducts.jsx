@@ -2283,13 +2283,29 @@ function AdminAddProducts() {
                   </div>
                 </div>
 
-                <input
-                  type="text"
-                  className="hero-banner-url-input"
-                  placeholder="Paste desktop banner image URL or upload above..."
-                  value={activeHeroBanner.image}
-                  onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "image", e.target.value)}
-                />
+                {activeHeroBanner.image.startsWith("data:image/") ? (
+                  <div className="hero-banner-base64-badge-row">
+                    <span className="hero-banner-base64-badge">🖼️ Local Image File Uploaded</span>
+                    <button
+                      type="button"
+                      className="hero-banner-text-link-btn"
+                      onClick={() => {
+                        const raw = prompt("Raw Image Data URL:", activeHeroBanner.image);
+                        if (raw !== null) updateHeroBanner(activeHeroBannerIndex, "image", raw);
+                      }}
+                    >
+                      View/Edit URL
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    className="hero-banner-url-input"
+                    placeholder="Paste desktop banner image URL or upload above..."
+                    value={activeHeroBanner.image}
+                    onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "image", e.target.value)}
+                  />
+                )}
               </div>
 
               {/* Mobile Image Input */}
@@ -2318,13 +2334,29 @@ function AdminAddProducts() {
                   </div>
                 </div>
 
-                <input
-                  type="text"
-                  className="hero-banner-url-input"
-                  placeholder="Paste mobile banner URL (or leave blank to use desktop image)..."
-                  value={activeHeroBanner.mobileImage || ""}
-                  onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "mobileImage", e.target.value)}
-                />
+                {activeHeroBanner.mobileImage?.startsWith("data:image/") ? (
+                  <div className="hero-banner-base64-badge-row">
+                    <span className="hero-banner-base64-badge">📱 Mobile Image File Uploaded</span>
+                    <button
+                      type="button"
+                      className="hero-banner-text-link-btn"
+                      onClick={() => {
+                        const raw = prompt("Raw Mobile Image Data URL:", activeHeroBanner.mobileImage);
+                        if (raw !== null) updateHeroBanner(activeHeroBannerIndex, "mobileImage", raw);
+                      }}
+                    >
+                      View/Edit URL
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    className="hero-banner-url-input"
+                    placeholder="Paste mobile banner URL (or leave blank to use desktop image)..."
+                    value={activeHeroBanner.mobileImage || ""}
+                    onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "mobileImage", e.target.value)}
+                  />
+                )}
               </div>
 
               {/* Linked Product Select */}
