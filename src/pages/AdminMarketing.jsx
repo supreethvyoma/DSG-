@@ -97,19 +97,23 @@ function AdminMarketing() {
   const [isSavingOrderEmail, setIsSavingOrderEmail] = useState(false);
   const [orderEmailMsg, setOrderEmailMsg] = useState("");
 
-  const headers = { Authorization: `Bearer ${token}` };
+  const getAuthHeaders = () => {
+    const activeToken = token || localStorage.getItem("token");
+    return activeToken ? { Authorization: `Bearer ${activeToken}` } : {};
+  };
 
   // ── Load stats ────────────────────────────────────────────────────────────
   const loadStats = async () => {
     setIsLoadingStats(true);
     try {
-      const res = await axios.get("/api/marketing/subscribers", { headers });
+      const res = await axios.get("/api/marketing/subscribers", { headers: getAuthHeaders() });
       setStats(res.data);
       setThreshold(res.data.lowStockThreshold ?? 5);
       setNotifEmail(res.data.notificationEmail || "");
       setEmailEnabled(res.data.emailEnabled !== false);
       setPushEnabled(res.data.pushEnabled !== false);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load marketing stats:", err);
       setStats(null);
     } finally {
       setIsLoadingStats(false);
@@ -119,9 +123,10 @@ function AdminMarketing() {
   const loadLowStock = async () => {
     setIsLoadingStock(true);
     try {
-      const res = await axios.get("/api/marketing/low-stock", { headers });
+      const res = await axios.get("/api/marketing/low-stock", { headers: getAuthHeaders() });
       setLowStockProducts(res.data.products || []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load low stock:", err);
       setLowStockProducts([]);
     } finally {
       setIsLoadingStock(false);
@@ -131,9 +136,10 @@ function AdminMarketing() {
   const loadEmailLog = async () => {
     setIsLoadingLog(true);
     try {
-      const res = await axios.get("/api/marketing/email-log?limit=30", { headers });
+      const res = await axios.get("/api/marketing/email-log?limit=30", { headers: getAuthHeaders() });
       setEmailLog(Array.isArray(res.data) ? res.data : []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load email log:", err);
       setEmailLog([]);
     } finally {
       setIsLoadingLog(false);
@@ -142,7 +148,7 @@ function AdminMarketing() {
 
   const loadOrderEmailSettings = async () => {
     try {
-      const res = await axios.get("/api/settings", { headers });
+      const res = await axios.get("/api/settings", { headers: getAuthHeaders() });
       if (res.data?.orderConfirmationEmail) {
         const config = res.data.orderConfirmationEmail;
         setOrderEmailSubject(config.subjectTemplate || "Order Confirmed — {{SITE_NAME}}");
@@ -168,6 +174,100 @@ function AdminMarketing() {
     }
   };
 
+  const loadTargetingOptions = async () => {
+    try {
+      const res = await axios.get("/api/marketing/targeting-options", { headers: getAuthHeaders() });
+      setTargetingOptions(res.data || { categories: [], products: [] });
+    } catch (err) {
+      console.error("Failed to load targeting options", err);
+    }
+  };
+
+  const loadRecipientPreview = async () => {
+    setIsLoadingPreview(true);
+    try {
+      const res = await axios.post("/api/marketing/recipient-preview", {
+        filterType,
+        filterValue
+      }, { headers: getAuthHeaders() });
+      setRecipientCount(res.data?.count || 0);
+      setRecipientPreview(res.data?.recipients || []);
+    } catch (err) {
+      console.error("Failed to load recipient preview", err);
+      setRecipientCount(0);
+      setRecipientPreview([]);
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const loadSegmentedCustomers = async () => {
+    setIsLoadingSegments(true);
+    try {
+      const res = await axios.post("/api/marketing/segmented-customers", {
+        filterType: segFilterType,
+        filterValue: segFilterValue
+      }, { headers: getAuthHeaders() });
+      setSegmentedCustomers(res.data?.customers || []);
+    } catch (err) {
+      console.error("Failed to load segmented customers", err);
+      setSegmentedCustomers([]);
+    } finally {
+      setIsLoadingSegments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 3) {
+      loadSegmentedCustomers();
+    }
+  }, [segFilterType, segFilterValue, activeTab, token]);
+
+  useEffect(() => {
+    loadStats();
+    loadLowStock();
+    loadOrderEmailSettings();
+    loadTargetingOptions();
+  }, [token]);
+
+  useEffect(() => {
+    loadRecipientPreview();
+  }, [filterType, filterValue, token]);
+
+  useEffect(() => {
+    if (activeTab === 1) loadEmailLog();
+  }, [activeTab, token]);
+
+  // ── Push permission ───────────────────────────────────────────────────────
+  const requestPushPermission = async () => {
+    if (!("Notification" in window)) return;
+    const result = await Notification.requestPermission();
+    setPushPermission(result);
+
+    if (result !== "granted") return;
+    try {
+      const sw = await navigator.serviceWorker.ready;
+      const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
+      if (!keyRes.ok) return;
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) return;
+
+      const existing = await sw.pushManager.getSubscription();
+      if (existing) return;
+
+      const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
+      const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = window.atob(base64);
+      const key = Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+
+      const sub = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      await axios.post("/api/push/subscribe", sub.toJSON(), { headers: getAuthHeaders() });
+      loadStats();
+    } catch {
+      // ignore
+    }
+  };
+
   const saveCampaignBrandingSettings = async () => {
     setIsSavingCampaignBranding(true);
     setEmailMsg("");
@@ -183,7 +283,7 @@ function AdminMarketing() {
             footerText: campaignFooterText
           }
         },
-        { headers }
+        { headers: getAuthHeaders() }
       );
       setEmailMsg("Campaign email branding & logo saved successfully.");
       window.dispatchEvent(new CustomEvent("siteSettingsUpdated"));
@@ -261,7 +361,7 @@ function AdminMarketing() {
         html: buildCampaignHtml(emailBody),
         filterType,
         filterValue
-      }, { headers });
+      }, { headers: getAuthHeaders() });
       setEmailMsg(res.data.message || "Sending...");
       setEmailSubject("");
       setEmailBody("");
@@ -282,7 +382,7 @@ function AdminMarketing() {
         to: testEmailTo,
         subject: emailSubject ? `[TEST] ${emailSubject}` : "[TEST] Campaign Email",
         html: buildCampaignHtml(emailBody || "This is a test marketing email with your customized company logo and branding.")
-      }, { headers });
+      }, { headers: getAuthHeaders() });
       setEmailMsg(res.data.message);
     } catch (err) {
       setEmailMsg(err?.response?.data?.message || "Test failed.");
@@ -301,7 +401,7 @@ function AdminMarketing() {
     try {
       const res = await axios.post("/api/marketing/broadcast/push", {
         title: pushTitle, body: pushBody, url: pushUrl
-      }, { headers });
+      }, { headers: getAuthHeaders() });
       setPushMsg(res.data.message || "Sent!");
       setPushTitle(""); setPushBody(""); setPushUrl("/");
     } catch (err) {
@@ -320,7 +420,7 @@ function AdminMarketing() {
         notificationEmail: notifEmail,
         emailEnabled,
         pushEnabled
-      }, { headers });
+      }, { headers: getAuthHeaders() });
       setStockMsg("Settings saved.");
       loadStats();
       loadLowStock();
@@ -347,7 +447,7 @@ function AdminMarketing() {
             headerSubtext: orderEmailHeaderSub
           }
         },
-        { headers }
+        { headers: getAuthHeaders() }
       );
       setOrderEmailMsg("Order confirmation email draft & design saved successfully.");
       window.dispatchEvent(new CustomEvent("siteSettingsUpdated"));
@@ -362,7 +462,7 @@ function AdminMarketing() {
     setIsSendingAlert(true);
     setStockMsg("");
     try {
-      const res = await axios.post("/api/marketing/alert/low-stock", {}, { headers });
+      const res = await axios.post("/api/marketing/alert/low-stock", {}, { headers: getAuthHeaders() });
       setStockMsg(res.data.message || "Alerts sent.");
       loadLowStock();
     } catch (err) {
@@ -456,7 +556,7 @@ function AdminMarketing() {
       const res = await axios.put(
         "/api/settings",
         { sponsors: payloadSponsors },
-        { headers }
+        { headers: getAuthHeaders() }
       );
       setSponsorsMsg("Sponsors configuration saved successfully.");
       if (res.data?.sponsors) {
