@@ -457,6 +457,11 @@ const storeSettingsSchema = new mongoose.Schema(
         type: String,
         default: "Spreading the wisdom of Sanskrit",
         trim: true
+      },
+      logoUrl: {
+        type: String,
+        default: "",
+        trim: true
       }
     },
     lastUpdatedByName: {

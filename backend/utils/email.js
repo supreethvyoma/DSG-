@@ -92,7 +92,7 @@ async function sendEmail({ to, subject, html, type = "campaign", orderId = "", p
 
 // ── HTML email wrapper ────────────────────────────────────────────────────────
 
-function htmlWrapper(title, bodyHtml, headerBgColor, accentColor, headerText, headerSubtext) {
+function htmlWrapper(title, bodyHtml, headerBgColor, accentColor, headerText, headerSubtext, logoUrl) {
   const headerBg = headerBgColor || SITE_COLOR;
   const accent = accentColor || ACCENT_COLOR;
   const headerTitle = headerText || SITE_NAME;
@@ -109,6 +109,7 @@ function htmlWrapper(title, bodyHtml, headerBgColor, accentColor, headerText, he
     body { margin: 0; padding: 0; background: #f5f5f5; font-family: 'Segoe UI', Arial, sans-serif; color: #333; }
     .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .header { background: ${headerBg}; padding: 28px 32px; text-align: center; }
+    .header img { max-height: 52px; width: auto; margin-bottom: 10px; display: inline-block; object-fit: contain; }
     .header h1 { margin: 0; color: #fff; font-size: 22px; letter-spacing: 1px; }
     .header p { margin: 6px 0 0; color: rgba(255,255,255,0.7); font-size: 13px; }
     .body { padding: 32px; }
@@ -130,6 +131,7 @@ function htmlWrapper(title, bodyHtml, headerBgColor, accentColor, headerText, he
 <body>
   <div class="wrapper">
     <div class="header">
+      ${logoUrl && String(logoUrl).trim() ? `<img src="${String(logoUrl).trim()}" alt="Logo" />` : ''}
       <h1>${headerTitle}</h1>
       <p>${headerSub}</p>
     </div>
@@ -187,6 +189,7 @@ async function sendOrderConfirmation(order, user) {
   let accentColor = "";
   let headerText = "";
   let headerSubtext = "";
+  let logoUrl = "";
 
   try {
     const settings = await StoreSettings.findOne().lean();
@@ -198,6 +201,7 @@ async function sendOrderConfirmation(order, user) {
       accentColor = emailConfig.accentColor;
       headerText = emailConfig.headerText;
       headerSubtext = emailConfig.headerSubtext;
+      logoUrl = emailConfig.logoUrl;
     }
   } catch (err) {
     console.error("[Email] Failed to load settings for order confirmation:", err);
@@ -328,7 +332,7 @@ async function sendOrderConfirmation(order, user) {
     substitutedBody += `\n<a class="cta" href="${process.env.SITE_URL || "http://localhost:5173"}/#/my-orders">View My Orders</a>`;
   }
 
-  const html = htmlWrapper("Order Confirmed", substitutedBody, headerBgColor, accentColor, headerText, headerSubtext);
+  const html = htmlWrapper("Order Confirmed", substitutedBody, headerBgColor, accentColor, headerText, headerSubtext, logoUrl);
 
   return sendEmail({
     to,

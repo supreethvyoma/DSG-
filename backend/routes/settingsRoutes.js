@@ -343,7 +343,8 @@ function normalizeSettings(settings) {
       headerBgColor: String(settings?.orderConfirmationEmail?.headerBgColor || "#1a1a2e").trim(),
       accentColor: String(settings?.orderConfirmationEmail?.accentColor || "#e94560").trim(),
       headerText: String(settings?.orderConfirmationEmail?.headerText || "Digital Sanskrit Guru").trim(),
-      headerSubtext: String(settings?.orderConfirmationEmail?.headerSubtext || "Spreading the wisdom of Sanskrit").trim()
+      headerSubtext: String(settings?.orderConfirmationEmail?.headerSubtext || "Spreading the wisdom of Sanskrit").trim(),
+      logoUrl: String(settings?.orderConfirmationEmail?.logoUrl || "").trim()
     },
     lastUpdatedByName: String(settings?.lastUpdatedByName || "").trim(),
     lastUpdatedByEmail: String(settings?.lastUpdatedByEmail || "").trim().toLowerCase(),
@@ -623,7 +624,8 @@ router.put("/", protect, admin, async (req, res) => {
       headerBgColor: String(req.body.orderConfirmationEmail.headerBgColor || "#1a1a2e").trim(),
       accentColor: String(req.body.orderConfirmationEmail.accentColor || "#e94560").trim(),
       headerText: String(req.body.orderConfirmationEmail.headerText || "Digital Sanskrit Guru").trim(),
-      headerSubtext: String(req.body.orderConfirmationEmail.headerSubtext || "Spreading the wisdom of Sanskrit").trim()
+      headerSubtext: String(req.body.orderConfirmationEmail.headerSubtext || "Spreading the wisdom of Sanskrit").trim(),
+      logoUrl: String(req.body.orderConfirmationEmail.logoUrl || "").trim()
     };
   }
   settings.siteTheme = hasSiteTheme && allowedThemeIds.has(rawTheme)

@@ -94,6 +94,8 @@ function AdminMarketing() {
   const [orderEmailAccent, setOrderEmailAccent] = useState("#e94560");
   const [orderEmailHeaderText, setOrderEmailHeaderText] = useState("Digital Sanskrit Guru");
   const [orderEmailHeaderSub, setOrderEmailHeaderSub] = useState("Spreading the wisdom of Sanskrit");
+  const [orderEmailLogoUrl, setOrderEmailLogoUrl] = useState("");
+  const [isUploadingOrderLogo, setIsUploadingOrderLogo] = useState(false);
   const [isSavingOrderEmail, setIsSavingOrderEmail] = useState(false);
   const [orderEmailMsg, setOrderEmailMsg] = useState("");
 
@@ -157,6 +159,7 @@ function AdminMarketing() {
         setOrderEmailAccent(config.accentColor || "#e94560");
         setOrderEmailHeaderText(config.headerText || "Digital Sanskrit Guru");
         setOrderEmailHeaderSub(config.headerSubtext || "Spreading the wisdom of Sanskrit");
+        setOrderEmailLogoUrl(config.logoUrl || "");
       }
       if (res.data?.campaignEmailBranding) {
         const cConfig = res.data.campaignEmailBranding;
@@ -444,7 +447,8 @@ function AdminMarketing() {
             headerBgColor: orderEmailHeaderBg,
             accentColor: orderEmailAccent,
             headerText: orderEmailHeaderText,
-            headerSubtext: orderEmailHeaderSub
+            headerSubtext: orderEmailHeaderSub,
+            logoUrl: orderEmailLogoUrl
           }
         },
         { headers: getAuthHeaders() }
@@ -455,6 +459,31 @@ function AdminMarketing() {
       setOrderEmailMsg(err?.response?.data?.message || "Failed to save settings.");
     } finally {
       setIsSavingOrderEmail(false);
+    }
+  };
+
+  const handleOrderLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingOrderLogo(true);
+    setOrderEmailMsg("");
+    try {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setOrderEmailLogoUrl(String(reader.result || ""));
+        setOrderEmailMsg("Logo attached. Save template settings to persist.");
+        setIsUploadingOrderLogo(false);
+      };
+      reader.onerror = () => {
+        setOrderEmailMsg("Could not read logo file.");
+        setIsUploadingOrderLogo(false);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setOrderEmailMsg("Failed to upload logo.");
+      setIsUploadingOrderLogo(false);
+    } finally {
+      e.target.value = "";
     }
   };
 
@@ -1219,6 +1248,38 @@ function AdminMarketing() {
               <p className="mkt-hint">
                 Customize the automated transactional email sent to users after successful checkout.
               </p>
+
+              <div className="mkt-field">
+                <label>Company Logo URL / File Upload</label>
+                <div className="mkt-inline">
+                  <input
+                    type="text"
+                    placeholder="https://... or upload logo image"
+                    value={orderEmailLogoUrl}
+                    onChange={(e) => setOrderEmailLogoUrl(e.target.value)}
+                  />
+                  <label className="secondary-btn btn-sm" style={{ display: "inline-flex", alignItems: "center", cursor: "pointer" }}>
+                    {isUploadingOrderLogo ? "..." : "Upload Logo"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={handleOrderLogoUpload}
+                      disabled={isUploadingOrderLogo}
+                    />
+                  </label>
+                  {orderEmailLogoUrl && (
+                    <button
+                      type="button"
+                      className="secondary-btn btn-sm"
+                      style={{ color: "#ef4444" }}
+                      onClick={() => setOrderEmailLogoUrl("")}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <div className="mkt-field-row">
                 <div className="mkt-field">
