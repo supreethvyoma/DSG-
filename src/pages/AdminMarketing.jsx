@@ -44,6 +44,15 @@ function AdminMarketing() {
   const [testEmailTo, setTestEmailTo] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
 
+  // ── Campaign Email Branding state ──────────────────────────────────────────
+  const [campaignLogoUrl, setCampaignLogoUrl] = useState("");
+  const [campaignHeaderBg, setCampaignHeaderBg] = useState("#0f172a");
+  const [campaignBrandColor, setCampaignBrandColor] = useState("#0284c7");
+  const [campaignHeaderText, setCampaignHeaderText] = useState("Digital Sanskrit Guru");
+  const [campaignFooterText, setCampaignFooterText] = useState("© Digital Sanskrit Guru. All rights reserved.");
+  const [isUploadingCampaignLogo, setIsUploadingCampaignLogo] = useState(false);
+  const [isSavingCampaignBranding, setIsSavingCampaignBranding] = useState(false);
+
   // ── Customer Targeting states ──────────────────────────────────────────────
   const [targetingOptions, setTargetingOptions] = useState({ categories: [], products: [] });
   const [filterType, setFilterType] = useState("all");
@@ -143,6 +152,14 @@ function AdminMarketing() {
         setOrderEmailHeaderText(config.headerText || "Digital Sanskrit Guru");
         setOrderEmailHeaderSub(config.headerSubtext || "Spreading the wisdom of Sanskrit");
       }
+      if (res.data?.campaignEmailBranding) {
+        const cConfig = res.data.campaignEmailBranding;
+        setCampaignLogoUrl(cConfig.logoUrl || "");
+        setCampaignHeaderBg(cConfig.headerBg || "#0f172a");
+        setCampaignBrandColor(cConfig.brandColor || "#0284c7");
+        setCampaignHeaderText(cConfig.headerText || "Digital Sanskrit Guru");
+        setCampaignFooterText(cConfig.footerText || "© Digital Sanskrit Guru. All rights reserved.");
+      }
       if (res.data?.sponsors) {
         setSponsors(res.data.sponsors);
       }
@@ -151,96 +168,83 @@ function AdminMarketing() {
     }
   };
 
-  const loadTargetingOptions = async () => {
+  const saveCampaignBrandingSettings = async () => {
+    setIsSavingCampaignBranding(true);
+    setEmailMsg("");
     try {
-      const res = await axios.get("/api/marketing/targeting-options", { headers });
-      setTargetingOptions(res.data);
+      await axios.put(
+        "/api/settings",
+        {
+          campaignEmailBranding: {
+            logoUrl: campaignLogoUrl,
+            headerBg: campaignHeaderBg,
+            brandColor: campaignBrandColor,
+            headerText: campaignHeaderText,
+            footerText: campaignFooterText
+          }
+        },
+        { headers }
+      );
+      setEmailMsg("Campaign email branding & logo saved successfully.");
+      window.dispatchEvent(new CustomEvent("siteSettingsUpdated"));
     } catch (err) {
-      console.error("Failed to load targeting options", err);
-    }
-  };
-
-  const loadRecipientPreview = async () => {
-    setIsLoadingPreview(true);
-    try {
-      const res = await axios.post("/api/marketing/recipient-preview", {
-        filterType,
-        filterValue
-      }, { headers });
-      setRecipientCount(res.data.count);
-      setRecipientPreview(res.data.recipients || []);
-    } catch (err) {
-      console.error("Failed to load recipient preview", err);
-      setRecipientCount(0);
-      setRecipientPreview([]);
+      setEmailMsg(err?.response?.data?.message || "Failed to save branding settings.");
     } finally {
-      setIsLoadingPreview(false);
+      setIsSavingCampaignBranding(false);
     }
   };
 
-  const loadSegmentedCustomers = async () => {
-    setIsLoadingSegments(true);
+  const handleCampaignLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCampaignLogo(true);
+    setEmailMsg("");
     try {
-      const res = await axios.post("/api/marketing/segmented-customers", {
-        filterType: segFilterType,
-        filterValue: segFilterValue
-      }, { headers });
-      setSegmentedCustomers(res.data.customers || []);
-    } catch (err) {
-      console.error("Failed to load segmented customers", err);
-      setSegmentedCustomers([]);
-    } finally {
-      setIsLoadingSegments(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 3) {
-      loadSegmentedCustomers();
-    }
-  }, [segFilterType, segFilterValue, activeTab]);
-
-  useEffect(() => {
-    loadStats();
-    loadLowStock();
-    loadOrderEmailSettings();
-    loadTargetingOptions();
-  }, []);
-
-  useEffect(() => {
-    loadRecipientPreview();
-  }, [filterType, filterValue]);
-
-  useEffect(() => { if (activeTab === 1) loadEmailLog(); }, [activeTab]);
-
-  // ── Push permission ───────────────────────────────────────────────────────
-  const requestPushPermission = async () => {
-    if (!("Notification" in window)) return;
-    const result = await Notification.requestPermission();
-    setPushPermission(result);
-
-    if (result !== "granted") return;
-    try {
-      const sw = await navigator.serviceWorker.ready;
-      const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
-      if (!keyRes.ok) return;
-      const { publicKey } = await keyRes.json();
-      if (!publicKey) return;
-
-      const existing = await sw.pushManager.getSubscription();
-      if (existing) return;
-
-      const padding = "=".repeat((4 - (publicKey.length % 4)) % 4);
-      const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
-      const raw = window.atob(base64);
-      const key = Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
-
-      const sub = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-      await axios.post("/api/push/subscribe", sub.toJSON(), { headers });
-      loadStats();
+      const reader = new FileReader();
+      reader.onload = () => {
+        setCampaignLogoUrl(String(reader.result || ""));
+        setEmailMsg("Logo attached. Save branding to persist.");
+        setIsUploadingCampaignLogo(false);
+      };
+      reader.onerror = () => {
+        setEmailMsg("Could not read logo file.");
+        setIsUploadingCampaignLogo(false);
+      };
+      reader.readAsDataURL(file);
     } catch {
-      // ignore
+      setEmailMsg("Failed to upload logo.");
+      setIsUploadingCampaignLogo(false);
+    } finally {
+      e.target.value = "";
     }
+  };
+
+  const buildCampaignHtml = (bodyContent) => {
+    const formattedBody = bodyContent
+      ? bodyContent.replace(/\n/g, "<br/>")
+      : "Your email content message will appear here...";
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px 12px; color: #334155;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+    <div style="background: ${campaignHeaderBg}; padding: 26px 24px; text-align: center;">
+      ${campaignLogoUrl.trim() ? `<img src="${campaignLogoUrl.trim()}" alt="Logo" style="max-height: 52px; width: auto; margin-bottom: 8px; display: inline-block; object-fit: contain;" />` : ''}
+      <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700;">${campaignHeaderText || 'Digital Sanskrit Guru'}</h2>
+    </div>
+    <div style="padding: 28px 24px; font-size: 15px; line-height: 1.7; color: #334155; min-height: 120px;">
+      ${formattedBody}
+    </div>
+    <div style="background: #f8fafc; padding: 18px 24px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b;">
+      <p style="margin: 0;">${campaignFooterText || '© Digital Sanskrit Guru. All rights reserved.'}</p>
+    </div>
+  </div>
+</body>
+</html>`;
   };
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -254,7 +258,7 @@ function AdminMarketing() {
     try {
       const res = await axios.post("/api/marketing/broadcast/email", {
         subject: emailSubject,
-        html: `<p style="line-height:1.7;color:#555">${emailBody.replace(/\n/g, "<br/>")}</p>`,
+        html: buildCampaignHtml(emailBody),
         filterType,
         filterValue
       }, { headers });
@@ -274,7 +278,11 @@ function AdminMarketing() {
     setIsSendingTest(true);
     setEmailMsg("");
     try {
-      const res = await axios.post("/api/marketing/test-email", { to: testEmailTo }, { headers });
+      const res = await axios.post("/api/marketing/test-email", {
+        to: testEmailTo,
+        subject: emailSubject ? `[TEST] ${emailSubject}` : "[TEST] Campaign Email",
+        html: buildCampaignHtml(emailBody || "This is a test marketing email with your customized company logo and branding.")
+      }, { headers });
       setEmailMsg(res.data.message);
     } catch (err) {
       setEmailMsg(err?.response?.data?.message || "Test failed.");
@@ -555,108 +563,247 @@ function AdminMarketing() {
         {/* ── Tab 1: Email Campaign ── */}
         {activeTab === 1 && (
           <div className="mkt-section">
+            {/* Campaign Branding Customizer Card */}
             <div className="card mkt-card">
-              <h3>Send Email Campaign</h3>
-              <p className="mkt-hint">Sends to all registered users. Email must be configured in backend/.env first.</p>
-              <div className="mkt-field">
-                <label>Target Audience Group</label>
-                <select
-                  value={filterType}
-                  onChange={(e) => {
-                    setFilterType(e.target.value);
-                    setFilterValue("");
-                  }}
+              <div className="mkt-stock-header">
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700 }}>🎨 Email Branding & Company Logo</h3>
+                  <p className="mkt-hint" style={{ margin: "4px 0 0" }}>Customize your company logo, header branding color, and footer notice for campaign broadcasts.</p>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-btn btn-sm"
+                  onClick={saveCampaignBrandingSettings}
+                  disabled={isSavingCampaignBranding}
                 >
-                  <option value="all">All Registered Users</option>
-                  <option value="category">Users who purchased a Category</option>
-                  <option value="product">Users who purchased a specific Product</option>
-                  <option value="minSpend">Users who spent at least (Minimum Spend)</option>
-                </select>
+                  {isSavingCampaignBranding ? "Saving..." : "💾 Save Branding Defaults"}
+                </button>
               </div>
 
-              {filterType === "category" && (
+              <div className="mkt-field-row" style={{ marginTop: "12px" }}>
                 <div className="mkt-field">
-                  <label>Select Product Category</label>
-                  <select
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                  >
-                    <option value="">-- Choose Category --</option>
-                    {targetingOptions.categories?.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <label>Company Logo URL / File</label>
+                  <div className="mkt-inline">
+                    <input
+                      type="text"
+                      placeholder="https://... or upload logo image"
+                      value={campaignLogoUrl}
+                      onChange={(e) => setCampaignLogoUrl(e.target.value)}
+                    />
+                    <label className="secondary-btn btn-sm" style={{ display: "inline-flex", alignItems: "center", cursor: "pointer" }}>
+                      {isUploadingCampaignLogo ? "..." : "Upload Logo"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={handleCampaignLogoUpload}
+                        disabled={isUploadingCampaignLogo}
+                      />
+                    </label>
+                    {campaignLogoUrl && (
+                      <button
+                        type="button"
+                        className="secondary-btn btn-sm"
+                        style={{ color: "#ef4444" }}
+                        onClick={() => setCampaignLogoUrl("")}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
-              )}
 
-              {filterType === "product" && (
                 <div className="mkt-field">
-                  <label>Select Purchased Product</label>
-                  <select
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                  >
-                    <option value="">-- Choose Product --</option>
-                    {targetingOptions.products?.map(prod => (
-                      <option key={prod._id} value={prod._id}>{prod.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {filterType === "minSpend" && (
-                <div className="mkt-field">
-                  <label>Minimum Total Spend amount (INR)</label>
+                  <label>Header Brand Title</label>
                   <input
-                    type="number"
-                    min="0"
-                    placeholder="Enter amount (e.g. 500)"
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
+                    type="text"
+                    placeholder="e.g. Digital Sanskrit Guru"
+                    value={campaignHeaderText}
+                    onChange={(e) => setCampaignHeaderText(e.target.value)}
                   />
                 </div>
-              )}
+              </div>
 
-              <div className="mkt-preview-box">
-                <p>
-                  Targeting: <strong>{isLoadingPreview ? "..." : recipientCount}</strong> matching customer(s).
-                </p>
-                {recipientPreview.length > 0 && (
-                  <div className="mkt-preview-list">
-                    <span>Matches: </span>
-                    {recipientPreview.map((r, i) => r.name || r.email || "User").join(", ")}
-                    {recipientCount > 10 ? "..." : ""}
+              <div className="mkt-field-row">
+                <div className="mkt-field">
+                  <label>Header Background Color</label>
+                  <div className="mkt-color-input-wrap">
+                    <input
+                      type="color"
+                      value={campaignHeaderBg}
+                      onChange={(e) => setCampaignHeaderBg(e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      value={campaignHeaderBg}
+                      onChange={(e) => setCampaignHeaderBg(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="mkt-field">
+                  <label>Footer Notice Text</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. © Digital Sanskrit Guru. All rights reserved."
+                    value={campaignFooterText}
+                    onChange={(e) => setCampaignFooterText(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Campaign Composer & Live Email Preview Split Layout */}
+            <div className="mkt-email-split-layout">
+              {/* Left Column: Email Composer */}
+              <div className="card mkt-card">
+                <h3>Send Email Campaign</h3>
+                <p className="mkt-hint">Sends to targeted customers. Live preview is shown on the right.</p>
+
+                <div className="mkt-field">
+                  <label>Target Audience Group</label>
+                  <select
+                    value={filterType}
+                    onChange={(e) => {
+                      setFilterType(e.target.value);
+                      setFilterValue("");
+                    }}
+                  >
+                    <option value="all">All Registered Users</option>
+                    <option value="category">Users who purchased a Category</option>
+                    <option value="product">Users who purchased a specific Product</option>
+                    <option value="minSpend">Users who spent at least (Minimum Spend)</option>
+                  </select>
+                </div>
+
+                {filterType === "category" && (
+                  <div className="mkt-field">
+                    <label>Select Product Category</label>
+                    <select
+                      value={filterValue}
+                      onChange={(e) => setFilterValue(e.target.value)}
+                    >
+                      <option value="">-- Choose Category --</option>
+                      {targetingOptions.categories?.map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
+
+                {filterType === "product" && (
+                  <div className="mkt-field">
+                    <label>Select Purchased Product</label>
+                    <select
+                      value={filterValue}
+                      onChange={(e) => setFilterValue(e.target.value)}
+                    >
+                      <option value="">-- Choose Product --</option>
+                      {targetingOptions.products?.map(prod => (
+                        <option key={prod._id} value={prod._id}>{prod.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {filterType === "minSpend" && (
+                  <div className="mkt-field">
+                    <label>Minimum Total Spend amount (INR)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Enter amount (e.g. 500)"
+                      value={filterValue}
+                      onChange={(e) => setFilterValue(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="mkt-preview-box">
+                  <p>
+                    Targeting: <strong>{isLoadingPreview ? "..." : recipientCount}</strong> matching customer(s).
+                  </p>
+                  {recipientPreview.length > 0 && (
+                    <div className="mkt-preview-list">
+                      <span>Matches: </span>
+                      {recipientPreview.map((r) => r.name || r.email || "User").join(", ")}
+                      {recipientCount > 10 ? "..." : ""}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mkt-field">
+                  <label>Subject Line</label>
+                  <input
+                    placeholder="Your email subject line..."
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                  />
+                </div>
+
+                <div className="mkt-field">
+                  <label>Message Body</label>
+                  <textarea
+                    rows={8}
+                    placeholder="Write your email message body here..."
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                  />
+                </div>
+
+                {emailMsg && <p className="mkt-msg">{emailMsg}</p>}
+
+                <div className="mkt-actions">
+                  <button className="primary-btn" onClick={sendEmailCampaign} disabled={isSendingEmail}>
+                    {isSendingEmail ? "Sending..." : `🚀 Send Broadcast (${isLoadingPreview ? "..." : recipientCount} recipients)`}
+                  </button>
+                </div>
               </div>
 
-              <div className="mkt-field">
-                <label>Subject</label>
-                <input
-                  placeholder="Your email subject..."
-                  value={emailSubject}
-                  onChange={(e) => setEmailSubject(e.target.value)}
-                />
-              </div>
-              <div className="mkt-field">
-                <label>Body (plain text or HTML)</label>
-                <textarea
-                  rows={7}
-                  placeholder="Write your message here..."
-                  value={emailBody}
-                  onChange={(e) => setEmailBody(e.target.value)}
-                />
-              </div>
-              {emailMsg && <p className="mkt-msg">{emailMsg}</p>}
-              <div className="mkt-actions">
-                <button className="primary-btn" onClick={sendEmailCampaign} disabled={isSendingEmail}>
-                  {isSendingEmail ? "Sending..." : `Send Email Campaign (${isLoadingPreview ? "..." : recipientCount} recipients)`}
-                </button>
+              {/* Right Column: Live Email Inbox Preview Stage */}
+              <div className="card mkt-card mkt-live-email-card">
+                <div className="mkt-live-header">
+                  <span className="mkt-live-title">📱 Live Inbox Preview</span>
+                  <span className="mkt-live-tag">HTML Preview</span>
+                </div>
+
+                <div className="mkt-email-preview-frame">
+                  <div className="mkt-email-header-preview" style={{ background: campaignHeaderBg }}>
+                    {campaignLogoUrl.trim() ? (
+                      <img src={campaignLogoUrl.trim()} alt="Company Logo" className="mkt-email-logo-img" />
+                    ) : (
+                      <div className="mkt-email-logo-placeholder">🏢 Company Logo</div>
+                    )}
+                    <h4>{campaignHeaderText || "Digital Sanskrit Guru"}</h4>
+                  </div>
+
+                  <div className="mkt-email-body-preview">
+                    <div className="mkt-email-subject-badge">
+                      <strong>Subject:</strong> {emailSubject || "Your Email Subject Line"}
+                    </div>
+                    <div className="mkt-email-text-content">
+                      {emailBody.trim() ? (
+                        emailBody.split("\n").map((paragraph, index) => (
+                          <p key={index}>{paragraph}</p>
+                        ))
+                      ) : (
+                        <p style={{ color: "#94a3b8", fontStyle: "italic" }}>
+                          Type your message body on the left to see the live HTML email preview here...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mkt-email-footer-preview">
+                    <p>{campaignFooterText || "© Digital Sanskrit Guru. All rights reserved."}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="card mkt-card">
               <h3>Send Test Email</h3>
+              <p className="mkt-hint">Send a single test email with your customized branding to verify formatting before broadcasting.</p>
               <div className="mkt-inline">
                 <input
                   placeholder="admin@example.com"
