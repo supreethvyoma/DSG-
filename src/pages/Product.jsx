@@ -749,8 +749,12 @@ function Product() {
           <hr />
           <div className="price-block">
             <p className="price">
-              <strong>{formatCurrencyExact(calculatedTotalPrice, displayCurrency)}</strong>
-              {currentQty > 1 ? (
+              <strong>
+                {product.productType === "bulk"
+                  ? formatCurrencyExact(calculatedTotalPrice, displayCurrency)
+                  : formatResolvedPrice(pricing)}
+              </strong>
+              {product.productType === "bulk" && currentQty > 1 ? (
                 <span style={{ fontSize: "14px", fontWeight: "600", color: "var(--site-text-soft)", marginLeft: "8px" }}>
                   ({formatResolvedPrice(pricing)} × {currentQty} copies)
                 </span>
@@ -763,12 +767,12 @@ function Product() {
             </p>
             {isBundle && bundleOriginalTotal > displayPrice ? (
               <div className="bundle-savings-box">
-                <span>Individual total: {formatCurrencyExact(calculatedBundleOriginalTotal, displayCurrency)}</span>
-                <strong>You save {formatCurrencyExact(calculatedBundleSavings, displayCurrency)}</strong>
+                <span>Individual total: {formatCurrencyExact(product.productType === "bulk" ? calculatedBundleOriginalTotal : bundleOriginalTotal, displayCurrency)}</span>
+                <strong>You save {formatCurrencyExact(product.productType === "bulk" ? calculatedBundleSavings : bundleSavings, displayCurrency)}</strong>
               </div>
             ) : null}
             <p className="price-meta">
-              M.R.P.: <span>{formatCurrencyExact(calculatedTotalListPrice, displayCurrency)}</span> ({discountPercent}% off)
+              M.R.P.: <span>{formatCurrencyExact(product.productType === "bulk" ? calculatedTotalListPrice : listPrice, displayCurrency)}</span> ({discountPercent}% off)
             </p>
             <p className="tax-note">Inclusive of all taxes</p>
           </div>
@@ -785,8 +789,10 @@ function Product() {
         <div className="product-right">
           <div className="buy-box">
             <p className="buy-price">
-              {formatCurrencyExact(calculatedTotalPrice, displayCurrency)}
-              {currentQty > 1 ? (
+              {product.productType === "bulk"
+                ? formatCurrencyExact(calculatedTotalPrice, displayCurrency)
+                : formatResolvedPrice(pricing)}
+              {product.productType === "bulk" && currentQty > 1 ? (
                 <span style={{ display: "block", fontSize: "13px", fontWeight: "normal", color: "var(--site-text-soft)", marginTop: "4px" }}>
                   ({formatResolvedPrice(pricing)} × {currentQty} copies)
                 </span>
