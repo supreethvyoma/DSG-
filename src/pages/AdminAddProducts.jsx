@@ -320,7 +320,9 @@ function AdminAddProducts() {
   const [activeHeroBannerIndex, setActiveHeroBannerIndex] = useState(0);
   const [isSavingHeroBanner, setIsSavingHeroBanner] = useState(false);
   const [isUploadingHeroBanners, setIsUploadingHeroBanners] = useState(false);
+  const [isUploadingDesktopHeroBanners, setIsUploadingDesktopHeroBanners] = useState(false);
   const [isUploadingMobileHeroBanners, setIsUploadingMobileHeroBanners] = useState(false);
+  const [heroBannerPreviewMode, setHeroBannerPreviewMode] = useState("desktop");
   const [isUploadingProductImages, setIsUploadingProductImages] = useState(false);
   const [isOptimizingStoredImages, setIsOptimizingStoredImages] = useState(false);
   const [heroBannerMessage, setHeroBannerMessage] = useState("");
@@ -657,6 +659,30 @@ function AdminAddProducts() {
       setHeroBannerMessage("Could not upload banner images.");
     } finally {
       setIsUploadingHeroBanners(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleDesktopHeroBannerFileUpload = async (event, index) => {
+    const [file] = Array.from(event.target.files || []);
+    if (!file) return;
+
+    setIsUploadingDesktopHeroBanners(true);
+    setHeroBannerMessage("");
+
+    try {
+      if (!String(file.type || "").startsWith("image/")) {
+        setHeroBannerMessage("Please choose an image file for the desktop banner.");
+        return;
+      }
+
+      const optimized = await optimizeHeroBannerFile(file);
+      updateHeroBanner(index, "image", optimized);
+      setHeroBannerMessage("Desktop banner image attached. Save hero banners to publish.");
+    } catch {
+      setHeroBannerMessage("Could not upload desktop banner image.");
+    } finally {
+      setIsUploadingDesktopHeroBanners(false);
       event.target.value = "";
     }
   };
@@ -2103,30 +2129,53 @@ function AdminAddProducts() {
             </div>
             <div className="add-product-status-badges">
               <span className={heroBanners.length > 1 ? "status-badge valid" : "status-badge"}>
-                {heroBanners.length} Banner{heroBanners.length === 1 ? "" : "s"}
+                🖼️ {heroBanners.length} Banner{heroBanners.length === 1 ? "" : "s"}
               </span>
-              <span className={heroBanners.some((item) => item.image.trim()) ? "status-badge valid" : "status-badge"}>Images</span>
-              <span className={heroBanners.some((item) => item.productId) ? "status-badge valid" : "status-badge"}>Linked Products</span>
+              <span className={heroBanners.some((item) => item.image.trim()) ? "status-badge valid" : "status-badge"}>
+                📸 {heroBanners.filter((item) => item.image.trim()).length} Configured
+              </span>
+              <span className={heroBanners.some((item) => item.productId) ? "status-badge valid" : "status-badge"}>
+                🔗 Linked Products
+              </span>
             </div>
           </div>
 
+          {/* Banner Tabs Bar */}
           <div className="hero-banner-admin-list">
-            {heroBanners.map((banner, index) => (
-              <button
-                key={`hero-banner-${index}`}
-                type="button"
-                className={`hero-banner-admin-list-item${activeHeroBannerIndex === index ? " active" : ""}`}
-                onClick={() => setActiveHeroBannerIndex(index)}
-              >
-                <span>Banner {index + 1}</span>
-                <strong>{banner.image.trim() ? "Configured" : "Empty"}</strong>
-              </button>
-            ))}
+            {heroBanners.map((banner, index) => {
+              const isConfigured = Boolean(banner.image.trim());
+              const isActive = activeHeroBannerIndex === index;
+
+              return (
+                <div
+                  key={`hero-banner-tab-${index}`}
+                  className={`hero-banner-admin-tab-item${isActive ? " active" : ""}`}
+                  onClick={() => setActiveHeroBannerIndex(index)}
+                >
+                  <span className={`status-dot ${isConfigured ? "configured" : "empty"}`} />
+                  <span className="tab-label">Banner {index + 1}</span>
+                  {heroBanners.length > 1 && (
+                    <button
+                      type="button"
+                      className="tab-remove-btn"
+                      title="Remove banner"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeHeroBanner(index);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
             <button type="button" className="hero-banner-admin-add-btn" onClick={addHeroBanner}>
-              + Add Banner
+              ＋ Add Banner
             </button>
             <label className="hero-banner-admin-upload-btn">
-              {isUploadingHeroBanners ? "Uploading..." : "Upload Multiple Images"}
+              {isUploadingHeroBanners ? "Uploading..." : "📤 Upload Multiple"}
               <input
                 type="file"
                 accept="image/*"
@@ -2137,92 +2186,152 @@ function AdminAddProducts() {
             </label>
           </div>
 
+          {heroBannerMessage && (
+            <p className={`admin-form-message ${heroBannerMessage.includes("Could not") ? "error" : "success"}`} style={{ marginBottom: "16px" }}>
+              {heroBannerMessage}
+            </p>
+          )}
+
+          {/* Main Layout Grid */}
           <div className="hero-banner-admin-layout">
-            <div className="hero-banner-admin-preview" style={{ flexDirection: "column", gap: "16px", padding: "16px", minHeight: "auto", alignItems: "stretch" }}>
-              <div style={{ borderBottom: "1px solid var(--admin-border)", paddingBottom: "12px" }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--admin-primary)", display: "block", marginBottom: "8px" }}>Desktop Banner Preview</span>
-                {activeHeroBanner.image.trim() ? (
-                  <img
-                    src={activeHeroBanner.image.trim()}
-                    alt="Hero banner desktop preview"
-                    onError={(e) => {
-                      e.currentTarget.src = "https://picsum.photos/1200/420";
-                    }}
-                  />
-                ) : (
-                  <div className="hero-banner-admin-empty" style={{ padding: "10px 0" }}>
-                    <span>No desktop image URL provided</span>
-                  </div>
-                )}
+            {/* Live Interactive Preview Card */}
+            <div className="hero-banner-preview-box">
+              <div className="preview-segmented-header">
+                <span className="preview-box-title">Live Preview</span>
+                <div className="preview-switcher">
+                  <button
+                    type="button"
+                    className={`preview-switch-btn ${heroBannerPreviewMode === "desktop" ? "active" : ""}`}
+                    onClick={() => setHeroBannerPreviewMode("desktop")}
+                  >
+                    🖥️ Desktop
+                  </button>
+                  <button
+                    type="button"
+                    className={`preview-switch-btn ${heroBannerPreviewMode === "mobile" ? "active" : ""}`}
+                    onClick={() => setHeroBannerPreviewMode("mobile")}
+                  >
+                    📱 Mobile
+                  </button>
+                </div>
               </div>
-              <div style={{ paddingTop: "4px" }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--admin-primary)", display: "block", marginBottom: "8px" }}>Mobile Banner Preview</span>
-                {activeHeroBanner.mobileImage?.trim() ? (
-                  <div style={{ display: "flex", justifyContent: "center" }}>
-                    <img
-                      src={activeHeroBanner.mobileImage.trim()}
-                      alt="Hero banner mobile preview"
-                      style={{ maxWidth: "240px", height: "auto", objectFit: "contain", border: "1px solid var(--admin-border)", borderRadius: "8px" }}
-                      onError={(e) => {
-                        e.currentTarget.src = "https://picsum.photos/400/500";
-                      }}
-                    />
-                  </div>
+
+              <div className="preview-stage">
+                {heroBannerPreviewMode === "desktop" ? (
+                  activeHeroBanner.image.trim() ? (
+                    <div className="desktop-preview-frame">
+                      <img
+                        src={activeHeroBanner.image.trim()}
+                        alt="Hero banner desktop preview"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://picsum.photos/1200/420";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="hero-banner-admin-empty">
+                      <strong>No Desktop Image Uploaded</strong>
+                      <span>Upload or paste a desktop banner URL on the right</span>
+                    </div>
+                  )
                 ) : (
-                  <div className="hero-banner-admin-empty" style={{ padding: "10px 0" }}>
-                    <span>No mobile image URL provided (will fallback to desktop banner image)</span>
-                  </div>
+                  (activeHeroBanner.mobileImage || activeHeroBanner.image).trim() ? (
+                    <div className="mobile-preview-frame">
+                      <img
+                        src={(activeHeroBanner.mobileImage || activeHeroBanner.image).trim()}
+                        alt="Hero banner mobile preview"
+                        onError={(e) => {
+                          e.currentTarget.src = "https://picsum.photos/400/500";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="hero-banner-admin-empty">
+                      <strong>No Mobile Image Uploaded</strong>
+                      <span>Will fallback to desktop banner image on mobile devices</span>
+                    </div>
+                  )
                 )}
               </div>
             </div>
 
+            {/* Banner Controls & Inputs */}
             <div className="hero-banner-admin-controls">
-              <label className="admin-field admin-field-wide">
-                <span>Banner Image URL (Desktop)</span>
-                <textarea
-                  className="hero-banner-url-field"
-                  placeholder="https://example.com/banner.jpg"
+              {/* Desktop Image Input */}
+              <div className="hero-banner-field-group">
+                <div className="hero-banner-field-label-row">
+                  <label className="field-title">Desktop Banner Image</label>
+                  <div className="field-action-btns">
+                    <label className="hero-banner-btn-upload">
+                      {isUploadingDesktopHeroBanners ? "Uploading..." : "Upload Desktop Image"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleDesktopHeroBannerFileUpload(e, activeHeroBannerIndex)}
+                        disabled={isUploadingDesktopHeroBanners}
+                      />
+                    </label>
+                    {activeHeroBanner.image.trim() && (
+                      <button
+                        type="button"
+                        className="hero-banner-btn-clear"
+                        onClick={() => updateHeroBanner(activeHeroBannerIndex, "image", "")}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <input
+                  type="text"
+                  className="hero-banner-url-input"
+                  placeholder="Paste desktop banner image URL or upload above..."
                   value={activeHeroBanner.image}
                   onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "image", e.target.value)}
-                  rows={4}
                 />
-              </label>
+              </div>
 
-              <label className="admin-field admin-field-wide">
-                <span>Mobile Banner Image URL (Optional)</span>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "6px" }}>
-                  <label className="hero-banner-admin-upload-btn" style={{ margin: 0, padding: "8px 16px", minHeight: "auto", height: "36px", fontSize: "12px", whiteSpace: "nowrap" }}>
-                    {isUploadingMobileHeroBanners ? "Uploading..." : "Upload Mobile Image"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleMobileHeroBannerFileUpload(e, activeHeroBannerIndex)}
-                      disabled={isUploadingMobileHeroBanners}
-                    />
-                  </label>
-                  {activeHeroBanner.mobileImage?.trim() && (
-                    <button
-                      type="button"
-                      className="hero-banner-admin-remove-btn"
-                      style={{ margin: 0, padding: "8px 16px", minHeight: "auto", height: "36px", fontSize: "12px" }}
-                      onClick={() => updateHeroBanner(activeHeroBannerIndex, "mobileImage", "")}
-                    >
-                      Clear Mobile Image
-                    </button>
-                  )}
+              {/* Mobile Image Input */}
+              <div className="hero-banner-field-group">
+                <div className="hero-banner-field-label-row">
+                  <label className="field-title">Mobile Banner Image <span className="optional-tag">(Optional)</span></label>
+                  <div className="field-action-btns">
+                    <label className="hero-banner-btn-upload">
+                      {isUploadingMobileHeroBanners ? "Uploading..." : "Upload Mobile Image"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleMobileHeroBannerFileUpload(e, activeHeroBannerIndex)}
+                        disabled={isUploadingMobileHeroBanners}
+                      />
+                    </label>
+                    {activeHeroBanner.mobileImage?.trim() && (
+                      <button
+                        type="button"
+                        className="hero-banner-btn-clear"
+                        onClick={() => updateHeroBanner(activeHeroBannerIndex, "mobileImage", "")}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <textarea
-                  className="hero-banner-url-field"
-                  placeholder="https://example.com/banner-mobile.jpg"
+
+                <input
+                  type="text"
+                  className="hero-banner-url-input"
+                  placeholder="Paste mobile banner URL (or leave blank to use desktop image)..."
                   value={activeHeroBanner.mobileImage || ""}
                   onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "mobileImage", e.target.value)}
-                  rows={4}
                 />
-              </label>
+              </div>
 
-              <label className="admin-field admin-field-wide">
-                <span>Banner Opens Product</span>
+              {/* Linked Product Select */}
+              <div className="hero-banner-field-group">
+                <label className="field-title">Banner Target Product</label>
                 <select
+                  className="hero-banner-select"
                   value={products.some(p => p._id === activeHeroBanner.productId) ? activeHeroBanner.productId : ""}
                   onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "productId", e.target.value)}
                 >
@@ -2233,54 +2342,51 @@ function AdminAddProducts() {
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
 
-              <label className="admin-field admin-field-wide">
-                <span>Or Custom Target Link (e.g. /collection, /cart)</span>
+              {/* Custom Target Link */}
+              <div className="hero-banner-field-group">
+                <label className="field-title">Or Custom Target Link</label>
                 <input
                   type="text"
-                  placeholder="e.g. /collection"
+                  placeholder="e.g. /collection or /about"
                   value={products.some(p => p._id === activeHeroBanner.productId) ? "" : activeHeroBanner.productId}
                   onChange={(e) => updateHeroBanner(activeHeroBannerIndex, "productId", e.target.value)}
-                  className="admin-input-text"
-                  style={{ width: "100%", padding: "10px", marginTop: "4px", boxSizing: "border-box" }}
+                  className="hero-banner-url-input"
                 />
-              </label>
+              </div>
 
-              {editingProduct?._id ? (
+              {editingProduct?._id && (
                 <button
                   type="button"
-                  className="hero-banner-admin-link-btn"
+                  className="hero-banner-link-product-btn"
                   onClick={() => updateHeroBanner(activeHeroBannerIndex, "productId", editingProduct._id)}
                 >
-                  Link Banner To Current Edit Product
+                  🔗 Link Banner To Currently Editing Product
                 </button>
-              ) : null}
+              )}
 
-              {heroBanners.length > 1 ? (
-                <button
-                  type="button"
-                  className="hero-banner-admin-remove-btn"
-                  onClick={() => removeHeroBanner(activeHeroBannerIndex)}
-                >
-                  Remove This Banner
-                </button>
-              ) : null}
-
+              {/* Banner Details Meta */}
               <div className="hero-banner-admin-meta">
                 <div>
-                  <span>Currently linked</span>
-                  <strong>{selectedHeroProduct?.name || "No product selected"}</strong>
+                  <span>Target Destination</span>
+                  <strong>{selectedHeroProduct?.name || activeHeroBanner.productId || "No product linked"}</strong>
                 </div>
                 <div>
-                  <span>Recommended format</span>
-                  <strong>Wide landscape image</strong>
+                  <span>Recommended Ratio</span>
+                  <strong>16:9 or 21:9 Wide Landscape</strong>
                 </div>
               </div>
 
-              <div className="pricing-actions-row">
-                <button className="pricing-save-btn" onClick={saveHeroBanner} disabled={isSavingHeroBanner}>
-                  {isSavingHeroBanner ? "Saving..." : "Save Hero Banners"}
+              {/* Save & Optimize Action Row */}
+              <div className="hero-banner-actions-footer">
+                <button
+                  type="button"
+                  className="pricing-save-btn"
+                  onClick={saveHeroBanner}
+                  disabled={isSavingHeroBanner}
+                >
+                  {isSavingHeroBanner ? "Saving..." : "💾 Save Hero Banners"}
                 </button>
                 <button
                   type="button"
@@ -2288,16 +2394,9 @@ function AdminAddProducts() {
                   onClick={handleOptimizeStoredImages}
                   disabled={isOptimizingStoredImages}
                 >
-                  {isOptimizingStoredImages ? "Optimizing Stored Images..." : "Optimize Existing Stored Images"}
+                  {isOptimizingStoredImages ? "Optimizing..." : "⚡ Optimize Stored Images"}
                 </button>
-                <span>Clicking each live banner will open its selected product page.</span>
               </div>
-
-              {heroBannerMessage ? (
-                <p className={`pricing-message ${heroBannerMessage.includes("updated") ? "success" : "error"}`}>
-                  {heroBannerMessage}
-                </p>
-              ) : null}
             </div>
           </div>
         </section>
