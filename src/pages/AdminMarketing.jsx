@@ -6,7 +6,15 @@ import { useAuth } from "../hooks/useAuth";
 import "./AdminMarketing.css";
 import "./AdminShared.css";
 
-const TABS = ["Overview", "Email Campaign", "Push Notification", "Customer Segments", "Low-Stock Alerts", "Order Email Draft", "Sponsors"];
+const TABS = [
+  { label: "Overview", icon: "📊" },
+  { label: "Email Campaign", icon: "✉️" },
+  { label: "Push Notification", icon: "🔔" },
+  { label: "Customer Segments", icon: "👥" },
+  { label: "Low-Stock Alerts", icon: "⚠️" },
+  { label: "Order Email Draft", icon: "📝" },
+  { label: "Sponsors", icon: "🤝" }
+];
 
 function AdminMarketing() {
   const { token } = useAuth();
@@ -471,13 +479,14 @@ function AdminMarketing() {
         <div className="mkt-tabs">
           {TABS.map((tab, i) => (
             <button
-              key={tab}
+              key={tab.label}
               type="button"
               className={`mkt-tab ${activeTab === i ? "active" : ""}`}
               onClick={() => setActiveTab(i)}
             >
-              {tab}
-              {i === 3 && stats?.lowStockCount > 0 && (
+              <span className="mkt-tab-icon">{tab.icon}</span>
+              <span>{tab.label}</span>
+              {i === 4 && stats?.lowStockCount > 0 && (
                 <span className="mkt-badge">{stats.lowStockCount}</span>
               )}
             </button>
