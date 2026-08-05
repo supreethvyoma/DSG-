@@ -66,7 +66,7 @@ html.banner-active .navbar {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 42px;
+  min-height: 32px;
   padding-top: 0;
   padding-bottom: 0;
   color: var(--site-header-text);
@@ -96,10 +96,10 @@ html.banner-active .navbar {
   background: transparent;
   cursor: pointer;
   flex: 0 0 auto;
-  padding: 0 8px;
-  height: 34px;
+  padding: 0 6px;
+  height: 26px;
   color: #ffffff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   box-sizing: border-box;
   transition: border-color 0.15s ease;
@@ -189,14 +189,14 @@ html.banner-active .navbar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
-  padding: 0 var(--space-4);
+  min-height: 24px;
+  padding: 0 10px;
   border-radius: var(--radius-full);
   border: 1px solid var(--site-button-bg);
   background: var(--site-button-bg);
   color: var(--site-button-text);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
@@ -220,14 +220,14 @@ html.banner-active .navbar {
 .navbar-quick-nav-btn {
   display: inline-flex;
   align-items: center;
-  height: 34px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 8px;
   border-radius: 2px;
   border: 1px solid transparent;
   background: transparent;
   color: #ffffff;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
