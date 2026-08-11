@@ -203,7 +203,12 @@ function MyOrders() {
         amount: Number(order.total || 0)
       });
 
-      if (isDummyPaymentEnabled) {
+      const isOrderDummy =
+        isDummyPaymentEnabled ||
+        Boolean(data?.isDummy) ||
+        String(data?.id || "").startsWith("dummy_order_");
+
+      if (isOrderDummy) {
         const wantsToProceed = window.confirm("Dummy payment mode: click OK to mark this order as paid.");
         if (!wantsToProceed) {
           await updateOrderPaymentStatus(order._id, { paymentStatus: "Failed" });
@@ -237,6 +242,9 @@ function MyOrders() {
         return;
       }
 
+      const cleanPhone = String(order?.shipping?.phone || "").replace(/\D/g, "").replace(/^0+/, "");
+      const cleanEmail = String(order?.user?.email || order?.shipping?.email || "").trim();
+
       const rzp = new RazorpayConstructor({
         key: razorpayKey,
         amount: data.amount,
@@ -246,7 +254,8 @@ function MyOrders() {
         order_id: data.id,
         prefill: {
           name: order?.shipping?.name || "",
-          contact: order?.shipping?.phone || ""
+          email: cleanEmail,
+          contact: cleanPhone
         },
         notes: {
           orderId: String(order._id)
@@ -276,14 +285,19 @@ function MyOrders() {
         }
       });
 
-      rzp.on("payment.failed", async () => {
+      rzp.on("payment.failed", async (response) => {
         try {
           await updateOrderPaymentStatus(order._id, { paymentStatus: "Failed" });
           await loadOrders();
         } catch {
           // Ignore update errors here; user can retry.
         }
-        setPageMessage("Payment failed. You can retry again from My Orders.");
+        const failReason =
+          response?.error?.description ||
+          response?.error?.reason ||
+          "Payment failed. You can retry again from My Orders.";
+        console.error("Razorpay payment failed:", response?.error);
+        setPageMessage(`Payment failed: ${failReason}`);
       });
 
       rzp.open();

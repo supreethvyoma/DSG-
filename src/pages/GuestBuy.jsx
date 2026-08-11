@@ -214,7 +214,12 @@ function GuestBuy() {
       });
 
       // 2. Process payment (Dummy / Live)
-      if (isDummyPaymentEnabled) {
+      const isOrderDummy =
+        isDummyPaymentEnabled ||
+        Boolean(rpOrder?.isDummy) ||
+        String(rpOrder?.id || "").startsWith("dummy_order_");
+
+      if (isOrderDummy) {
         const wantsToProceed = window.confirm(
           "Dummy payment mode is enabled. Click OK to simulate a successful payment."
         );
@@ -269,6 +274,9 @@ function GuestBuy() {
         return;
       }
 
+      const cleanPhone = String(phone || "").replace(/\D/g, "").replace(/^0+/, "");
+      const cleanEmail = String(email || "").trim().toLowerCase();
+
       // Live payment mode
       const rzp = new RazorpayConstructor({
         key: razorpayKey,
@@ -279,8 +287,8 @@ function GuestBuy() {
         order_id: rpOrder.id,
         prefill: {
           name: name.trim(),
-          email: email.trim().toLowerCase(),
-          contact: phone.trim()
+          email: cleanEmail,
+          contact: cleanPhone
         },
         notes: {
           address: shippingInfo.address
@@ -332,6 +340,16 @@ function GuestBuy() {
             setIsPaying(false);
           }
         }
+      });
+
+      rzp.on("payment.failed", (response) => {
+        setIsPaying(false);
+        const failReason =
+          response?.error?.description ||
+          response?.error?.reason ||
+          "Payment failed.";
+        console.error("Razorpay payment failed:", response?.error);
+        setCheckoutMessage(`Payment failed: ${failReason}`);
       });
 
       rzp.open();

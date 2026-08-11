@@ -100,7 +100,7 @@ const itemStyles = {
 
 function Checkout() {
   const { cartItems, clearCart } = useCart();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const {
     addresses,
     selectedIndex,
@@ -665,7 +665,12 @@ function Checkout() {
         )
       });
 
-      if (isDummyPaymentEnabled) {
+      const isOrderDummy =
+        isDummyPaymentEnabled ||
+        Boolean(data?.isDummy) ||
+        String(data?.id || "").startsWith("dummy_order_");
+
+      if (isOrderDummy) {
         const wantsToProceed = window.confirm(
           "Dummy payment mode is enabled. Click OK to simulate a successful payment."
         );
@@ -736,6 +741,9 @@ function Checkout() {
         return;
       }
 
+      const cleanPhone = String(selected.phone || "").replace(/\D/g, "").replace(/^0+/, "");
+      const cleanEmail = String(user?.email || selected?.email || "").trim();
+
       const rzp = new RazorpayConstructor({
         key: razorpayKey,
         amount: data.amount,
@@ -745,7 +753,8 @@ function Checkout() {
         order_id: data.id,
         prefill: {
           name: selected.name,
-          contact: selected.phone
+          email: cleanEmail,
+          contact: cleanPhone
         },
         notes: {
           address: selected.address
@@ -818,9 +827,15 @@ function Checkout() {
         }
       });
 
-      rzp.on("payment.failed", async () => {
+      rzp.on("payment.failed", async (response) => {
         setIsPaying(false);
-        await recordFailedAttempt("Payment failed. Failed order saved in My Orders.");
+        const failReason =
+          response?.error?.description ||
+          response?.error?.reason ||
+          "Payment failed. Failed order saved in My Orders.";
+        console.error("Razorpay payment failed:", response?.error);
+        setCheckoutMessage(`Payment failed: ${failReason}`);
+        await recordFailedAttempt(`Payment failed: ${failReason}`);
       });
 
       checkoutOpened = true;
