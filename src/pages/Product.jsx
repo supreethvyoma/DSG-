@@ -240,33 +240,6 @@ function Product() {
   const [bulkQty, setBulkQty] = useState(20);
   const [bulkInst, setBulkInst] = useState("");
   const [bulkMsg, setBulkMsg] = useState("");
-
-  const handleOpenLightbox = () => {
-    if (activeMedia?.kind !== "image") return;
-    const currentSrc = activeMedia?.src || galleryImages[0] || product?.image;
-    const currentIdx = galleryImages.findIndex((src) => src === currentSrc);
-    setLightboxIndex(currentIdx >= 0 ? currentIdx : 0);
-    setIsLightboxOpen(true);
-  };
-
-  useEffect(() => {
-    if (!isLightboxOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") setIsLightboxOpen(false);
-      if (e.key === "ArrowLeft" && galleryImages.length > 1) {
-        setLightboxIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
-      }
-      if (e.key === "ArrowRight" && galleryImages.length > 1) {
-        setLightboxIndex((prev) => (prev + 1) % galleryImages.length);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isLightboxOpen, galleryImages.length]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
   const [bulkSuccess, setBulkSuccess] = useState(false);
   const [bulkError, setBulkError] = useState("");
@@ -637,6 +610,33 @@ function Product() {
 
   const alreadyPurchased = product && purchasedProducts.includes(String(product._id));
   const hasPurchasedWebVersion = isWebVersion && alreadyPurchased;
+
+  const handleOpenLightbox = () => {
+    if (activeMedia?.kind !== "image") return;
+    const currentSrc = activeMedia?.src || galleryImages[0] || product?.image;
+    const currentIdx = galleryImages.findIndex((src) => src === currentSrc);
+    setLightboxIndex(currentIdx >= 0 ? currentIdx : 0);
+    setIsLightboxOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isLightboxOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setIsLightboxOpen(false);
+      if (e.key === "ArrowLeft" && galleryImages.length > 1) {
+        setLightboxIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+      }
+      if (e.key === "ArrowRight" && galleryImages.length > 1) {
+        setLightboxIndex((prev) => (prev + 1) % galleryImages.length);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [isLightboxOpen, galleryImages.length]);
 
   return (
     <>
