@@ -159,11 +159,13 @@ function AdminSidebar() {
         </nav>
 
         <div className="sidebar-footer-box">
+          {/* Open Store Front button — commented out, enable when needed
           <NavLink to="/" className="sidebar-storefront-btn" onClick={() => setIsMobileNavOpen(false)}>
             <Globe size={15} style={{ marginRight: 6 }} />
             <span>Open Store Front</span>
             <ExternalLink size={13} className="external-arrow" />
           </NavLink>
+          */}
         </div>
       </aside>
     </>
