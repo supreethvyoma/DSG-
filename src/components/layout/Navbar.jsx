@@ -14,6 +14,7 @@ import {
   Mail,
   ShieldCheck,
   LogOut,
+  Grid,
   ShoppingCart,
   Search,
   Menu,
