@@ -47,10 +47,22 @@
                     customThemes: Array.isArray(d.customThemes) ? d.customThemes : []
                   }));
                 } catch(e) {}
+              } else {
+                document.documentElement.setAttribute("data-site-theme", "sunrise");
               }
             })
-            .catch(function() {});
-        } catch(e) {}
+            .catch(function() {
+              document.documentElement.setAttribute("data-site-theme", "sunrise");
+            });
+
+          setTimeout(function() {
+            if (!document.documentElement.getAttribute("data-site-theme")) {
+              document.documentElement.setAttribute("data-site-theme", "sunrise");
+            }
+          }, 1200);
+        } catch(e) {
+          document.documentElement.setAttribute("data-site-theme", "sunrise");
+        }
       })();
     </script>
     <!-- Google Tag Manager Container -->
