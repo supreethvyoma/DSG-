@@ -1496,6 +1496,10 @@ function Product() {
                 </>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
       {/* Fullscreen Lightbox Modal */}
       {isLightboxOpen && (
         <div className="product-lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
