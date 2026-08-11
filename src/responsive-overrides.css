@@ -58,6 +58,31 @@ img, video, iframe, embed, object {
     padding: 10px !important;
   }
 
+  .product-left {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .image-gallery {
+    grid-template-columns: 1fr !important;
+    max-width: 400px !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+  }
+
+  .thumbnail-column {
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    order: 2 !important;
+  }
+
+  .main-image-container {
+    order: 1 !important;
+    margin: 0 auto !important;
+  }
+
   .product-container {
     margin-bottom: 4px !important;
   }

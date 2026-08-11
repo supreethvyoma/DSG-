@@ -613,42 +613,44 @@ function Product() {
     <>
       <div className="product-container">
         <div className="product-left">
-          <div className="image-gallery">
-            <div className="thumbnail-column">
-              {mediaItems.map((item, i) => (
-                item.kind === "image" ? (
-                  <img
-                    key={item.key}
-                    src={item.thumbnail || "/no-image.webp"}
-                    className={`thumbnail ${activeMedia?.key === item.key ? "active" : ""}`}
-                    onClick={() => setSelectedMedia(item)}
-                    alt={`${product.name} thumbnail ${i + 1}`}
-                    width="120"
-                    height="120"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <button
-                    key={item.key}
-                    type="button"
-                    className={`thumbnail thumbnail-video ${activeMedia?.key === item.key ? "active" : ""}`}
-                    onClick={() => setSelectedMedia(item)}
-                    aria-label="Open product trailer"
-                  >
+          <div className={`image-gallery ${mediaItems.length <= 1 ? "single-media" : ""}`}>
+            {mediaItems.length > 1 && (
+              <div className="thumbnail-column">
+                {mediaItems.map((item, i) => (
+                  item.kind === "image" ? (
                     <img
+                      key={item.key}
                       src={item.thumbnail || "/no-image.webp"}
-                      alt={`${product.name} trailer thumbnail`}
+                      className={`thumbnail ${activeMedia?.key === item.key ? "active" : ""}`}
+                      onClick={() => setSelectedMedia(item)}
+                      alt={`${product.name} thumbnail ${i + 1}`}
                       width="120"
                       height="120"
                       loading="lazy"
                       decoding="async"
                     />
-                    <span>Trailer</span>
-                  </button>
-                )
-              ))}
-            </div>
+                  ) : (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className={`thumbnail thumbnail-video ${activeMedia?.key === item.key ? "active" : ""}`}
+                      onClick={() => setSelectedMedia(item)}
+                      aria-label="Open product trailer"
+                    >
+                      <img
+                        src={item.thumbnail || "/no-image.webp"}
+                        alt={`${product.name} trailer thumbnail`}
+                        width="120"
+                        height="120"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                      <span>Trailer</span>
+                    </button>
+                  )
+                ))}
+              </div>
+            )}
 
             <div className="main-image-container">
               <div className="product-image-actions">

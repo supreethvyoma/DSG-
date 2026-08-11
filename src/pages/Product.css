@@ -31,6 +31,11 @@
   gap: var(--space-3);
   align-items: start;
   max-width: 430px;
+  margin: 0 auto;
+}
+
+.image-gallery.single-media {
+  grid-template-columns: 1fr;
 }
 
 .thumbnail-column {
