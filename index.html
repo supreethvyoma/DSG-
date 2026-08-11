@@ -24,7 +24,7 @@
         'security_storage': 'granted' // Necessary cookies are always granted
       });
     </script>
-    <!-- Immediate site theme pre-restore from localStorage -->
+    <!-- Immediate site theme pre-restore and fast fetch for new browsers -->
     <script>
       (function() {
         try {
@@ -33,8 +33,23 @@
             var parsed = JSON.parse(raw);
             if (parsed && parsed.siteTheme) {
               document.documentElement.setAttribute("data-site-theme", parsed.siteTheme);
+              return;
             }
           }
+          fetch("/api/settings/public")
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+              if (d && d.siteTheme) {
+                document.documentElement.setAttribute("data-site-theme", d.siteTheme);
+                try {
+                  localStorage.setItem("site-theme-settings", JSON.stringify({
+                    siteTheme: d.siteTheme,
+                    customThemes: Array.isArray(d.customThemes) ? d.customThemes : []
+                  }));
+                } catch(e) {}
+              }
+            })
+            .catch(function() {});
         } catch(e) {}
       })();
     </script>

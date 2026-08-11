@@ -65,6 +65,34 @@
   --site-card-shadow: var(--premium-shadow-md);
 }
 
+/* ── Theme: Sunrise ─────────────────────────────────────────────────────── */
+:root[data-site-theme="sunrise"] {
+  --site-bg: #fbfaf7;
+  --site-surface: #ffffff;
+  --site-surface-muted: #F5F3EF;
+  --site-text: #0F172A;
+  --site-text-soft: #64748B;
+  --site-border: #E2E8F0;
+  --site-link: #B45309;
+  --site-link-hover: #92400E;
+  --site-header-bg: #0F172A;
+  --site-header-border: #1E293B;
+  --site-header-text: #ffffff;
+  --site-search-border: #D97706;
+  --site-search-focus: #B45309;
+  --site-badge-bg: #D97706;
+  --site-badge-text: #FFFBEB;
+  --site-button-bg: #D97706;
+  --site-button-hover: #B45309;
+  --site-button-text: #FFFBEB;
+  --site-footer-bg: #0F172A;
+  --site-footer-border: #1E293B;
+  --site-footer-text: #CBD5E1;
+  --site-hero-start: #0F172A;
+  --site-hero-end: #D97706;
+  --site-card-shadow: var(--premium-shadow-md);
+}
+
 /* ── Theme: Forest ──────────────────────────────────────────────────────── */
 :root[data-site-theme="forest"] {
   --site-bg: #F5FAF7;
@@ -95,29 +123,87 @@
 
 /* ── Theme: Midnight ────────────────────────────────────────────────────── */
 :root[data-site-theme="midnight"] {
-  --site-bg: #F4F7FC;
-  --site-surface: #ffffff;
-  --site-surface-muted: #EDF1FA;
-  --site-text: #0F172A;
-  --site-text-soft: #475569;
-  --site-border: #CBD5E1;
-  --site-link: #1D4ED8;
-  --site-link-hover: #1E40AF;
-  --site-header-bg: #0F172A;
-  --site-header-border: #1E293B;
+  --site-bg: #0b0f19;
+  --site-surface: #1e293b;
+  --site-surface-muted: #111827;
+  --site-text: #f8fafc;
+  --site-text-soft: #94a3b8;
+  --site-border: #334155;
+  --site-link: #f59e0b;
+  --site-link-hover: #d97706;
+  --site-header-bg: #0f172a;
+  --site-header-border: #1e293b;
   --site-header-text: #ffffff;
-  --site-search-border: #FACC15;
-  --site-search-focus: #EAB308;
-  --site-badge-bg: #FACC15;
-  --site-badge-text: #422006;
-  --site-button-bg: #2563EB;
-  --site-button-hover: #1D4ED8;
-  --site-button-text: #EFF6FF;
-  --site-footer-bg: #0F172A;
-  --site-footer-border: #1E293B;
-  --site-footer-text: #CBD5E1;
-  --site-hero-start: #172554;
-  --site-hero-end: #2563EB;
+  --site-search-border: #f59e0b;
+  --site-search-focus: #38bdf8;
+  --site-badge-bg: #f59e0b;
+  --site-badge-text: #0f172a;
+  --site-button-bg: #38bdf8;
+  --site-button-hover: #0284c7;
+  --site-button-text: #0f172a;
+  --site-footer-bg: #020617;
+  --site-footer-border: #0f172a;
+  --site-footer-text: #ffffff;
+  --site-hero-start: #0f172a;
+  --site-hero-end: #38bdf8;
+  --site-card-shadow: var(--premium-shadow-md);
+}
+
+/* ── Theme: Sky Blue ────────────────────────────────────────────────────── */
+:root[data-site-theme="skyblue"],
+:root[data-site-theme="sky-blue"] {
+  --site-bg: #ffffff;
+  --site-surface: #ffffff;
+  --site-surface-muted: #f0f9ff;
+  --site-text: #0f172a;
+  --site-text-soft: #475569;
+  --site-border: #e2e8f0;
+  --site-link: #0284c7;
+  --site-link-hover: #0369a1;
+  --site-header-bg: #0284c7;
+  --site-header-border: #0369a1;
+  --site-header-text: #ffffff;
+  --site-search-border: #0284c7;
+  --site-search-focus: #0284c7;
+  --site-badge-bg: #0284c7;
+  --site-badge-text: #ffffff;
+  --site-button-bg: #0284c7;
+  --site-button-hover: #0369a1;
+  --site-button-text: #ffffff;
+  --site-footer-bg: #075985;
+  --site-footer-border: #0c4a6e;
+  --site-footer-text: #ffffff;
+  --site-hero-start: #0284c7;
+  --site-hero-end: #03618c;
+  --site-card-shadow: var(--premium-shadow-md);
+}
+
+/* ── Theme: Sanskrit Heritage ────────────────────────────────────────────── */
+:root[data-site-theme="heritage"],
+:root[data-site-theme="sanskrit-heritage"] {
+  --site-bg: #fdfbf7;
+  --site-surface: #ffffff;
+  --site-surface-muted: #fef2f2;
+  --site-text: #450a0a;
+  --site-text-soft: #7f1d1d;
+  --site-border: #fecaca;
+  --site-link: #b91c1c;
+  --site-link-hover: #991b1b;
+  --site-header-bg: #7f1d1d;
+  --site-header-border: #450a0a;
+  --site-header-text: #fef3c7;
+  --site-search-border: #b91c1c;
+  --site-search-focus: #b45309;
+  --site-badge-bg: #b91c1c;
+  --site-badge-text: #ffffff;
+  --site-button-bg: #b45309;
+  --site-button-hover: #92400e;
+  --site-button-text: #ffffff;
+  --site-footer-bg: #450a0a;
+  --site-footer-border: #7f1d1d;
+  --site-footer-text: #fef3c7;
+  --site-hero-start: #7f1d1d;
+  --site-hero-end: #b45309;
   --site-card-shadow: var(--premium-shadow-md);
 }
 
