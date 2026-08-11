@@ -1,7 +1,25 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { House, Grid, Heart, ShoppingCart, User, Search, Menu, X, MapPin } from "lucide-react";
+import {
+  House,
+  Info,
+  Heart,
+  Package,
+  BookOpen,
+  User,
+  LogIn,
+  UserPlus,
+  HelpCircle,
+  Mail,
+  ShieldCheck,
+  LogOut,
+  ShoppingCart,
+  Search,
+  Menu,
+  X,
+  MapPin
+} from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
 import { useWishlist } from "../../hooks/useWishlist";
@@ -736,38 +754,49 @@ function Navbar({ bannerActive = false }) {
           </button>
 
           <NavLink className={linkClassName} to="/" end onClick={() => setIsMenuOpen(false)}>
-            Home
+            <House size={18} className="navbar-link-icon" />
+            <span>Home</span>
           </NavLink>
           <NavLink className={linkClassName} to="/about" onClick={() => setIsMenuOpen(false)}>
-            About Us
+            <Info size={18} className="navbar-link-icon" />
+            <span>About Us</span>
           </NavLink>
           <NavLink className={linkClassName} to="/wishlist" onClick={() => setIsMenuOpen(false)}>
-            Wishlist <span className="navbar-inline-count">{wishlist.length}</span>
+            <Heart size={18} className="navbar-link-icon" />
+            <span>Wishlist</span>
+            <span className="navbar-inline-count">{wishlist.length}</span>
           </NavLink>
           <NavLink className={linkClassName} to="/my-orders" onClick={() => setIsMenuOpen(false)}>
-            My Orders
+            <Package size={18} className="navbar-link-icon" />
+            <span>My Orders</span>
           </NavLink>
           <NavLink className={linkClassName} to="/my-library" onClick={() => setIsMenuOpen(false)}>
-            📚 My Digital Library
+            <BookOpen size={18} className="navbar-link-icon" />
+            <span>My Digital Library</span>
           </NavLink>
           {user ? (
             <NavLink className={linkClassName} to="/account" onClick={() => setIsMenuOpen(false)}>
-              My Account
+              <User size={18} className="navbar-link-icon" />
+              <span>My Account</span>
             </NavLink>
           ) : (
             <NavLink className={linkClassName} to="/login" onClick={() => setIsMenuOpen(false)}>
-              Login
+              <LogIn size={18} className="navbar-link-icon" />
+              <span>Login</span>
             </NavLink>
           )}
           <NavLink className={linkClassName} to="/faq" onClick={() => setIsMenuOpen(false)}>
-            FAQ
+            <HelpCircle size={18} className="navbar-link-icon" />
+            <span>FAQ</span>
           </NavLink>
           <NavLink className={linkClassName} to="/contact" onClick={() => setIsMenuOpen(false)}>
-            Contact Us
+            <Mail size={18} className="navbar-link-icon" />
+            <span>Contact Us</span>
           </NavLink>
           {user?.isAdmin && (
             <NavLink className={linkClassName} to="/admin" onClick={() => setIsMenuOpen(false)}>
-              Admin Dashboard
+              <ShieldCheck size={18} className="navbar-link-icon" />
+              <span>Admin Dashboard</span>
             </NavLink>
           )}
           {user ? (
@@ -779,11 +808,13 @@ function Navbar({ bannerActive = false }) {
                 logout();
               }}
             >
-              Sign Out
+              <LogOut size={18} className="navbar-link-icon" />
+              <span>Sign Out</span>
             </button>
           ) : (
             <NavLink className={linkClassName} to="/register" onClick={() => setIsMenuOpen(false)}>
-              New Customer? Register
+              <UserPlus size={18} className="navbar-link-icon" />
+              <span>New Customer? Register</span>
             </NavLink>
           )}
         </div>

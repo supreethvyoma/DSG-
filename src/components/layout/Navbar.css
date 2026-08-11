@@ -590,6 +590,20 @@ html.banner-active .navbar {
   background: transparent;
   cursor: pointer;
   transition: background 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.navbar-link-icon {
+  flex-shrink: 0;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.navbar-link:hover .navbar-link-icon {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 .navbar-link:hover {
@@ -605,8 +619,12 @@ html.banner-active .navbar {
 
 .navbar-inline-count {
   color: var(--site-badge-bg);
-  margin-left: 4px;
+  margin-left: auto;
   font-weight: 700;
+  font-size: 12px;
+  background: rgba(217, 119, 6, 0.15);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .navbar-logout {
