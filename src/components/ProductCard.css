@@ -188,7 +188,7 @@
 
 /* TITLE */
 
-.product-title {
+.product-card .product-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
@@ -229,7 +229,7 @@
 
 /* DESCRIPTION */
 
-.product-description {
+.product-card .product-description {
   margin: 0;
   color: var(--site-text-soft);
   font-size: 13px;

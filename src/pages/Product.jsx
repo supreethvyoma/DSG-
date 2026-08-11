@@ -739,7 +739,7 @@ function Product() {
         </div>
 
         <div className="product-center">
-          <h1 className="product-title">{product.name}</h1>
+          <h1 className="product-title product-detail-title">{product.name}</h1>
           {isBundle ? <p className="product-bundle-pill">Bundle offer</p> : null}
           {isFestiveOffer ? (
             <p className="product-bundle-pill product-festive-pill">

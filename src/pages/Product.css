@@ -150,12 +150,17 @@
   cursor: zoom-in;
 }
 
-.product-title {
+.product-center h1.product-title,
+.product-detail-title {
   margin: 0;
-  font-size: 26px;
-  line-height: 1.25;
-  color: var(--site-text);
-  font-weight: 600;
+  font-size: 26px !important;
+  line-height: 1.25 !important;
+  color: var(--site-text) !important;
+  font-weight: 700 !important;
+  display: block !important;
+  min-height: auto !important;
+  overflow: visible !important;
+  -webkit-line-clamp: unset !important;
 }
 
 .rating {
