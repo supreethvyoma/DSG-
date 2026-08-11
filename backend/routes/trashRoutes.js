@@ -1,0 +1,106 @@
+const express = require("express");
+const Product = require("../models/Product");
+const Coupon = require("../models/Coupon");
+const protect = require("../middleware/authMiddleware");
+const admin = require("../middleware/adminMiddleware");
+const { logAdminAction } = require("../utils/adminAudit");
+const { invalidateProductCache } = require("../utils/cache");
+
+const router = express.Router();
+
+// GET /api/trash - Fetch all soft-deleted items (ADMIN)
+router.get("/", protect, admin, async (req, res) => {
+  try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+
+    const [deletedProducts, deletedCoupons] = await Promise.all([
+      Product.find({ isDeleted: true }).lean(),
+      Coupon.find({ isDeleted: true }).lean()
+    ]);
+
+    const formattedProducts = deletedProducts.map((p) => ({
+      _id: String(p._id),
+      entityType: "product",
+      name: p.name || "Unnamed Product",
+      category: p.category || "General",
+      deletedAt: p.deletedAt || p.updatedAt || new Date(),
+      deletedBy: p.deletedBy?.name ? `${p.deletedBy.name} (${p.deletedBy.email})` : p.deletedBy?.email || "Admin",
+      details: `Price: ₹${p.price || 0} | Category: ${p.category || "General"}`
+    }));
+
+    const formattedCoupons = deletedCoupons.map((c) => ({
+      _id: String(c._id),
+      entityType: "coupon",
+      name: `Coupon Code: ${c.code}`,
+      category: "Coupon",
+      deletedAt: c.deletedAt || c.updatedAt || new Date(),
+      deletedBy: c.deletedBy?.name ? `${c.deletedBy.name} (${c.deletedBy.email})` : c.deletedBy?.email || "Admin",
+      details: `Type: ${c.type} | Value: ${c.value} | Uses: ${c.usageCount || 0}`
+    }));
+
+    const allTrash = [...formattedProducts, ...formattedCoupons].sort(
+      (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
+    );
+
+    res.json({
+      trash: allTrash,
+      summary: {
+        total: allTrash.length,
+        products: formattedProducts.length,
+        coupons: formattedCoupons.length
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch trash items", error: error.message });
+  }
+});
+
+// POST /api/trash/restore-all - Restore all soft-deleted items (ADMIN)
+router.post("/restore-all", protect, admin, async (req, res) => {
+  try {
+    const [pRes, cRes] = await Promise.all([
+      Product.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } }),
+      Coupon.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } })
+    ]);
+
+    await logAdminAction({
+      req,
+      action: "trash-restored-all",
+      entityType: "trash",
+      entityId: "all",
+      entityLabel: "All Trash Items",
+      summary: `Restored ${pRes.modifiedCount} products and ${cRes.modifiedCount} coupons from Recycle Bin`
+    });
+
+    invalidateProductCache();
+    res.json({ message: `Restored ${pRes.modifiedCount} products and ${cRes.modifiedCount} coupons` });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to restore all items", error: error.message });
+  }
+});
+
+// DELETE /api/trash/empty - Permanently delete all soft-deleted items (ADMIN)
+router.delete("/empty", protect, admin, async (req, res) => {
+  try {
+    const [pRes, cRes] = await Promise.all([
+      Product.deleteMany({ isDeleted: true }),
+      Coupon.deleteMany({ isDeleted: true })
+    ]);
+
+    await logAdminAction({
+      req,
+      action: "trash-emptied",
+      entityType: "trash",
+      entityId: "all",
+      entityLabel: "Empty Recycle Bin",
+      summary: `Permanently purged ${pRes.deletedCount} products and ${cRes.deletedCount} coupons from Recycle Bin`
+    });
+
+    invalidateProductCache();
+    res.json({ message: `Permanently purged ${pRes.deletedCount} products and ${cRes.deletedCount} coupons` });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to empty trash", error: error.message });
+  }
+});
+
+module.exports = router;

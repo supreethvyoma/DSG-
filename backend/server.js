@@ -58,6 +58,7 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
   const pushRoutes = require("./routes/pushRoutes");
   const wishlistRoutes = require("./routes/wishlistRoutes");
   const marketingRoutes = require("./routes/marketingRoutes");
+  const trashRoutes = require("./routes/trashRoutes");
   const { initVapid } = require("./utils/webPush");
   const vulnerabilityGuard = require("./middleware/vulnerabilityGuard");
 
@@ -144,6 +145,7 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
   app.use("/api/push", requireDatabase, pushRoutes);
   app.use("/api/wishlist", requireDatabase, wishlistRoutes);
   app.use("/api/marketing", requireDatabase, marketingRoutes);
+  app.use("/api/trash", requireDatabase, trashRoutes);
 
   // ── Static files (served after API routes) ─────────────────────────────────
   if (clientBuildExists) {

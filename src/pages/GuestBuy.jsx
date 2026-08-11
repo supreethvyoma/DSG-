@@ -18,7 +18,9 @@ function GuestBuy() {
   const [error, setError] = useState("");
 
   const rawQty = searchParams.get("qty") || location.state?.qty;
-  const buyQuantity = Math.max(1, Number(rawQty || (product?.productType === "bulk" ? 10 : 1)));
+  const isBulkProduct = product?.productType === "bulk";
+  const parsedQty = Math.max(1, Number(rawQty || (isBulkProduct ? 10 : 1)));
+  const buyQuantity = isBulkProduct ? parsedQty : Math.min(5, parsedQty);
 
   // Customer guest details
   const [name, setName] = useState("");

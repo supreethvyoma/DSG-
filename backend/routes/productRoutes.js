@@ -292,7 +292,8 @@ const getProductAuditFields = (product = {}) => ({
   webReaderLink: String(product?.webReaderLink || "").trim(),
   kindleLink: String(product?.kindleLink || "").trim(),
   kindleAsin: String(product?.kindleAsin || "").trim(),
-  digitalInstructions: String(product?.digitalInstructions || "").trim()
+  digitalInstructions: String(product?.digitalInstructions || "").trim(),
+  courseLink: String(product?.courseLink || "").trim()
 });
 
 const summarizeProductChanges = (before = {}, after = {}) => {
@@ -315,6 +316,7 @@ const summarizeProductChanges = (before = {}, after = {}) => {
   if (Boolean(before.isDigital) !== Boolean(after.isDigital)) changes.push("digital item status");
   if (String(before.kindleLink || "") !== String(after.kindleLink || "")) changes.push("kindle link");
   if (String(before.webReaderLink || "") !== String(after.webReaderLink || "")) changes.push("web reader link");
+  if (String(before.courseLink || "") !== String(after.courseLink || "")) changes.push("SFH course link");
   return changes;
 };
 
@@ -448,6 +450,9 @@ router.put("/:id", protect, admin, largeJson, async (req, res) => {
     if (req.body.digitalInstructions !== undefined) {
       product.digitalInstructions = String(req.body.digitalInstructions || "").trim();
     }
+    if (req.body.courseLink !== undefined) {
+      product.courseLink = String(req.body.courseLink || "").trim();
+    }
     if (product.productType === "bundle" && product.bundleItems.length === 0) {
       return res.status(400).json({ message: "Select at least one product for the bundle." });
     }
@@ -495,7 +500,7 @@ router.get("/home", async (req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     const data = await cacheAside("home:payload", TTL.PRODUCTS_HOME, async () => {
       const [products, settings] = await Promise.all([
-        Product.find()
+        Product.find({ isDeleted: { $ne: true } })
           .select(HOME_PRODUCT_SELECT)
           .populate("bundleItems.product", HOME_BUNDLE_PRODUCT_SELECT)
           .lean(),
@@ -523,7 +528,7 @@ router.get("/", async (req, res) => {
     if (!hasPaginationQuery) {
       // Full product list (admin panel, etc.) — cache 60s
       const products = await cacheAside("products:all", TTL.PRODUCTS_LIST, () =>
-        Product.find()
+        Product.find({ isDeleted: { $ne: true } })
           .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category")
           .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
           .lean()
@@ -541,7 +546,7 @@ router.get("/", async (req, res) => {
     const sortOption = String(req.query.sort || "featured").trim();
     const selectedCategory = String(req.query.category || "All").trim();
 
-    const products = await Product.find()
+    const products = await Product.find({ isDeleted: { $ne: true } })
       .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category")
       .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
       .lean();
@@ -787,7 +792,7 @@ router.get("/:id", async (req, res) => {
       .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
       .lean();
 
-    if (!product) {
+    if (!product || product.isDeleted === true) {
       return res.status(404).json({ message: "Product not found" });
     }
 
@@ -900,8 +905,74 @@ router.post("/:id/reviews", protect, reviewRateLimiter, async (req, res) => {
   }
 });
 
-// DELETE product (ADMIN)
+// DELETE product (ADMIN) — Soft delete
 router.delete("/:id", protect, admin, async (req, res) => {
+  try {
+    const actor = await getAdminActorSnapshot(req.user);
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const productName = String(product.name || "").trim();
+    product.isDeleted = true;
+    product.deletedAt = new Date();
+    product.deletedBy = { name: actor.name, email: actor.email };
+    await product.save();
+
+    await logAdminAction({
+      req,
+      action: "product-soft-deleted",
+      entityType: "product",
+      entityId: String(product._id || ""),
+      entityLabel: productName,
+      summary: `Soft-deleted product ${productName}`,
+      details: {
+        category: String(product.category || "").trim()
+      }
+    });
+
+    res.json({ message: "Product moved to Recycle Bin" });
+    invalidateProductCache();
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete product", error: error.message });
+  }
+});
+
+// RESTORE product (ADMIN)
+router.post("/:id/restore", protect, admin, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const productName = String(product.name || "").trim();
+    product.isDeleted = false;
+    product.deletedAt = null;
+    product.deletedBy = { name: "", email: "" };
+    await product.save();
+
+    await logAdminAction({
+      req,
+      action: "product-restored",
+      entityType: "product",
+      entityId: String(product._id || ""),
+      entityLabel: productName,
+      summary: `Restored product ${productName}`
+    });
+
+    res.json({ message: "Product restored successfully", product });
+    invalidateProductCache();
+  } catch (error) {
+    res.status(500).json({ message: "Failed to restore product", error: error.message });
+  }
+});
+
+// PURGE product (ADMIN) — Permanent deletion
+router.delete("/:id/purge", protect, admin, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
 
@@ -914,21 +985,20 @@ router.delete("/:id", protect, admin, async (req, res) => {
 
     await logAdminAction({
       req,
-      action: "product-deleted",
+      action: "product-permanently-deleted",
       entityType: "product",
       entityId: String(product._id || ""),
       entityLabel: productName,
-      summary: `Deleted product ${productName}`,
+      summary: `Permanently deleted product ${productName}`,
       details: {
         category: String(product.category || "").trim()
       }
     });
 
-    res.json({ message: "Product deleted" });
-    // Invalidate all product cache after deletion
+    res.json({ message: "Product permanently deleted" });
     invalidateProductCache();
   } catch (error) {
-    res.status(500).json({ message: "Failed to delete product", error: error.message });
+    res.status(500).json({ message: "Failed to purge product", error: error.message });
   }
 });
 

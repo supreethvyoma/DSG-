@@ -17,7 +17,8 @@ const adminNavSections = [
     items: [
       { to: "/admin/orders", label: "Orders", icon: "📦", pageKey: "orders" },
       { to: "/admin/users", label: "User Insights", icon: "👥", pageKey: "users" },
-      { to: "/admin/admin-access", label: "Admin Roles", icon: "🛡️", pageKey: "admin-access" }
+      { to: "/admin/admin-access", label: "Admin Roles", icon: "🛡️", pageKey: "admin-access" },
+      { to: "/admin/trash", label: "Recycle Bin", icon: "🗑️", pageKey: "always" }
     ]
   },
   {

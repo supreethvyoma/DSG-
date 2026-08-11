@@ -864,49 +864,54 @@ function Product() {
                     </select>
                   </div>
                 ) : (
-                  <div className="qty-box" style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "16px 0" }}>
-                    <button type="button" className="qty-btn" onClick={() => setQty(Number(qty || 1) > 1 ? Number(qty || 1) - 1 : 1)}>-</button>
-                    <input
-                      type="number"
-                      className="qty-input"
-                      value={qty}
-                      min="1"
-                      max={product.stock || 100}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "") {
-                          setQty("");
-                        } else {
-                          const num = parseInt(val, 10);
-                          if (!isNaN(num)) {
-                            setQty(Math.max(1, Math.min(product.stock || 100, num)));
+                  <div>
+                    <div className="qty-box" style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "16px 0 6px" }}>
+                      <button type="button" className="qty-btn" onClick={() => setQty(Number(qty || 1) > 1 ? Number(qty || 1) - 1 : 1)}>-</button>
+                      <input
+                        type="number"
+                        className="qty-input"
+                        value={qty}
+                        min="1"
+                        max={Math.min(5, product.stock || 5)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "") {
+                            setQty("");
+                          } else {
+                            const num = parseInt(val, 10);
+                            if (!isNaN(num)) {
+                              setQty(Math.max(1, Math.min(Math.min(5, product.stock || 5), num)));
+                            }
                           }
-                        }
-                      }}
-                      onBlur={() => {
-                        const num = parseInt(qty, 10);
-                        if (qty === "" || isNaN(num) || num < 1) {
-                          setQty(1);
-                        }
-                      }}
-                      style={{
-                        width: "60px",
-                        textAlign: "center",
-                        border: "1px solid var(--border-color, #cbd5e1)",
-                        borderRadius: "6px",
-                        height: "36px",
-                        fontSize: "15px",
-                        fontWeight: "bold",
-                        margin: "0 8px",
-                        backgroundColor: "transparent",
-                        color: "inherit"
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="qty-btn"
-                      onClick={() => setQty(Number(qty || 1) < (product.stock || 100) ? Number(qty || 1) + 1 : Number(qty || 1))}
-                    >+</button>
+                        }}
+                        onBlur={() => {
+                          const num = parseInt(qty, 10);
+                          if (qty === "" || isNaN(num) || num < 1) {
+                            setQty(1);
+                          }
+                        }}
+                        style={{
+                          width: "60px",
+                          textAlign: "center",
+                          border: "1px solid var(--border-color, #cbd5e1)",
+                          borderRadius: "6px",
+                          height: "36px",
+                          fontSize: "15px",
+                          fontWeight: "bold",
+                          margin: "0 8px",
+                          backgroundColor: "transparent",
+                          color: "inherit"
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="qty-btn"
+                        onClick={() => setQty(Number(qty || 1) < Math.min(5, product.stock || 5) ? Number(qty || 1) + 1 : Number(qty || 1))}
+                      >+</button>
+                    </div>
+                    <p style={{ margin: "0 0 14px", fontSize: "11.5px", color: "var(--site-text-soft)", textAlign: "center" }}>
+                      Standard retail order limit: Maximum 5 units.
+                    </p>
                   </div>
                 )}
 
@@ -978,6 +983,23 @@ function Product() {
               </>
             )}
 
+
+            {product?.courseLink ? (
+              <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: "1px solid var(--border-color, #e2e8f0)" }}>
+                <a
+                  href={
+                    /^https?:\/\//i.test(String(product.courseLink).trim())
+                      ? String(product.courseLink).trim()
+                      : `https://${String(product.courseLink).trim()}`
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="view-course-btn"
+                >
+                  🎓 View Course on SFH ↗
+                </a>
+              </div>
+            ) : null}
 
             {/* <p className="secure-line">Secure transaction</p> */}
           </div>

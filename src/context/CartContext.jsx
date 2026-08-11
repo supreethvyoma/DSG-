@@ -184,6 +184,7 @@ export function CartProvider({ children }) {
 
   const addToCart = async (product, qty = 1) => {
     const productId = String(product?.id || product?._id || "");
+    const isBulk = String(product?.productType || "single").toLowerCase() === "bulk";
     const nextQty = Math.max(1, Number(qty) || 1);
     if (!productId) return;
 
@@ -191,11 +192,13 @@ export function CartProvider({ children }) {
       setCartItems((current) => {
         const existingIndex = current.findIndex((item) => String(item?.id || item?._id || "") === productId);
         if (existingIndex >= 0) {
-          return current.map((item, index) =>
-            index === existingIndex
-              ? { ...item, quantity: Number(item.quantity || 1) + nextQty }
-              : item
-          );
+          return current.map((item, index) => {
+            if (index === existingIndex) {
+              const total = Number(item.quantity || 1) + nextQty;
+              return { ...item, quantity: isBulk ? total : Math.min(5, total) };
+            }
+            return item;
+          });
         }
 
         return [
@@ -204,6 +207,7 @@ export function CartProvider({ children }) {
             id: productId,
             _id: productId,
             name: String(product?.name || "").trim(),
+            productType: String(product?.productType || "single").trim(),
             price: Number(product?.price || 0),
             internationalPrice:
               product?.internationalPrice === null || product?.internationalPrice === undefined
@@ -235,7 +239,7 @@ export function CartProvider({ children }) {
             description: String(product?.description || "").trim(),
             category: String(product?.category || "General").trim() || "General",
             stock: Number(product?.stock || 0),
-            quantity: nextQty
+            quantity: isBulk ? nextQty : Math.min(5, nextQty)
           }
         ];
       });
@@ -246,7 +250,7 @@ export function CartProvider({ children }) {
         name: String(product?.name || "").trim(),
         price: Number(product?.price || 0),
         image: String(product?.image || "").trim(),
-        quantity: nextQty
+        quantity: isBulk ? nextQty : Math.min(5, nextQty)
       });
       setIsPopupOpen(true);
       showToast("Added to cart");
@@ -311,9 +315,13 @@ export function CartProvider({ children }) {
       const targetId = String(id || "");
       const nextQty = Math.max(1, Number(qty) || 1);
       setCartItems((current) =>
-        current.map((item) =>
-          String(item?.id || item?._id || "") === targetId ? { ...item, quantity: nextQty } : item
-        )
+        current.map((item) => {
+          if (String(item?.id || item?._id || "") === targetId) {
+            const isBulk = String(item?.productType || "single").toLowerCase() === "bulk";
+            return { ...item, quantity: isBulk ? nextQty : Math.min(5, nextQty) };
+          }
+          return item;
+        })
       );
       return true;
     }

@@ -65,6 +65,18 @@ const couponSchema = new mongoose.Schema(
     lastUpdatedAt: {
       type: Date,
       default: null
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+    deletedAt: {
+      type: Date,
+      default: null
+    },
+    deletedBy: {
+      name: { type: String, default: "" },
+      email: { type: String, default: "" }
     }
   },
   { timestamps: true }

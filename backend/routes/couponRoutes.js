@@ -89,7 +89,7 @@ router.get("/", async (_req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     const publicCoupons = await cacheAside("coupons:public", TTL.COUPONS_PUBLIC, async () => {
-      const coupons = await Coupon.find().sort({ createdAt: -1 });
+      const coupons = await Coupon.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 });
       return coupons.map((c) => ({
         _id: c._id,
         code: c.code,
@@ -108,7 +108,7 @@ router.get("/", async (_req, res) => {
 // Admin: returns full coupon details
 router.get("/admin/all", protect, admin, async (_req, res) => {
   try {
-    const coupons = await Coupon.find()
+    const coupons = await Coupon.find({ isDeleted: { $ne: true } })
       .populate("applicableProducts", "name")
       .sort({ createdAt: -1 });
     res.json(coupons);
@@ -117,26 +117,88 @@ router.get("/admin/all", protect, admin, async (_req, res) => {
   }
 });
 
+// Soft delete coupon
 router.delete("/:id", protect, admin, async (req, res) => {
+  const actor = await getAdminActorSnapshot(req.user);
   const coupon = await Coupon.findById(req.params.id);
-  await Coupon.findByIdAndDelete(req.params.id);
+  if (!coupon) {
+    return res.status(404).json({ message: "Coupon not found" });
+  }
 
-  if (coupon) {
+  coupon.isDeleted = true;
+  coupon.deletedAt = new Date();
+  coupon.deletedBy = { name: actor.name, email: actor.email };
+  await coupon.save();
+
+  await logAdminAction({
+    req,
+    action: "coupon-soft-deleted",
+    entityType: "coupon",
+    entityId: String(coupon._id || ""),
+    entityLabel: coupon.code,
+    summary: `Soft-deleted coupon ${coupon.code}`,
+    details: {
+      type: coupon.type
+    }
+  });
+
+  invalidateProductCache();
+  res.json({ message: "Coupon moved to Recycle Bin" });
+});
+
+// Restore soft-deleted coupon
+router.post("/:id/restore", protect, admin, async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    if (!coupon) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+
+    coupon.isDeleted = false;
+    coupon.deletedAt = null;
+    coupon.deletedBy = { name: "", email: "" };
+    await coupon.save();
+
     await logAdminAction({
       req,
-      action: "coupon-deleted",
+      action: "coupon-restored",
       entityType: "coupon",
       entityId: String(coupon._id || ""),
       entityLabel: coupon.code,
-      summary: `Deleted coupon ${coupon.code}`,
-      details: {
-        type: coupon.type
-      }
+      summary: `Restored coupon ${coupon.code}`
     });
-  }
 
-  invalidateProductCache();
-  res.json({ message: "Coupon deleted" });
+    invalidateProductCache();
+    res.json({ message: "Coupon restored successfully", coupon });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to restore coupon", error: error.message });
+  }
+});
+
+// Permanently purge coupon
+router.delete("/:id/purge", protect, admin, async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    if (!coupon) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+
+    await Coupon.findByIdAndDelete(req.params.id);
+
+    await logAdminAction({
+      req,
+      action: "coupon-permanently-deleted",
+      entityType: "coupon",
+      entityId: String(coupon._id || ""),
+      entityLabel: coupon.code,
+      summary: `Permanently deleted coupon ${coupon.code}`
+    });
+
+    invalidateProductCache();
+    res.json({ message: "Coupon permanently deleted" });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to purge coupon", error: error.message });
+  }
 });
 
 router.post("/apply", protect, async (req, res) => {

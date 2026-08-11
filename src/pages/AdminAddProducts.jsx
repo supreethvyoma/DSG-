@@ -296,6 +296,7 @@ function AdminAddProducts() {
   const [kindleLink, setKindleLink] = useState("");
   const [kindleAsin, setKindleAsin] = useState("");
   const [digitalInstructions, setDigitalInstructions] = useState("");
+  const [courseLink, setCourseLink] = useState("");
   const [bundleItems, setBundleItems] = useState([createEmptyBundleItem()]);
   const [relatedProductItems, setRelatedProductItems] = useState([createEmptyRelatedProduct()]);
   const [category, setCategory] = useState("General");
@@ -553,6 +554,7 @@ function AdminAddProducts() {
     setKindleLink("");
     setKindleAsin("");
     setDigitalInstructions("");
+    setCourseLink("");
     setBundleItems([createEmptyBundleItem()]);
     setRelatedProductItems([createEmptyRelatedProduct()]);
     setCategory("General");
@@ -1072,6 +1074,7 @@ function AdminAddProducts() {
       kindleLink: kindleLink.trim(),
       kindleAsin: kindleAsin.trim(),
       digitalInstructions: digitalInstructions.trim(),
+      courseLink: courseLink.trim(),
       bundleItems:
         productType === "bundle"
           ? bundleItems
@@ -1171,6 +1174,7 @@ function AdminAddProducts() {
     setKindleLink(product.kindleLink || "");
     setKindleAsin(product.kindleAsin || "");
     setDigitalInstructions(product.digitalInstructions || "");
+    setCourseLink(product.courseLink || "");
     setBundleItems(
       Array.isArray(product.bundleItems) && product.bundleItems.length > 0
         ? product.bundleItems.map((item) => ({
@@ -1751,6 +1755,17 @@ function AdminAddProducts() {
                       </label>
                     </div>
                   )}
+
+                  <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--admin-border, #e2e8f0)" }}>
+                    <label className="admin-field admin-field-wide">
+                      <span style={{ fontWeight: 600 }}>🎓 SFH Sanskrit Platform Course Link</span>
+                      <input
+                        placeholder="https://... (Direct link to course on SFH platform; displays 'View Course' button on product page)"
+                        value={courseLink}
+                        onChange={(e) => setCourseLink(e.target.value)}
+                      />
+                    </label>
+                  </div>
                 </div>
               </section>
 

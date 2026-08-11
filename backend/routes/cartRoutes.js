@@ -82,7 +82,7 @@ router.post("/", protect, async (req, res) => {
     return res.status(400).json({ message: "productId is required" });
   }
 
-  const product = await Product.findById(productId).select("_id");
+  const product = await Product.findById(productId).select("_id productType stock");
   if (!product) {
     return res.status(404).json({ message: "Product not found" });
   }
@@ -91,12 +91,14 @@ router.post("/", protect, async (req, res) => {
 
   const productKey = String(product._id);
   const index = cart.items.findIndex((item) => getProductId(item.product) === productKey);
-  const nextQty = normalizeQuantity(qty);
+  const addQty = normalizeQuantity(qty);
+  const isBulk = String(product.productType || "single").toLowerCase() === "bulk";
 
   if (index >= 0) {
-    cart.items[index].quantity = Number(cart.items[index].quantity || 1) + nextQty;
+    const totalQty = Number(cart.items[index].quantity || 1) + addQty;
+    cart.items[index].quantity = isBulk ? totalQty : Math.min(5, totalQty);
   } else {
-    cart.items.push({ product: product._id, quantity: nextQty });
+    cart.items.push({ product: product._id, quantity: isBulk ? addQty : Math.min(5, addQty) });
   }
 
   await cart.save();
@@ -121,7 +123,9 @@ router.put("/:productId", protect, async (req, res) => {
     return res.status(404).json({ message: "Cart item not found" });
   }
 
-  cart.items[index].quantity = nextQty;
+  const itemProduct = cart.items[index].product;
+  const isBulk = String(itemProduct?.productType || "single").toLowerCase() === "bulk";
+  cart.items[index].quantity = isBulk ? nextQty : Math.min(5, nextQty);
   await cart.save();
   await cart.populate("items.product");
 

@@ -171,6 +171,11 @@ const productSchema = new mongoose.Schema(
       default: ""
     },
 
+    courseLink: {
+      type: String,
+      default: ""
+    },
+
     bundleItems: {
       type: [bundleItemSchema],
       default: []
@@ -238,6 +243,18 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
+    },
+    deletedAt: {
+      type: Date,
+      default: null
+    },
+    deletedBy: {
+      name: { type: String, default: "" },
+      email: { type: String, default: "" }
     }
   },
   { timestamps: true }
@@ -245,6 +262,9 @@ const productSchema = new mongoose.Schema(
 
 // ── Indexes (Tier-1 performance) ──────────────────────────────────────────────
 // These turn full-collection scans into fast O(log n) index lookups.
+
+// 0. Soft-delete filter index
+productSchema.index({ isDeleted: 1 });
 
 // 1. Category listing + sort by creation date (main collection page)
 productSchema.index({ category: 1, createdAt: -1 });
