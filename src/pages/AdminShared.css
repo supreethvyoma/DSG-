@@ -698,6 +698,104 @@ color:var(--admin-muted);
 white-space:nowrap;
 }
 
+/* ── Pricing Panels ── */
+.pricing-panel{
+border:1px solid var(--admin-border);
+border-radius:var(--radius-md);
+background:var(--admin-surface);
+margin-top:16px;
+overflow:hidden;
+}
+
+.pricing-panel-header{
+display:flex;
+align-items:center;
+gap:12px;
+padding:14px 16px;
+background:var(--admin-surface-2);
+border-bottom:1px solid var(--admin-border);
+flex-wrap:wrap;
+}
+
+.pricing-panel-header > div{
+flex:1;
+min-width:0;
+}
+
+.pricing-panel-header h4{
+margin:0;
+font-size:14px;
+font-weight:700;
+}
+
+.pricing-panel-header p{
+margin:2px 0 0;
+font-size:12px;
+color:var(--admin-muted);
+}
+
+.pricing-panel-icon{
+width:30px;
+height:30px;
+border-radius:8px;
+display:flex;
+align-items:center;
+justify-content:center;
+flex-shrink:0;
+}
+
+.pricing-panel-icon--amber{background:rgba(245,158,11,0.12);color:#d97706;}
+.pricing-panel-icon--blue{background:rgba(59,130,246,0.12);color:#2563eb;}
+.pricing-panel-icon--green{background:rgba(34,197,94,0.12);color:#16a34a;}
+.pricing-panel-icon--purple{background:rgba(139,92,246,0.12);color:#7c3aed;}
+.pricing-panel-icon--indigo{background:rgba(99,102,241,0.12);color:#4f46e5;}
+.pricing-panel-icon--teal{background:rgba(20,184,166,0.12);color:#0d9488;}
+
+.pricing-panel-grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:14px;
+padding:16px;
+}
+
+.pricing-panel-grid--3{
+grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+/* Styled text input for pricing fields */
+.pricing-text-input{
+width:100%;
+padding:9px 12px;
+border:1px solid var(--admin-border);
+border-radius:var(--radius-sm);
+background:var(--admin-surface-2);
+color:var(--admin-text);
+font-size:13.5px;
+font-family:inherit;
+box-sizing:border-box;
+transition:border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pricing-text-input:focus{
+outline:none;
+border-color:var(--admin-primary);
+box-shadow:0 0 0 3px rgba(217,119,6,0.12);
+background:var(--admin-surface);
+}
+
+.pricing-text-input:disabled{
+opacity:0.5;
+cursor:not-allowed;
+}
+
+/* Small link button variant */
+.pricing-link-btn--sm{
+min-height:34px;
+padding:6px 12px;
+font-size:12.5px;
+}
+
+/* Old actions row kept for compat */
 .pricing-actions-row{
 display:flex;
 align-items:center;
@@ -716,20 +814,28 @@ color:var(--admin-muted);
 display:inline-flex;
 align-items:center;
 justify-content:center;
-gap:8px;
-min-height:42px;
-padding:10px 14px;
+gap:6px;
+min-height:40px;
+padding:9px 16px;
 border-radius:var(--radius-md);
+font-size:13.5px;
 font-weight:700;
 text-decoration:none;
 cursor:pointer;
-transition: all 0.2s ease;
+transition:all 0.2s ease;
 }
 
 .pricing-save-btn{
 border:1px solid var(--admin-primary);
 background:linear-gradient(90deg,var(--admin-primary),var(--admin-primary-2));
 color:#fff;
+box-shadow:0 4px 12px rgba(217,119,6,0.2);
+}
+
+.pricing-save-btn:hover:not(:disabled){
+filter:brightness(1.06);
+transform:translateY(-1px);
+box-shadow:0 6px 18px rgba(217,119,6,0.28);
 }
 
 .pricing-link-btn{
@@ -740,21 +846,99 @@ color:var(--admin-text);
 
 .pricing-link-btn:hover{
 background:var(--admin-surface-2);
+border-color:var(--admin-primary);
+color:var(--admin-primary);
 }
 
 .pricing-save-btn:disabled{
 opacity:.7;
 cursor:not-allowed;
+transform:none;
+}
+
+/* Save row at bottom */
+.pricing-save-row{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:16px;
+flex-wrap:wrap;
+margin-top:20px;
+padding:16px;
+background:var(--admin-surface-2);
+border:1px solid var(--admin-border);
+border-radius:var(--radius-md);
+}
+
+.pricing-save-row-left{
+display:flex;
+align-items:center;
+gap:12px;
+flex-wrap:wrap;
+}
+
+.pricing-save-note{
+margin:0;
+font-size:12px;
+color:var(--admin-muted);
 }
 
 .pricing-message{
-margin:12px 0 0;
+margin:0;
 font-size:13px;
 font-weight:600;
 }
 
 .pricing-message.success{color:#15803d;}
 .pricing-message.error{color:#b91c1c;}
+
+/* Currency rates grid */
+.pricing-currency-rates{
+padding:16px;
+border-top:1px solid var(--admin-border);
+display:grid;
+gap:10px;
+}
+
+.pricing-currency-rates-grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+gap:10px;
+}
+
+.pricing-currency-rate-item{
+display:grid;
+gap:4px;
+}
+
+.pricing-currency-code{
+font-size:11px;
+font-weight:700;
+text-transform:uppercase;
+color:var(--admin-muted);
+letter-spacing:0.5px;
+}
+
+/* Panel sub-card for fallback currency etc */
+.pricing-panel-subgrid{
+padding:14px 16px;
+border-top:1px solid var(--admin-border);
+}
+
+.pricing-panel-subcard{
+display:grid;
+gap:8px;
+max-width:240px;
+}
+
+.pricing-panel-subcard-label{
+font-size:12px;
+font-weight:700;
+text-transform:uppercase;
+letter-spacing:0.4px;
+color:var(--admin-muted);
+}
+
 
 .form-grid{
 display:grid;

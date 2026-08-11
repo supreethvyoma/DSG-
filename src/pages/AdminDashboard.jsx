@@ -987,451 +987,299 @@ function AdminDashboard() {
           </button>
 
           {isPricingOpen && (<>
-          <div className="pricing-preview-row">
-            <div className="pricing-preview-chip">
-              <span>Current GST</span>
-              <strong>{Number(pricingSettings.gstPercent || 0)}%</strong>
+
+          {/* Section 1: Core Tax & Delivery */}
+          <div className="pricing-panel">
+            <div className="pricing-panel-header">
+              <IndianRupee size={16} className="pricing-panel-icon pricing-panel-icon--amber" />
+              <div>
+                <h4>Tax &amp; Base Delivery</h4>
+                <p>Core charges applied to every order at checkout.</p>
+              </div>
             </div>
-            <div className="pricing-preview-chip">
-              <span>Fallback Delivery</span>
-              <strong>{formatCurrency(Number(pricingSettings.deliveryCharge || 0))}</strong>
-            </div>
-            <div className="pricing-preview-chip">
-              <span>Rate / KM</span>
-              <strong>{formatCurrency(Number(pricingSettings.distancePricing.perKmCharge || 0))}</strong>
-            </div>
-            <div className="pricing-preview-chip">
-              <span>Intl Default</span>
-              <strong>{formatCurrency(Number(pricingSettings.internationalDelivery.defaultFee || 0))}</strong>
+            <div className="pricing-panel-grid">
+              <label className="pricing-field">
+                <span className="pricing-label">GST Rate</span>
+                <span className="pricing-hint">Tax percentage applied on subtotal</span>
+                <div className="pricing-input-wrap">
+                  <input type="number" min="0" max="50" step="0.1" value={pricingSettings.gstPercent}
+                    onChange={(e) => setPricingSettings((prev) => ({ ...prev, gstPercent: e.target.value }))} />
+                  <em>%</em>
+                </div>
+              </label>
+              <label className="pricing-field">
+                <span className="pricing-label">Fallback Delivery Fee</span>
+                <span className="pricing-hint">Used when coordinates are unavailable</span>
+                <div className="pricing-input-wrap">
+                  <input type="number" min="0" step="1" value={pricingSettings.deliveryCharge}
+                    onChange={(e) => setPricingSettings((prev) => ({ ...prev, deliveryCharge: e.target.value }))} />
+                  <em>Flat</em>
+                </div>
+              </label>
             </div>
           </div>
 
-          <div className="pricing-controls-grid">
-            <label className="pricing-field">
-              <span className="pricing-label">GST Rate</span>
-              <span className="pricing-hint">Tax percentage applied on subtotal</span>
-              <div className="pricing-input-wrap">
-              <input
-                type="number"
-                min="0"
-                max="50"
-                step="0.1"
-                value={pricingSettings.gstPercent}
-                onChange={(e) =>
-                  setPricingSettings((prev) => ({ ...prev, gstPercent: e.target.value }))
-                }
-              />
-                <em>%</em>
-              </div>
-            </label>
-            <label className="pricing-field">
-              <span className="pricing-label">Fallback Delivery Fee</span>
-              <span className="pricing-hint">Used when warehouse or customer coordinates are missing</span>
-              <div className="pricing-input-wrap">
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={pricingSettings.deliveryCharge}
-                onChange={(e) =>
-                  setPricingSettings((prev) => ({ ...prev, deliveryCharge: e.target.value }))
-                }
-              />
-                <em>Flat</em>
-              </div>
-            </label>
-          </div>
-
-          <div className="distance-pricing-section">
-            <div className="distance-pricing-header">
+          {/* Section 2: Warehouse Location */}
+          <div className="pricing-panel">
+            <div className="pricing-panel-header">
+              <TrendingUp size={16} className="pricing-panel-icon pricing-panel-icon--blue" />
               <div>
                 <h4>Warehouse Location</h4>
-                <p>Distance-based delivery uses the warehouse coordinates and customer coordinates.</p>
+                <p>Used to calculate distance-based delivery fees for customers.</p>
               </div>
-              <button
-                type="button"
-                className="pricing-link-btn"
-                onClick={useCurrentWarehouseLocation}
-                disabled={isGettingWarehouseLocation}
-              >
-                {isGettingWarehouseLocation ? "Getting Location..." : "Use Current Location"}
+              <button type="button" className="pricing-link-btn pricing-link-btn--sm"
+                onClick={useCurrentWarehouseLocation} disabled={isGettingWarehouseLocation}>
+                {isGettingWarehouseLocation ? "Locating..." : "Use Current Location"}
               </button>
             </div>
-
-            <div className="distance-pricing-grid">
+            <div className="pricing-panel-grid pricing-panel-grid--3">
               <label className="pricing-field">
                 <span className="pricing-label">Warehouse Name</span>
-                <input
-                  type="text"
-                  placeholder="e.g. Digital Sanskrit Guru Warehouse"
-                  value={pricingSettings.warehouseLocation.name}
-                  onChange={(e) => updateWarehouseField("name", e.target.value)}
-                />
+                <input type="text" className="pricing-text-input" placeholder="e.g. DSG Warehouse"
+                  value={pricingSettings.warehouseLocation.name} onChange={(e) => updateWarehouseField("name", e.target.value)} />
               </label>
-
               <label className="pricing-field pricing-field-wide">
-                <span className="pricing-label">Warehouse Address</span>
-                <input
-                  type="text"
-                  placeholder="e.g. Noida, Uttar Pradesh"
-                  value={pricingSettings.warehouseLocation.address}
-                  onChange={(e) => updateWarehouseField("address", e.target.value)}
-                />
+                <span className="pricing-label">Address</span>
+                <input type="text" className="pricing-text-input" placeholder="e.g. Noida, Uttar Pradesh"
+                  value={pricingSettings.warehouseLocation.address} onChange={(e) => updateWarehouseField("address", e.target.value)} />
               </label>
-
               <label className="pricing-field pricing-field-wide">
                 <span className="pricing-label">Google Maps Link</span>
                 <div className="warehouse-map-url-row">
-                  <input
-                    type="text"
-                    placeholder="Paste Google Maps location link"
-                    value={pricingSettings.warehouseLocation.mapUrl}
-                    onChange={(e) => updateWarehouseField("mapUrl", e.target.value)}
-                  />
-                  <button type="button" className="pricing-link-btn" onClick={applyGoogleMapsLocation}>
-                    Use Maps Link
-                  </button>
+                  <input type="text" className="pricing-text-input" placeholder="Paste Google Maps link to auto-extract coordinates"
+                    value={pricingSettings.warehouseLocation.mapUrl} onChange={(e) => updateWarehouseField("mapUrl", e.target.value)} />
+                  <button type="button" className="pricing-link-btn pricing-link-btn--sm" onClick={applyGoogleMapsLocation}>Extract</button>
                 </div>
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Warehouse Latitude</span>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="28.6139"
-                  value={pricingSettings.warehouseLocation.latitude}
-                  onChange={(e) => updateWarehouseField("latitude", e.target.value)}
-                />
+                <span className="pricing-label">Latitude</span>
+                <input type="number" step="any" className="pricing-text-input" placeholder="28.6139"
+                  value={pricingSettings.warehouseLocation.latitude} onChange={(e) => updateWarehouseField("latitude", e.target.value)} />
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Warehouse Longitude</span>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="77.2090"
-                  value={pricingSettings.warehouseLocation.longitude}
-                  onChange={(e) => updateWarehouseField("longitude", e.target.value)}
-                />
+                <span className="pricing-label">Longitude</span>
+                <input type="number" step="any" className="pricing-text-input" placeholder="77.2090"
+                  value={pricingSettings.warehouseLocation.longitude} onChange={(e) => updateWarehouseField("longitude", e.target.value)} />
               </label>
             </div>
           </div>
 
-          <div className="distance-pricing-section">
-            <div className="distance-pricing-header">
+          {/* Section 3: Distance Pricing */}
+          <div className="pricing-panel">
+            <div className="pricing-panel-header">
+              <BarChart3 size={16} className="pricing-panel-icon pricing-panel-icon--green" />
               <div>
                 <h4>Distance Pricing Formula</h4>
-                <p>Final delivery fee = base fee + ((distance - free radius) x rate per km).</p>
+                <p>Fee = base fee + ((distance - free radius) x per km rate)</p>
               </div>
             </div>
-
-            <div className="distance-pricing-grid">
+            <div className="pricing-panel-grid pricing-panel-grid--3">
               <label className="pricing-field">
                 <span className="pricing-label">Distance Pricing</span>
-                <select
+                <select className="pricing-text-input"
                   value={pricingSettings.distancePricing.enabled ? "enabled" : "disabled"}
-                  onChange={(e) => updateDistancePricingField("enabled", e.target.value === "enabled")}
-                >
+                  onChange={(e) => updateDistancePricingField("enabled", e.target.value === "enabled")}>
                   <option value="enabled">Enabled</option>
                   <option value="disabled">Disabled</option>
                 </select>
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Base Fee</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
+                <span className="pricing-label">Base Fee (Rs)</span>
+                <input type="number" min="0" step="1" className="pricing-text-input"
                   value={pricingSettings.distancePricing.baseFee}
-                  onChange={(e) => updateDistancePricingField("baseFee", e.target.value)}
-                />
+                  onChange={(e) => updateDistancePricingField("baseFee", e.target.value)} />
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Per KM Charge</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
+                <span className="pricing-label">Per KM Charge (Rs)</span>
+                <input type="number" min="0" step="0.1" className="pricing-text-input"
                   value={pricingSettings.distancePricing.perKmCharge}
-                  onChange={(e) => updateDistancePricingField("perKmCharge", e.target.value)}
-                />
+                  onChange={(e) => updateDistancePricingField("perKmCharge", e.target.value)} />
               </label>
-
               <label className="pricing-field">
                 <span className="pricing-label">Free Radius (KM)</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
+                <input type="number" min="0" step="0.1" className="pricing-text-input"
                   value={pricingSettings.distancePricing.freeRadiusKm}
-                  onChange={(e) => updateDistancePricingField("freeRadiusKm", e.target.value)}
-                />
+                  onChange={(e) => updateDistancePricingField("freeRadiusKm", e.target.value)} />
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Maximum Charge</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="Optional"
+                <span className="pricing-label">Max Charge Cap (Rs)</span>
+                <input type="number" min="0" step="1" className="pricing-text-input" placeholder="Optional"
                   value={pricingSettings.distancePricing.maxCharge}
-                  onChange={(e) => updateDistancePricingField("maxCharge", e.target.value)}
-                />
+                  onChange={(e) => updateDistancePricingField("maxCharge", e.target.value)} />
               </label>
             </div>
           </div>
 
-          <div className="distance-pricing-section">
-            <div className="distance-pricing-header">
+          {/* Section 4: International Delivery */}
+          <div className="pricing-panel">
+            <div className="pricing-panel-header">
+              <Wallet size={16} className="pricing-panel-icon pricing-panel-icon--purple" />
               <div>
-                <h4>International Delivery Pricing</h4>
-                <p>Apply country-based delivery fees when the shipping country is outside your domestic country.</p>
+                <h4>International Delivery</h4>
+                <p>Apply country-based fees when shipping outside your domestic country.</p>
               </div>
-              <button type="button" className="pricing-link-btn" onClick={addInternationalCountryRate}>
-                Add Country Rate
+              <button type="button" className="pricing-link-btn pricing-link-btn--sm" onClick={addInternationalCountryRate}>
+                + Add Country Rate
               </button>
             </div>
-
-            <div className="distance-pricing-grid">
+            <div className="pricing-panel-grid pricing-panel-grid--3">
               <label className="pricing-field">
                 <span className="pricing-label">International Pricing</span>
-                <select
+                <select className="pricing-text-input"
                   value={pricingSettings.internationalDelivery.enabled ? "enabled" : "disabled"}
-                  onChange={(e) => updateInternationalDeliveryField("enabled", e.target.value === "enabled")}
-                >
+                  onChange={(e) => updateInternationalDeliveryField("enabled", e.target.value === "enabled")}>
                   <option value="enabled">Enabled</option>
                   <option value="disabled">Disabled</option>
                 </select>
               </label>
-
               <label className="pricing-field">
                 <span className="pricing-label">Domestic Country</span>
-                <input
-                  type="text"
-                  placeholder="e.g. India"
+                <input type="text" className="pricing-text-input" placeholder="e.g. India"
                   value={pricingSettings.internationalDelivery.domesticCountry}
-                  onChange={(e) => updateInternationalDeliveryField("domesticCountry", e.target.value)}
-                />
+                  onChange={(e) => updateInternationalDeliveryField("domesticCountry", e.target.value)} />
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Default International Fee</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
+                <span className="pricing-label">Default International Fee (Rs)</span>
+                <input type="number" min="0" step="1" className="pricing-text-input"
                   value={pricingSettings.internationalDelivery.defaultFee}
-                  onChange={(e) => updateInternationalDeliveryField("defaultFee", e.target.value)}
-                />
+                  onChange={(e) => updateInternationalDeliveryField("defaultFee", e.target.value)} />
               </label>
             </div>
-
             {pricingSettings.internationalDelivery.countryRates.length > 0 ? (
               <div className="delivery-zone-list">
                 {pricingSettings.internationalDelivery.countryRates.map((item, index) => (
                   <div key={`intl-country-rate-${index}`} className="delivery-zone-card">
                     <div className="delivery-zone-card-header">
                       <strong>Country Rate {index + 1}</strong>
-                      <button type="button" onClick={() => removeInternationalCountryRate(index)}>
-                        Remove
-                      </button>
+                      <button type="button" onClick={() => removeInternationalCountryRate(index)}><X size={14} /> Remove</button>
                     </div>
                     <div className="delivery-zone-grid">
                       <label className="pricing-field">
                         <span className="pricing-label">Country</span>
-                        <input
-                          type="text"
-                          placeholder="e.g. United States"
-                          value={item.country}
-                          onChange={(e) => updateInternationalCountryRate(index, "country", e.target.value)}
-                        />
+                        <input type="text" className="pricing-text-input" placeholder="e.g. United States"
+                          value={item.country} onChange={(e) => updateInternationalCountryRate(index, "country", e.target.value)} />
                       </label>
                       <label className="pricing-field">
-                        <span className="pricing-label">Delivery Fee</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={item.fee}
-                          onChange={(e) => updateInternationalCountryRate(index, "fee", e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                ))}
-              </div>
-          ) : (
-            <div className="delivery-zone-empty">
-              No country-specific rates yet. Add one if you want a different fee for specific international destinations.
-            </div>
-          )}
-          </div>
-
-          <div className="distance-pricing-section">
-            <div className="distance-pricing-header">
-              <div>
-                <h4>Pricing Markets</h4>
-                <p>Group countries into reusable pricing markets like North America, Europe, or GCC.</p>
-              </div>
-              <button type="button" className="pricing-link-btn" onClick={addPricingMarket}>
-                Add Pricing Market
-              </button>
-            </div>
-
-            {pricingSettings.pricingMarkets.length > 0 ? (
-              <div className="delivery-zone-list">
-                {pricingSettings.pricingMarkets.map((market, index) => (
-                  <div key={`pricing-market-${index}`} className="delivery-zone-card">
-                    <div className="delivery-zone-card-header">
-                      <strong>Market {index + 1}</strong>
-                      <button type="button" onClick={() => removePricingMarket(index)}>
-                        Remove
-                      </button>
-                    </div>
-                    <div className="delivery-zone-grid">
-                      <label className="pricing-field">
-                        <span className="pricing-label">Market Name</span>
-                        <input
-                          type="text"
-                          placeholder="e.g. North America"
-                          value={market.name}
-                          onChange={(e) => updatePricingMarketField(index, "name", e.target.value)}
-                        />
-                      </label>
-                      <label className="pricing-field">
-                        <span className="pricing-label">Currency</span>
-                        <select
-                          value={market.currency || "USD"}
-                          onChange={(e) => updatePricingMarketField(index, "currency", e.target.value)}
-                        >
-                          {SUPPORTED_PRICING_CURRENCIES.map((currencyCode) => (
-                            <option key={currencyCode} value={currencyCode}>
-                              {currencyCode}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="pricing-field pricing-field-wide">
-                        <span className="pricing-label">Countries In This Market</span>
-                        <select
-                          multiple
-                          value={market.countries}
-                          onChange={(e) => updatePricingMarketCountries(index, e.target.selectedOptions)}
-                          className="pricing-multiselect"
-                        >
-                          {COUNTRY_OPTIONS.filter((country) => country !== "India").map((country) => (
-                            <option key={country} value={country}>
-                              {country}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="pricing-hint">
-                          Hold Ctrl or Cmd to select multiple countries. {market.countries.length} selected.
-                        </span>
+                        <span className="pricing-label">Delivery Fee (Rs)</span>
+                        <input type="number" min="0" step="1" className="pricing-text-input"
+                          value={item.fee} onChange={(e) => updateInternationalCountryRate(index, "fee", e.target.value)} />
                       </label>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="delivery-zone-empty">
-                No pricing markets yet. Add one if you want reusable region-based product pricing.
-              </div>
+              <div className="delivery-zone-empty">No country-specific rates yet. Click "+ Add Country Rate" to configure one.</div>
             )}
+          </div>
 
-            <div className="delivery-zone-card" style={{ marginTop: "16px" }}>
-              <div className="delivery-zone-card-header">
-                <strong>Fallback International Currency</strong>
+          {/* Section 5: Pricing Markets and Currency */}
+          <div className="pricing-panel">
+            <div className="pricing-panel-header">
+              <CalendarRange size={16} className="pricing-panel-icon pricing-panel-icon--indigo" />
+              <div>
+                <h4>Pricing Markets &amp; Currency</h4>
+                <p>Group countries into reusable markets with per-market currencies.</p>
               </div>
-              <div className="delivery-zone-grid">
-                <label className="pricing-field">
-                  <span className="pricing-label">Currency</span>
-                  <select
-                    value={pricingSettings.internationalPricingDefaults?.currency || "USD"}
-                    onChange={(e) => updateInternationalPricingDefaultField("currency", e.target.value)}
-                  >
-                    {SUPPORTED_PRICING_CURRENCIES.map((currencyCode) => (
-                      <option key={currencyCode} value={currencyCode}>
-                        {currencyCode}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+              <button type="button" className="pricing-link-btn pricing-link-btn--sm" onClick={addPricingMarket}>
+                + Add Market
+              </button>
+            </div>
+            {pricingSettings.pricingMarkets.length > 0 ? (
+              <div className="delivery-zone-list">
+                {pricingSettings.pricingMarkets.map((market, index) => (
+                  <div key={`pricing-market-${index}`} className="delivery-zone-card">
+                    <div className="delivery-zone-card-header">
+                      <strong>Market {index + 1}{market.name ? ` -- ${market.name}` : ""}</strong>
+                      <button type="button" onClick={() => removePricingMarket(index)}><X size={14} /> Remove</button>
+                    </div>
+                    <div className="delivery-zone-grid">
+                      <label className="pricing-field">
+                        <span className="pricing-label">Market Name</span>
+                        <input type="text" className="pricing-text-input" placeholder="e.g. North America"
+                          value={market.name} onChange={(e) => updatePricingMarketField(index, "name", e.target.value)} />
+                      </label>
+                      <label className="pricing-field">
+                        <span className="pricing-label">Currency</span>
+                        <select className="pricing-text-input" value={market.currency || "USD"}
+                          onChange={(e) => updatePricingMarketField(index, "currency", e.target.value)}>
+                          {SUPPORTED_PRICING_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </label>
+                      <label className="pricing-field pricing-field-wide">
+                        <span className="pricing-label">Countries In This Market</span>
+                        <select multiple value={market.countries} className="pricing-multiselect"
+                          onChange={(e) => updatePricingMarketCountries(index, e.target.selectedOptions)}>
+                          {COUNTRY_OPTIONS.filter((c) => c !== "India").map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <span className="pricing-hint">Hold Ctrl / Cmd to multi-select. {market.countries.length} selected.</span>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="delivery-zone-empty">No pricing markets yet. Add one to enable region-based pricing.</div>
+            )}
+            <div className="pricing-panel-subgrid">
+              <div className="pricing-panel-subcard">
+                <span className="pricing-panel-subcard-label">Fallback International Currency</span>
+                <select className="pricing-text-input"
+                  value={pricingSettings.internationalPricingDefaults?.currency || "USD"}
+                  onChange={(e) => updateInternationalPricingDefaultField("currency", e.target.value)}>
+                  {SUPPORTED_PRICING_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
             </div>
-
-            <div className="delivery-zone-card" style={{ marginTop: "16px" }}>
-              <div className="delivery-zone-card-header">
-                <strong>Conversion Rates From INR</strong>
-              </div>
-              <div className="delivery-zone-grid">
+            <div className="pricing-currency-rates">
+              <span className="pricing-panel-subcard-label">Conversion Rates from INR</span>
+              <div className="pricing-currency-rates-grid">
                 {SUPPORTED_PRICING_CURRENCIES.map((currencyCode) => (
-                  <label key={currencyCode} className="pricing-field">
-                    <span className="pricing-label">{currencyCode}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.000001"
+                  <label key={currencyCode} className="pricing-currency-rate-item">
+                    <span className="pricing-currency-code">{currencyCode}</span>
+                    <input type="number" min="0" step="0.000001" className="pricing-text-input"
                       value={pricingSettings.currencyConversionRates?.[currencyCode] ?? ""}
                       onChange={(e) => updateCurrencyConversionRate(currencyCode, e.target.value)}
-                      disabled={currencyCode === "INR"}
-                    />
+                      disabled={currencyCode === "INR"} />
                   </label>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="distance-pricing-section">
-            <div className="distance-pricing-header">
+          {/* Section 6: Visibility Controls */}
+          <div className="pricing-panel">
+            <div className="pricing-panel-header">
+              <CheckCircle2 size={16} className="pricing-panel-icon pricing-panel-icon--teal" />
               <div>
-                <h4>Festive Offer Visibility</h4>
-                <p>Control whether festive offers appear on the homepage and as a collection filter.</p>
+                <h4>Feature Visibility</h4>
+                <p>Toggle festive offer sections and customer geolocation on the storefront.</p>
               </div>
             </div>
-
-            <div className="distance-pricing-grid">
+            <div className="pricing-panel-grid pricing-panel-grid--3">
               <label className="pricing-field">
-                <span className="pricing-label">Homepage Festive Offers Section</span>
-                <select
+                <span className="pricing-label">Homepage Festive Offers</span>
+                <select className="pricing-text-input"
                   value={pricingSettings.homeSectionVisibility.festiveOffers ? "shown" : "hidden"}
-                  onChange={(e) =>
-                    updateVisibilityField("homeSectionVisibility", "festiveOffers", e.target.value === "shown")
-                  }
-                >
+                  onChange={(e) => updateVisibilityField("homeSectionVisibility", "festiveOffers", e.target.value === "shown")}>
                   <option value="shown">Show</option>
                   <option value="hidden">Hide</option>
                 </select>
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Collection Festive Offer Filter</span>
-                <select
+                <span className="pricing-label">Collection Festive Filter</span>
+                <select className="pricing-text-input"
                   value={pricingSettings.collectionFilterVisibility.festiveOffers ? "shown" : "hidden"}
-                  onChange={(e) =>
-                    updateVisibilityField("collectionFilterVisibility", "festiveOffers", e.target.value === "shown")
-                  }
-                >
+                  onChange={(e) => updateVisibilityField("collectionFilterVisibility", "festiveOffers", e.target.value === "shown")}>
                   <option value="shown">Show</option>
                   <option value="hidden">Hide</option>
                 </select>
               </label>
-
               <label className="pricing-field">
-                <span className="pricing-label">Customer Geolocation ("Use Current Location")</span>
-                <select
+                <span className="pricing-label">Customer Geolocation Button</span>
+                <select className="pricing-text-input"
                   value={pricingSettings.enableCurrentLocation ? "enabled" : "disabled"}
-                  onChange={(e) =>
-                    setPricingSettings((prev) => ({
-                      ...prev,
-                      enableCurrentLocation: e.target.value === "enabled"
-                    }))
-                  }
-                >
+                  onChange={(e) => setPricingSettings((prev) => ({ ...prev, enableCurrentLocation: e.target.value === "enabled" }))}>
                   <option value="enabled">Enabled (Visible)</option>
                   <option value="disabled">Disabled (Hidden)</option>
                 </select>
@@ -1439,21 +1287,25 @@ function AdminDashboard() {
             </div>
           </div>
 
-          <div className="pricing-actions-row">
-            <button className="pricing-save-btn" onClick={savePricingSettings} disabled={isSavingPricing}>
-              {isSavingPricing ? "Saving..." : "Save Charges"}
-            </button>
-            <span>
+          {/* Save Row */}
+          <div className="pricing-save-row">
+            <div className="pricing-save-row-left">
+              <button className="pricing-save-btn" onClick={savePricingSettings} disabled={isSavingPricing}>
+                {isSavingPricing ? "Saving..." : "Save All Settings"}
+              </button>
+              {pricingMessage && (
+                <span className={`pricing-message ${pricingMessage.includes("updated") ? "success" : "error"}`}>
+                  {pricingMessage}
+                </span>
+              )}
+            </div>
+            <p className="pricing-save-note">
               {pricingSettings.lastUpdatedAt
-                ? `Last updated by ${pricingSettings.lastUpdatedByName || pricingSettings.lastUpdatedByEmail || "Admin"} on ${formatDate(pricingSettings.lastUpdatedAt)} ${formatTime(pricingSettings.lastUpdatedAt)}`
-                : "Changes apply to all new orders immediately."}
-            </span>
-          </div>
-          {pricingMessage && (
-            <p className={`pricing-message ${pricingMessage.includes("updated") ? "success" : "error"}`}>
-              {pricingMessage}
+                ? `Last saved by ${pricingSettings.lastUpdatedByName || pricingSettings.lastUpdatedByEmail || "Admin"} · ${formatDate(pricingSettings.lastUpdatedAt)} ${formatTime(pricingSettings.lastUpdatedAt)}`
+                : "Changes apply to all new orders immediately after saving."}
             </p>
-          )}
+          </div>
+
           </>)}
         </section>
 
