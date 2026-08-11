@@ -43,7 +43,8 @@ function GuestBuy() {
   const [settings, setSettings] = useState(null);
   const [coords, setCoords] = useState({ latitude: null, longitude: null });
 
-  const isDummyPaymentEnabled = import.meta.env.VITE_ENABLE_DUMMY_PAYMENT === "true";
+  const isDummyPaymentEnabled =
+    String(import.meta.env.VITE_ENABLE_DUMMY_PAYMENT || "").toLowerCase() === "true";
   const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || "";
 
   useEffect(() => {
@@ -209,7 +210,7 @@ function GuestBuy() {
       });
 
       const { data: rpOrder } = await axios.post("/api/payment/create-order", {
-        amount: Math.round(amountInInr * 100) // in paise
+        amount: Math.round(amountInInr * 100) / 100
       });
 
       // 2. Process payment (Dummy / Live)
