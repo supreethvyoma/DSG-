@@ -618,13 +618,16 @@ html.banner-active .navbar {
 }
 
 .navbar-inline-count {
-  color: var(--site-badge-bg);
+  color: #ffffff;
   margin-left: auto;
   font-weight: 700;
-  font-size: 12px;
-  background: rgba(217, 119, 6, 0.15);
+  font-size: 11px;
+  background: var(--site-badge-bg, #0284c7);
   padding: 2px 8px;
   border-radius: 10px;
+  min-width: 20px;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .navbar-logout {
