@@ -517,7 +517,7 @@ function Navbar({ bannerActive = false }) {
                 </>
               ) : null}
             </div>
-            {onDemandUrl ? (
+            {/* {onDemandUrl ? (
               <a
                 href={onDemandUrl}
                 className="navbar-ondemand-btn"
@@ -527,7 +527,7 @@ function Navbar({ bannerActive = false }) {
               >
                 Open OnDemand
               </a>
-            ) : null}
+            ) : null} */}
           </div>
           {!isAdminRoute && isCollectionFilterMenuOpen ? (
             <div className="navbar-collection-filter-menu">
