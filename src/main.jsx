@@ -25,10 +25,11 @@ import { DeliveryLocationProvider } from "./context/DeliveryLocationContext";
 import { applySiteTheme, readStoredSiteTheme, DEFAULT_SITE_THEME } from "./utils/siteTheme";
 
 const storedThemeSettings = readStoredSiteTheme();
-applySiteTheme(
-  storedThemeSettings?.siteTheme || DEFAULT_SITE_THEME,
-  storedThemeSettings?.customThemes || []
-);
+if (storedThemeSettings) {
+  applySiteTheme(storedThemeSettings.siteTheme, storedThemeSettings.customThemes, true);
+} else {
+  applySiteTheme(DEFAULT_SITE_THEME, [], false);
+}
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

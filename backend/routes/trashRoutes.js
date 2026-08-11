@@ -1,6 +1,7 @@
 const express = require("express");
 const Product = require("../models/Product");
 const Coupon = require("../models/Coupon");
+const User = require("../models/User");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { logAdminAction } = require("../utils/adminAudit");
@@ -13,9 +14,10 @@ router.get("/", protect, admin, async (req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
 
-    const [deletedProducts, deletedCoupons] = await Promise.all([
+    const [deletedProducts, deletedCoupons, deletedUsers] = await Promise.all([
       Product.find({ isDeleted: true }).lean(),
-      Coupon.find({ isDeleted: true }).lean()
+      Coupon.find({ isDeleted: true }).lean(),
+      User.find({ isDeleted: true }).lean()
     ]);
 
     const formattedProducts = deletedProducts.map((p) => ({
@@ -38,7 +40,17 @@ router.get("/", protect, admin, async (req, res) => {
       details: `Type: ${c.type} | Value: ${c.value} | Uses: ${c.usageCount || 0}`
     }));
 
-    const allTrash = [...formattedProducts, ...formattedCoupons].sort(
+    const formattedUsers = deletedUsers.map((u) => ({
+      _id: String(u._id),
+      entityType: "user",
+      name: u.name || "User",
+      category: u.isAdmin ? "Admin User" : "Customer",
+      deletedAt: u.deletedAt || u.updatedAt || new Date(),
+      deletedBy: u.deletedBy?.name ? `${u.deletedBy.name} (${u.deletedBy.email})` : u.deletedBy?.email || "Admin",
+      details: `Email: ${u.email} | Role: ${u.isAdmin ? u.adminRole || "Admin" : "Customer"}`
+    }));
+
+    const allTrash = [...formattedProducts, ...formattedCoupons, ...formattedUsers].sort(
       (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
     );
 
@@ -47,7 +59,8 @@ router.get("/", protect, admin, async (req, res) => {
       summary: {
         total: allTrash.length,
         products: formattedProducts.length,
-        coupons: formattedCoupons.length
+        coupons: formattedCoupons.length,
+        users: formattedUsers.length
       }
     });
   } catch (error) {
@@ -58,9 +71,10 @@ router.get("/", protect, admin, async (req, res) => {
 // POST /api/trash/restore-all - Restore all soft-deleted items (ADMIN)
 router.post("/restore-all", protect, admin, async (req, res) => {
   try {
-    const [pRes, cRes] = await Promise.all([
+    const [pRes, cRes, uRes] = await Promise.all([
       Product.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } }),
-      Coupon.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } })
+      Coupon.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } }),
+      User.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } })
     ]);
 
     await logAdminAction({
@@ -69,11 +83,11 @@ router.post("/restore-all", protect, admin, async (req, res) => {
       entityType: "trash",
       entityId: "all",
       entityLabel: "All Trash Items",
-      summary: `Restored ${pRes.modifiedCount} products and ${cRes.modifiedCount} coupons from Recycle Bin`
+      summary: `Restored ${pRes.modifiedCount} products, ${cRes.modifiedCount} coupons, and ${uRes.modifiedCount} users from Recycle Bin`
     });
 
     invalidateProductCache();
-    res.json({ message: `Restored ${pRes.modifiedCount} products and ${cRes.modifiedCount} coupons` });
+    res.json({ message: `Restored ${pRes.modifiedCount} products, ${cRes.modifiedCount} coupons, and ${uRes.modifiedCount} users` });
   } catch (error) {
     res.status(500).json({ message: "Failed to restore all items", error: error.message });
   }
@@ -82,9 +96,10 @@ router.post("/restore-all", protect, admin, async (req, res) => {
 // DELETE /api/trash/empty - Permanently delete all soft-deleted items (ADMIN)
 router.delete("/empty", protect, admin, async (req, res) => {
   try {
-    const [pRes, cRes] = await Promise.all([
+    const [pRes, cRes, uRes] = await Promise.all([
       Product.deleteMany({ isDeleted: true }),
-      Coupon.deleteMany({ isDeleted: true })
+      Coupon.deleteMany({ isDeleted: true }),
+      User.deleteMany({ isDeleted: true })
     ]);
 
     await logAdminAction({
@@ -93,11 +108,11 @@ router.delete("/empty", protect, admin, async (req, res) => {
       entityType: "trash",
       entityId: "all",
       entityLabel: "Empty Recycle Bin",
-      summary: `Permanently purged ${pRes.deletedCount} products and ${cRes.deletedCount} coupons from Recycle Bin`
+      summary: `Permanently purged ${pRes.deletedCount} products, ${cRes.deletedCount} coupons, and ${uRes.deletedCount} users from Recycle Bin`
     });
 
     invalidateProductCache();
-    res.json({ message: `Permanently purged ${pRes.deletedCount} products and ${cRes.deletedCount} coupons` });
+    res.json({ message: `Permanently purged ${pRes.deletedCount} products, ${cRes.deletedCount} coupons, and ${uRes.deletedCount} users` });
   } catch (error) {
     res.status(500).json({ message: "Failed to empty trash", error: error.message });
   }

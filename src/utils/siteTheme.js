@@ -58,6 +58,7 @@ export const BUILT_IN_THEME_DEFINITIONS = [
   },
   {
     value: "skyblue",
+    aliases: ["sky-blue"],
     label: "Sky Blue",
     description: "Premium azure sky and cloud theme",
     palette: {
@@ -76,6 +77,7 @@ export const BUILT_IN_THEME_DEFINITIONS = [
   },
   {
     value: "heritage",
+    aliases: ["sanskrit-heritage"],
     label: "Sanskrit Heritage",
     description: "Traditional royal crimson and sandalwood gold theme",
     palette: {
@@ -93,6 +95,23 @@ export const BUILT_IN_THEME_DEFINITIONS = [
     }
   }
 ];
+
+function normalizeThemeValue(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+export function findThemeOption(themeOptions, themeValue) {
+  if (!themeValue) return null;
+  const exact = themeOptions.find((t) => t.value === themeValue);
+  if (exact) return exact;
+
+  const targetNormalized = normalizeThemeValue(themeValue);
+  return themeOptions.find((t) => {
+    if (normalizeThemeValue(t.value) === targetNormalized) return true;
+    if (Array.isArray(t.aliases) && t.aliases.some((a) => normalizeThemeValue(a) === targetNormalized)) return true;
+    return false;
+  });
+}
 
 const HEX_COLOR_REGEX = /^#([0-9a-f]{6})$/i;
 
@@ -293,13 +312,13 @@ export function persistSiteTheme(themeValue, customThemes = []) {
   }
 }
 
-export function applySiteTheme(themeValue, customThemes = []) {
+export function applySiteTheme(themeValue, customThemes = [], shouldPersist = true) {
   if (typeof document === "undefined") return;
 
   const themeOptions = getSiteThemeOptions(customThemes);
   const activeTheme =
-    themeOptions.find((theme) => theme.value === themeValue) ||
-    themeOptions.find((theme) => theme.value === DEFAULT_SITE_THEME) ||
+    findThemeOption(themeOptions, themeValue) ||
+    findThemeOption(themeOptions, DEFAULT_SITE_THEME) ||
     BUILT_IN_THEME_DEFINITIONS[0];
 
   const root = document.documentElement;
@@ -309,5 +328,7 @@ export function applySiteTheme(themeValue, customThemes = []) {
     root.style.setProperty(key, value);
   });
 
-  persistSiteTheme(activeTheme.value, customThemes);
+  if (shouldPersist) {
+    persistSiteTheme(activeTheme.value, customThemes);
+  }
 }

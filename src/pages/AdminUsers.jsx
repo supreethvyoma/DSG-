@@ -17,7 +17,7 @@ function formatTimeSpent(totalSec) {
 }
 
 function AdminUsers() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [metrics, setMetrics] = useState({
@@ -49,6 +49,26 @@ function AdminUsers() {
       setError("Failed to load user activity metrics.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userItem) => {
+    if (userItem._id === user?._id) {
+      alert("You cannot delete your own account.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Move user "${userItem.email}" to Recycle Bin?\n\nThey will no longer be able to log in, but can be restored anytime.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await axios.delete(`/api/auth/admin/users/${userItem._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchMetrics();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to soft delete user.");
     }
   };
 
@@ -110,6 +130,7 @@ function AdminUsers() {
                     <th>Status</th>
                     <th>Total Time Spent</th>
                     <th>Last Active Timestamp</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -144,6 +165,25 @@ function AdminUsers() {
                         {item.lastActiveAt
                           ? `${formatDate(item.lastActiveAt)} ${formatTime(item.lastActiveAt)}`
                           : "Never active"}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(item)}
+                          disabled={item._id === user?._id}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: "6px",
+                            border: "1px solid #ef4444",
+                            backgroundColor: "rgba(239, 68, 68, 0.1)",
+                            color: "#dc2626",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            cursor: item._id === user?._id ? "not-allowed" : "pointer"
+                          }}
+                        >
+                          🗑️ Soft Delete
+                        </button>
                       </td>
                     </tr>
                   ))}

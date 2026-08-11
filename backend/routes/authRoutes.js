@@ -167,6 +167,10 @@ router.post("/login", authLimiter, async (req, res) => {
 
     const user = await User.findOne({ email });
 
+    if (user && user.isDeleted) {
+      return res.status(401).json({ message: "This account has been deleted or deactivated." });
+    }
+
     if (user && await bcrypt.compare(password, user.password)) {
       const token = jwt.sign(
         { id: user._id },
@@ -441,8 +445,8 @@ router.get("/admin/security-logs", protect, admin, async (req, res) => {
 
 router.get("/admin/users-metrics", protect, admin, async (req, res) => {
   try {
-    const users = await User.find().select("name email isAdmin adminLevel adminRole allowedPages lastActiveAt totalTimeSpentSec").lean();
-    const adminUsersRaw = await User.find({ isAdmin: true })
+    const users = await User.find({ isDeleted: { $ne: true } }).select("name email isAdmin adminLevel adminRole allowedPages lastActiveAt totalTimeSpentSec").lean();
+    const adminUsersRaw = await User.find({ isAdmin: true, isDeleted: { $ne: true } })
       .select("name email isAdmin adminLevel adminRole allowedPages adminGrantedAt adminGrantedByName adminGrantedByEmail lastActiveAt")
       .sort({ adminGrantedAt: -1, createdAt: -1 })
       .lean();
@@ -760,6 +764,109 @@ router.post("/google", async (req, res) => {
   } catch (err) {
     console.error("[Auth] Google sign-in validation error:", err?.response?.data || err.message);
     res.status(401).json({ message: "Google verification failed. Please try again." });
+  }
+});
+
+// DELETE /api/auth/admin/users/:id - Soft delete user (ADMIN)
+router.delete("/admin/users/:id", protect, admin, admin.requireSuperAdmin, async (req, res) => {
+  try {
+    const userToSoftDelete = await User.findById(req.params.id);
+    if (!userToSoftDelete) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    if (String(userToSoftDelete._id) === String(req.user)) {
+      return res.status(400).json({ message: "You cannot delete your own account." });
+    }
+
+    const actor = await User.findById(req.user).select("name email").lean();
+    userToSoftDelete.isDeleted = true;
+    userToSoftDelete.deletedAt = new Date();
+    userToSoftDelete.deletedBy = {
+      name: actor?.name || "Admin",
+      email: actor?.email || ""
+    };
+    await userToSoftDelete.save();
+
+    await logAdminAction({
+      req,
+      actorName: actor?.name,
+      actorEmail: actor?.email,
+      action: "user-soft-deleted",
+      entityType: "user",
+      entityId: String(userToSoftDelete._id),
+      entityLabel: userToSoftDelete.email,
+      summary: `Soft-deleted user ${userToSoftDelete.email}`,
+      details: { email: userToSoftDelete.email }
+    });
+
+    res.json({ message: `Soft-deleted user ${userToSoftDelete.email}` });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to soft delete user", error: err.message });
+  }
+});
+
+// POST /api/auth/admin/users/:id/restore - Restore soft-deleted user (ADMIN)
+router.post("/admin/users/:id/restore", protect, admin, admin.requireSuperAdmin, async (req, res) => {
+  try {
+    const userToRestore = await User.findById(req.params.id);
+    if (!userToRestore) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const actor = await User.findById(req.user).select("name email").lean();
+    userToRestore.isDeleted = false;
+    userToRestore.deletedAt = null;
+    userToRestore.deletedBy = { name: "", email: "" };
+    await userToRestore.save();
+
+    await logAdminAction({
+      req,
+      actorName: actor?.name,
+      actorEmail: actor?.email,
+      action: "user-restored",
+      entityType: "user",
+      entityId: String(userToRestore._id),
+      entityLabel: userToRestore.email,
+      summary: `Restored user ${userToRestore.email}`,
+      details: { email: userToRestore.email }
+    });
+
+    res.json({ message: `Restored user ${userToRestore.email}` });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to restore user", error: err.message });
+  }
+});
+
+// DELETE /api/auth/admin/users/:id/purge - Permanently delete user (ADMIN)
+router.delete("/admin/users/:id/purge", protect, admin, admin.requireSuperAdmin, async (req, res) => {
+  try {
+    const userToPurge = await User.findById(req.params.id);
+    if (!userToPurge) {
+      return res.status(404).json({ message: "User not found." });
+    }
+    if (String(userToPurge._id) === String(req.user)) {
+      return res.status(400).json({ message: "You cannot purge your own account." });
+    }
+
+    const email = userToPurge.email;
+    const actor = await User.findById(req.user).select("name email").lean();
+    await userToPurge.deleteOne();
+
+    await logAdminAction({
+      req,
+      actorName: actor?.name,
+      actorEmail: actor?.email,
+      action: "user-permanently-deleted",
+      entityType: "user",
+      entityId: String(req.params.id),
+      entityLabel: email,
+      summary: `Permanently deleted user ${email}`,
+      details: { email }
+    });
+
+    res.json({ message: `User ${email} permanently deleted.` });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to purge user", error: err.message });
   }
 });
 

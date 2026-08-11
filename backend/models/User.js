@@ -122,7 +122,21 @@ const userSchema = mongoose.Schema({
   resetPasswordExpires: {
     type: Date,
     default: null
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    name: { type: String, default: "" },
+    email: { type: String, default: "" }
   }
 });
+
+userSchema.index({ isDeleted: 1 });
 
 module.exports = mongoose.model("User", userSchema);

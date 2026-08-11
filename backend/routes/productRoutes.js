@@ -698,7 +698,8 @@ router.get("/recommend/:productId", async (req, res) => {
     let products = [];
     if (sortedIds.length > 0) {
       products = await Product.find({
-        _id: { $in: sortedIds }
+        _id: { $in: sortedIds },
+        isDeleted: { $ne: true }
       });
     }
 
@@ -712,7 +713,8 @@ router.get("/recommend/:productId", async (req, res) => {
 
       const categoryFallback = await Product.find({
         category: category,
-        _id: { $nin: existingIds }
+        _id: { $nin: existingIds },
+        isDeleted: { $ne: true }
       }).limit(4 - products.length);
 
       products = [...products, ...categoryFallback];
@@ -724,7 +726,8 @@ router.get("/recommend/:productId", async (req, res) => {
       existingIds.push(productId);
 
       const anyFallback = await Product.find({
-        _id: { $nin: existingIds }
+        _id: { $nin: existingIds },
+        isDeleted: { $ne: true }
       }).sort({ createdAt: -1 }).limit(4 - products.length);
 
       products = [...products, ...anyFallback];

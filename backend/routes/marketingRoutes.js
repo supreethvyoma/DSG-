@@ -52,12 +52,12 @@ router.get("/subscribers", async (_req, res) => {
   try {
     const [pushCount, userCount, settings] = await Promise.all([
       PushSubscription.countDocuments(),
-      User.countDocuments({ deletedAt: null }),
+      User.countDocuments({ isDeleted: { $ne: true } }),
       StoreSettings.findOne().select("lowStockThreshold notificationEmail emailEnabled pushEnabled").lean()
     ]);
 
     const threshold = Number(settings?.lowStockThreshold ?? 5);
-    const lowStockCount = await Product.countDocuments({ stock: { $lte: threshold }, deletedAt: null });
+    const lowStockCount = await Product.countDocuments({ stock: { $lte: threshold }, isDeleted: { $ne: true } });
 
     res.json({
       pushSubscribers: pushCount,
@@ -102,22 +102,22 @@ async function resolveRecipientsList(filterType, filterValue) {
     userIds = spendAgg.map((s) => String(s._id)).filter(Boolean);
   }
 
-  const query = { deletedAt: null };
-  if (userIds !== null) {
-    query._id = { $in: userIds };
+    const query = { isDeleted: { $ne: true } };
+    if (userIds !== null) {
+      query._id = { $in: userIds };
+    }
+
+    return await User.find(query).select("email name").lean();
   }
 
-  return await User.find(query).select("email name").lean();
-}
-
-// ── GET /api/marketing/targeting-options ─────────────────────────────────────
-// Retrieve all unique product categories and active products list
-router.get("/targeting-options", async (_req, res) => {
-  try {
-    const [categories, products] = await Promise.all([
-      Product.distinct("category", { deletedAt: null }),
-      Product.find({ deletedAt: null }).select("_id name").sort({ name: 1 }).lean()
-    ]);
+  // ── GET /api/marketing/targeting-options ─────────────────────────────────────
+  // Retrieve all unique product categories and active products list
+  router.get("/targeting-options", async (_req, res) => {
+    try {
+      const [categories, products] = await Promise.all([
+        Product.distinct("category", { isDeleted: { $ne: true } }),
+        Product.find({ isDeleted: { $ne: true } }).select("_id name").sort({ name: 1 }).lean()
+      ]);
     res.json({ categories, products });
   } catch {
     res.status(500).json({ message: "Failed to load targeting options." });
@@ -187,7 +187,7 @@ router.get("/low-stock", async (_req, res) => {
     const settings = await StoreSettings.findOne().select("lowStockThreshold").lean();
     const threshold = Number(settings?.lowStockThreshold ?? 5);
 
-    const products = await Product.find({ stock: { $lte: threshold }, deletedAt: null })
+    const products = await Product.find({ stock: { $lte: threshold }, isDeleted: { $ne: true } })
       .select("_id name stock category image")
       .sort({ stock: 1 })
       .lean();
@@ -220,7 +220,7 @@ router.post("/alert/low-stock", async (_req, res) => {
     const settings = await StoreSettings.findOne().select("lowStockThreshold notificationEmail").lean();
     const threshold = Number(settings?.lowStockThreshold ?? 5);
 
-    const products = await Product.find({ stock: { $lte: threshold }, deletedAt: null })
+    const products = await Product.find({ stock: { $lte: threshold }, isDeleted: { $ne: true } })
       .select("_id name stock category")
       .sort({ stock: 1 })
       .lean();

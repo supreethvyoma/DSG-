@@ -9,7 +9,7 @@ import "./AdminDashboard.css";
 function AdminTrash() {
   const { token } = useAuth();
   const [trashItems, setTrashItems] = useState([]);
-  const [summary, setSummary] = useState({ total: 0, products: 0, coupons: 0 });
+  const [summary, setSummary] = useState({ total: 0, products: 0, coupons: 0, users: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -24,7 +24,7 @@ function AdminTrash() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTrashItems(res.data?.trash || []);
-      setSummary(res.data?.summary || { total: 0, products: 0, coupons: 0 });
+      setSummary(res.data?.summary || { total: 0, products: 0, coupons: 0, users: 0 });
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load Recycle Bin items.");
@@ -43,6 +43,8 @@ function AdminTrash() {
     try {
       const endpoint = item.entityType === "coupon"
         ? `/api/coupons/${item._id}/restore`
+        : item.entityType === "user"
+        ? `/api/auth/admin/users/${item._id}/restore`
         : `/api/products/${item._id}/restore`;
 
       await axios.post(endpoint, {}, {
@@ -69,6 +71,8 @@ function AdminTrash() {
     try {
       const endpoint = item.entityType === "coupon"
         ? `/api/coupons/${item._id}/purge`
+        : item.entityType === "user"
+        ? `/api/auth/admin/users/${item._id}/purge`
         : `/api/products/${item._id}/purge`;
 
       await axios.delete(endpoint, {
@@ -142,7 +146,7 @@ function AdminTrash() {
           <div>
             <h1>🗑️ Admin Recycle Bin</h1>
             <p className="admin-header-subtitle">
-              Soft-deleted products and coupons can be restored or permanently purged from here
+              Soft-deleted products, coupons, and users can be restored or permanently purged from here
             </p>
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
@@ -191,6 +195,10 @@ function AdminTrash() {
             <h4>Deleted Coupons</h4>
             <p style={{ color: "#f59e0b" }}>{summary.coupons}</p>
           </div>
+          <div className="card revenue-kpi-card" style={{ borderLeft: "4px solid #8b5cf6" }}>
+            <h4>Deleted Users</h4>
+            <p style={{ color: "#8b5cf6" }}>{summary.users || 0}</p>
+          </div>
         </div>
 
         {/* Table Controls */}
@@ -228,6 +236,7 @@ function AdminTrash() {
               <option value="all">All Types</option>
               <option value="product">Products Only</option>
               <option value="coupon">Coupons Only</option>
+              <option value="user">Users Only</option>
             </select>
             <button
               onClick={fetchTrash}
@@ -274,8 +283,18 @@ function AdminTrash() {
                             fontSize: "11px",
                             fontWeight: 700,
                             textTransform: "uppercase",
-                            backgroundColor: item.entityType === "product" ? "rgba(59, 130, 246, 0.12)" : "rgba(245, 158, 11, 0.12)",
-                            color: item.entityType === "product" ? "#2563eb" : "#d97706"
+                            backgroundColor:
+                              item.entityType === "product"
+                                ? "rgba(59, 130, 246, 0.12)"
+                                : item.entityType === "coupon"
+                                ? "rgba(245, 158, 11, 0.12)"
+                                : "rgba(139, 92, 246, 0.12)",
+                            color:
+                              item.entityType === "product"
+                                ? "#2563eb"
+                                : item.entityType === "coupon"
+                                ? "#d97706"
+                                : "#7c3aed"
                           }}
                         >
                           {item.entityType}
