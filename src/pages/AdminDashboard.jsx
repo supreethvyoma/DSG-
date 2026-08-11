@@ -13,6 +13,24 @@ import {
 } from "../utils/deliveryPricing";
 import { COUNTRY_OPTIONS } from "../utils/countryOptions";
 import { storePricingConfig, SUPPORTED_PRICING_CURRENCIES } from "../utils/productPricing";
+import {
+  Package,
+  ShoppingCart,
+  IndianRupee,
+  BarChart3,
+  CalendarDays,
+  CalendarRange,
+  TrendingUp,
+  Wallet,
+  AlertTriangle,
+  CheckCircle2,
+  Bell,
+  RefreshCw,
+  Download,
+  Settings2,
+  Clock,
+  X
+} from "lucide-react";
 import "./AdminShared.css";
 import "./AdminDashboard.css";
 
@@ -916,20 +934,24 @@ function AdminDashboard() {
 
       <main className="admin-main">
         <div className="admin-header">
-          <div>
-            <h1>Admin Dashboard</h1>
-            <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--admin-muted)" }}>
-              Live sales updates every 15s
-              {isRefreshing ? " | Refreshing..." : ""}
-              {lastUpdatedAt ? ` | Last update: ${formatTime(lastUpdatedAt)}` : ""}
+          <div className="admin-header-left">
+            <div className="admin-header-title-row">
+              <BarChart3 size={22} className="admin-header-icon" />
+              <h1>Admin Dashboard</h1>
+            </div>
+            <p className="admin-header-subtitle">
+              {isRefreshing
+                ? <><RefreshCw size={12} className="admin-spin" /> Refreshing live data...</>
+                : <><Clock size={12} /> Live updates every 15s{lastUpdatedAt ? ` · Updated ${formatTime(lastUpdatedAt)}` : ""}</>
+              }
             </p>
           </div>
           <div className="admin-header-actions">
             <button type="button" className="admin-header-link-btn" onClick={exportSalesReport}>
-              Export Sales Report
+              <Download size={14} /> Export Report
             </button>
             <Link className="admin-header-link-btn" to="/admin/theme">
-              Theme Settings
+              <Settings2 size={14} /> Theme Settings
             </Link>
           </div>
         </div>
@@ -1417,14 +1439,24 @@ function AdminDashboard() {
         {notifications.length > 0 && (
           <section className="card notifications-card">
             <div className="notifications-header">
-              <h3>Admin Notifications</h3>
-              <span>{notifications.length} new</span>
+              <div className="notifications-header-left">
+                <Bell size={16} />
+                <h3>Admin Notifications</h3>
+              </div>
+              <span className="notifications-count-badge">{notifications.length} new</span>
             </div>
             <div className="notifications-list">
               {notifications.map((item) => (
                 <div key={item.id} className={`notification-item notification-${item.type}`}>
+                  <span className="notification-icon">
+                    {item.type === "warning" && <AlertTriangle size={16} />}
+                    {item.type === "alert" && <AlertTriangle size={16} />}
+                    {item.type === "success" && <CheckCircle2 size={16} />}
+                  </span>
                   <p>{item.text}</p>
-                  <button onClick={() => setDismissedNotifications((prev) => [...prev, item.id])}>Dismiss</button>
+                  <button onClick={() => setDismissedNotifications((prev) => [...prev, item.id])}>
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -1443,43 +1475,59 @@ function AdminDashboard() {
           </section>
         ) : (
           <div className="stats">
-            <div className="card analytics-card">
-              <h3>Total Products</h3>
-              <p>{products.length}</p>
-              <span>Catalog size</span>
+            <div className="card analytics-card analytics-card--blue">
+              <div className="analytics-card-icon"><Package size={20} /></div>
+              <div className="analytics-card-body">
+                <h3>Total Products</h3>
+                <p>{products.length}</p>
+                <span>Catalog size</span>
+              </div>
             </div>
-            <div className="card analytics-card">
-              <h3>Total Orders</h3>
-              <p>{orders.length}</p>
-              <span>{analytics.statuses.Pending} pending</span>
+            <div className="card analytics-card analytics-card--amber">
+              <div className="analytics-card-icon"><ShoppingCart size={20} /></div>
+              <div className="analytics-card-body">
+                <h3>Total Orders</h3>
+                <p>{orders.length}</p>
+                <span>{analytics.statuses.Pending} pending</span>
+              </div>
             </div>
-            <div className="card analytics-card">
-              <h3>Total Revenue</h3>
-              <p>{formatCurrency(analytics.totalRevenue)}</p>
-              <span>From all orders</span>
+            <div className="card analytics-card analytics-card--green">
+              <div className="analytics-card-icon"><IndianRupee size={20} /></div>
+              <div className="analytics-card-body">
+                <h3>Total Revenue</h3>
+                <p>{formatCurrency(analytics.totalRevenue)}</p>
+                <span>From all orders</span>
+              </div>
             </div>
-            <div className="card analytics-card">
-              <h3>Average Order</h3>
-              <p>{formatCurrency(analytics.averageOrderValue)}</p>
-              <span>{analytics.totalQuantity} units sold</span>
+            <div className="card analytics-card analytics-card--purple">
+              <div className="analytics-card-icon"><TrendingUp size={20} /></div>
+              <div className="analytics-card-body">
+                <h3>Average Order</h3>
+                <p>{formatCurrency(analytics.averageOrderValue)}</p>
+                <span>{analytics.totalQuantity} units sold</span>
+              </div>
             </div>
           </div>
         )}
 
         <section className="revenue-kpi-grid">
-          <div className="card revenue-kpi-card">
+          <div className="card revenue-kpi-card revenue-kpi-today">
+            <div className="revenue-kpi-icon"><CalendarDays size={18} /></div>
             <h4>Revenue Today</h4>
             <p>{formatCurrency(revenueKpis.today)}</p>
           </div>
-          <div className="card revenue-kpi-card">
-            <h4>Revenue Last 7 Days</h4>
+          <div className="card revenue-kpi-card revenue-kpi-7d">
+            <div className="revenue-kpi-icon"><CalendarRange size={18} /></div>
+            <h4>Last 7 Days</h4>
             <p>{formatCurrency(revenueKpis.last7Days)}</p>
           </div>
-          <div className="card revenue-kpi-card">
-            <h4>Revenue Last 30 Days</h4>
+          <div className="card revenue-kpi-card revenue-kpi-30d">
+            <div className="revenue-kpi-icon"><BarChart3 size={18} /></div>
+            <h4>Last 30 Days</h4>
             <p>{formatCurrency(revenueKpis.last30Days)}</p>
           </div>
-          <div className="card revenue-kpi-card">
+          <div className="card revenue-kpi-card revenue-kpi-total">
+            <div className="revenue-kpi-icon"><Wallet size={18} /></div>
             <h4>Total Revenue</h4>
             <p>{formatCurrency(revenueKpis.total)}</p>
           </div>
