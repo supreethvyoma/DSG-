@@ -76,13 +76,23 @@ router.get("/", protect, async (req, res) => {
   res.json({ items: formatCart(cart) });
 });
 
+const isDigitalProduct = (product) => {
+  if (!product) return false;
+  if (product.isDigital === true) return true;
+  const name = String(product.name || "").toLowerCase();
+  const category = String(product.category || "").toLowerCase();
+  const format = String(product.format || "").toLowerCase();
+  const keywords = ["ebook", "e-book", "kindle", "web version", "web-version", "webversion", "digital", "flipbook", "epub", "pdf"];
+  return keywords.some((kw) => name.includes(kw) || category.includes(kw) || format.includes(kw));
+};
+
 router.post("/", protect, async (req, res) => {
   const { productId, qty } = req.body || {};
   if (!productId) {
     return res.status(400).json({ message: "productId is required" });
   }
 
-  const product = await Product.findById(productId).select("_id productType stock");
+  const product = await Product.findById(productId).select("_id productType stock name category isDigital format");
   if (!product) {
     return res.status(404).json({ message: "Product not found" });
   }
@@ -93,12 +103,18 @@ router.post("/", protect, async (req, res) => {
   const index = cart.items.findIndex((item) => getProductId(item.product) === productKey);
   const addQty = normalizeQuantity(qty);
   const isBulk = String(product.productType || "single").toLowerCase() === "bulk";
+  const isDigital = isDigitalProduct(product);
+  const maxQty = isDigital ? 1 : isBulk ? 99999 : 5;
 
   if (index >= 0) {
-    const totalQty = Number(cart.items[index].quantity || 1) + addQty;
-    cart.items[index].quantity = isBulk ? totalQty : Math.min(5, totalQty);
+    if (isDigital) {
+      cart.items[index].quantity = 1;
+    } else {
+      const totalQty = Number(cart.items[index].quantity || 1) + addQty;
+      cart.items[index].quantity = isBulk ? totalQty : Math.min(maxQty, totalQty);
+    }
   } else {
-    cart.items.push({ product: product._id, quantity: isBulk ? addQty : Math.min(5, addQty) });
+    cart.items.push({ product: product._id, quantity: isDigital ? 1 : (isBulk ? addQty : Math.min(maxQty, addQty)) });
   }
 
   await cart.save();
@@ -125,7 +141,10 @@ router.put("/:productId", protect, async (req, res) => {
 
   const itemProduct = cart.items[index].product;
   const isBulk = String(itemProduct?.productType || "single").toLowerCase() === "bulk";
-  cart.items[index].quantity = isBulk ? nextQty : Math.min(5, nextQty);
+  const isDigital = isDigitalProduct(itemProduct);
+  const maxQty = isDigital ? 1 : isBulk ? 99999 : 5;
+
+  cart.items[index].quantity = isDigital ? 1 : (isBulk ? nextQty : Math.min(maxQty, nextQty));
   await cart.save();
   await cart.populate("items.product");
 

@@ -60,6 +60,17 @@ function CartQtyInput({ item, currentQty, updateQty }) {
   }, [currentQty]);
 
   const isBulk = String(item.productType || item.product?.productType || "").toLowerCase() === "bulk";
+  const isDigital = isDigitalItem(item);
+
+  if (isDigital) {
+    return (
+      <div className="qty-box" style={{ display: "flex", alignItems: "center", margin: "6px 0" }}>
+        <span style={{ fontSize: "12.5px", fontWeight: "600", color: "#166534", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", padding: "3px 8px", borderRadius: "4px" }}>
+          Qty: 1 (Digital License)
+        </span>
+      </div>
+    );
+  }
 
   if (isBulk) {
     return (

@@ -865,6 +865,12 @@ function Product() {
                       ))}
                     </select>
                   </div>
+                ) : isDigitalItem(product) ? (
+                  <div style={{ margin: "14px 0", textAlign: "center" }}>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: "600", color: "#166534", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", padding: "8px 12px", borderRadius: "6px", display: "inline-block" }}>
+                      💻 Digital Format — 1 License Per Order
+                    </p>
+                  </div>
                 ) : (
                   <div>
                     <div className="qty-box" style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "16px 0 6px" }}>

@@ -2,6 +2,7 @@ import { createContext, useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
+import { isDigitalItem } from "../utils/deliveryPricing";
 
 const CartContext = createContext();
 const GUEST_CART_STORAGE_KEY = "guestCartItems";
@@ -185,7 +186,8 @@ export function CartProvider({ children }) {
   const addToCart = async (product, qty = 1) => {
     const productId = String(product?.id || product?._id || "");
     const isBulk = String(product?.productType || "single").toLowerCase() === "bulk";
-    const nextQty = Math.max(1, Number(qty) || 1);
+    const isDigital = isDigitalItem(product);
+    const nextQty = isDigital ? 1 : Math.max(1, Number(qty) || 1);
     if (!productId) return;
 
     if (!token) {
@@ -194,6 +196,7 @@ export function CartProvider({ children }) {
         if (existingIndex >= 0) {
           return current.map((item, index) => {
             if (index === existingIndex) {
+              if (isDigital) return { ...item, quantity: 1 };
               const total = Number(item.quantity || 1) + nextQty;
               return { ...item, quantity: isBulk ? total : Math.min(5, total) };
             }
@@ -209,6 +212,7 @@ export function CartProvider({ children }) {
             name: String(product?.name || "").trim(),
             productType: String(product?.productType || "single").trim(),
             price: Number(product?.price || 0),
+            isDigital: Boolean(product?.isDigital || isDigital),
             internationalPrice:
               product?.internationalPrice === null || product?.internationalPrice === undefined
                 ? null
@@ -239,7 +243,7 @@ export function CartProvider({ children }) {
             description: String(product?.description || "").trim(),
             category: String(product?.category || "General").trim() || "General",
             stock: Number(product?.stock || 0),
-            quantity: isBulk ? nextQty : Math.min(5, nextQty)
+            quantity: isDigital ? 1 : isBulk ? nextQty : Math.min(5, nextQty)
           }
         ];
       });
@@ -250,10 +254,10 @@ export function CartProvider({ children }) {
         name: String(product?.name || "").trim(),
         price: Number(product?.price || 0),
         image: String(product?.image || "").trim(),
-        quantity: isBulk ? nextQty : Math.min(5, nextQty)
+        quantity: isDigital ? 1 : isBulk ? nextQty : Math.min(5, nextQty)
       });
       setIsPopupOpen(true);
-      showToast("Added to cart");
+      showToast(isDigital ? "Digital item added to cart (Max quantity: 1)" : "Added to cart");
       return true;
     }
 
@@ -275,7 +279,7 @@ export function CartProvider({ children }) {
         quantity: nextQty
       });
       setIsPopupOpen(true);
-      showToast("Added to cart");
+      showToast(isDigital ? "Digital item added to cart (Max quantity: 1)" : "Added to cart");
       return true;
     } catch (err) {
       const status = Number(err?.response?.status || 0);
@@ -311,14 +315,17 @@ export function CartProvider({ children }) {
   };
 
   const updateQty = async (id, qty) => {
+    const targetId = String(id || "");
+    const existingItem = cartItems.find((item) => String(item?.id || item?._id || "") === targetId);
+    const isDigital = isDigitalItem(existingItem);
+    const nextQty = isDigital ? 1 : Math.max(1, Number(qty) || 1);
+
     if (!token) {
-      const targetId = String(id || "");
-      const nextQty = Math.max(1, Number(qty) || 1);
       setCartItems((current) =>
         current.map((item) => {
           if (String(item?.id || item?._id || "") === targetId) {
             const isBulk = String(item?.productType || "single").toLowerCase() === "bulk";
-            return { ...item, quantity: isBulk ? nextQty : Math.min(5, nextQty) };
+            return { ...item, quantity: isDigital ? 1 : isBulk ? nextQty : Math.min(5, nextQty) };
           }
           return item;
         })
