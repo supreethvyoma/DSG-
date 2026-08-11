@@ -212,8 +212,6 @@ function Product() {
   const [comment, setComment] = useState("");
   const [reviewError, setReviewError] = useState("");
   const [selectedMedia, setSelectedMedia] = useState(null);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const [purchasedProducts, setPurchasedProducts] = useState([]);
   const [purchaseAsGift, setPurchaseAsGift] = useState(false);
@@ -611,33 +609,6 @@ function Product() {
   const alreadyPurchased = product && purchasedProducts.includes(String(product._id));
   const hasPurchasedWebVersion = isWebVersion && alreadyPurchased;
 
-  const handleOpenLightbox = () => {
-    if (activeMedia?.kind !== "image") return;
-    const currentSrc = activeMedia?.src || galleryImages[0] || product?.image;
-    const currentIdx = galleryImages.findIndex((src) => src === currentSrc);
-    setLightboxIndex(currentIdx >= 0 ? currentIdx : 0);
-    setIsLightboxOpen(true);
-  };
-
-  useEffect(() => {
-    if (!isLightboxOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") setIsLightboxOpen(false);
-      if (e.key === "ArrowLeft" && galleryImages.length > 1) {
-        setLightboxIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
-      }
-      if (e.key === "ArrowRight" && galleryImages.length > 1) {
-        setLightboxIndex((prev) => (prev + 1) % galleryImages.length);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [isLightboxOpen, galleryImages.length]);
-
   return (
     <>
       <div className="product-container">
@@ -679,22 +650,8 @@ function Product() {
               ))}
             </div>
 
-            <div
-              className={`main-image-container ${activeMedia?.kind === "image" ? "clickable" : ""}`}
-              onClick={handleOpenLightbox}
-            >
-              {activeMedia?.kind === "image" && (
-                <div className="product-zoom-hint">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    <line x1="11" y1="8" x2="11" y2="14"></line>
-                    <line x1="8" y1="11" x2="14" y2="11"></line>
-                  </svg>
-                  <span>Click for Full View</span>
-                </div>
-              )}
-              <div className="product-image-actions" onClick={(e) => e.stopPropagation()}>
+            <div className="main-image-container">
+              <div className="product-image-actions">
                 <button
                   type="button"
                   className={`product-image-action-btn fav-btn ${isWishlisted ? "active" : ""}`}
@@ -1496,59 +1453,6 @@ function Product() {
                 </>
               )}
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Fullscreen Lightbox Modal */}
-      {isLightboxOpen && (
-        <div className="product-lightbox-overlay" onClick={() => setIsLightboxOpen(false)}>
-          <button
-            type="button"
-            className="product-lightbox-close"
-            onClick={() => setIsLightboxOpen(false)}
-            aria-label="Close image viewer"
-          >
-            ✕
-          </button>
-
-          {galleryImages.length > 1 && (
-            <>
-              <button
-                type="button"
-                className="product-lightbox-nav prev"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
-                }}
-                aria-label="Previous image"
-              >
-                ‹
-              </button>
-              <button
-                type="button"
-                className="product-lightbox-nav next"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxIndex((prev) => (prev + 1) % galleryImages.length);
-                }}
-                aria-label="Next image"
-              >
-                ›
-              </button>
-            </>
-          )}
-
-          <div className="product-lightbox-content" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={galleryImages[lightboxIndex] || product?.image || "/no-image.webp"}
-              alt={`${product?.name || "Product"} full view ${lightboxIndex + 1}`}
-              className="product-lightbox-img"
-            />
-          </div>
-
-          <div className="product-lightbox-caption">
-            {product?.name} {galleryImages.length > 1 ? `(${lightboxIndex + 1} of ${galleryImages.length})` : ""}
           </div>
         </div>
       )}
