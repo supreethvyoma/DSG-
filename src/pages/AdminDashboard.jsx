@@ -29,6 +29,8 @@ import {
   Download,
   Settings2,
   Clock,
+  ChevronDown,
+  ChevronUp,
   X
 } from "lucide-react";
 import "./AdminShared.css";
@@ -72,6 +74,7 @@ function AdminDashboard() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [pricingSettings, setPricingSettings] = useState({
     enableCurrentLocation: true,
     gstPercent: 0,
@@ -957,14 +960,33 @@ function AdminDashboard() {
         </div>
 
         <section className="card pricing-controls-card">
-          <div className="pricing-controls-header">
-            <div>
-              <h3>Tax & Delivery Controls</h3>
+          <button
+            type="button"
+            className="pricing-controls-toggle"
+            onClick={() => setIsPricingOpen((prev) => !prev)}
+            aria-expanded={isPricingOpen}
+          >
+            <div className="pricing-controls-toggle-left">
+              <h3>Tax &amp; Delivery Controls</h3>
               <p>Configure pricing rules applied automatically at checkout.</p>
             </div>
-            <span className="pricing-badge">Live Pricing</span>
-          </div>
+            <div className="pricing-controls-toggle-right">
+              <div className="pricing-preview-chips-inline">
+                <span className="pricing-preview-chip">
+                  <span>GST</span>
+                  <strong>{Number(pricingSettings.gstPercent || 0)}%</strong>
+                </span>
+                <span className="pricing-preview-chip">
+                  <span>Delivery</span>
+                  <strong>{formatCurrency(Number(pricingSettings.deliveryCharge || 0))}</strong>
+                </span>
+              </div>
+              <span className="pricing-badge">Live Pricing</span>
+              {isPricingOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </div>
+          </button>
 
+          {isPricingOpen && (<>
           <div className="pricing-preview-row">
             <div className="pricing-preview-chip">
               <span>Current GST</span>
@@ -1432,6 +1454,7 @@ function AdminDashboard() {
               {pricingMessage}
             </p>
           )}
+          </>)}
         </section>
 
 
