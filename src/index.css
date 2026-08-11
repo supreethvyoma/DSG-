@@ -38,18 +38,31 @@
   --premium-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 8px rgba(15, 23, 42, 0.04);
   --premium-shadow-xl: 0 20px 48px rgba(15, 23, 42, 0.12), 0 8px 16px rgba(15, 23, 42, 0.06);
   --site-card-shadow: var(--premium-shadow-md);
-}
 
-/* ── Prevent flash of un-themed content before data-site-theme resolves ──── */
-:root:not([data-site-theme]) body {
-  opacity: 0;
-  visibility: hidden;
-}
-
-:root[data-site-theme] body {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 0.15s ease-in-out;
+  /* ── Default Baseline Color Palette ─────────────────────────────────────── */
+  --site-bg: #FAFAF8;
+  --site-surface: #ffffff;
+  --site-surface-muted: #F5F3EF;
+  --site-text: #0F172A;
+  --site-text-soft: #64748B;
+  --site-border: #E2E8F0;
+  --site-link: #0284c7;
+  --site-link-hover: #0369a1;
+  --site-header-bg: #0f172a;
+  --site-header-border: #1e293b;
+  --site-header-text: #ffffff;
+  --site-search-border: #0284c7;
+  --site-search-focus: #0369a1;
+  --site-badge-bg: #0284c7;
+  --site-badge-text: #F0F9FF;
+  --site-button-bg: #0284c7;
+  --site-button-hover: #0369a1;
+  --site-button-text: #F0F9FF;
+  --site-footer-bg: #0f172a;
+  --site-footer-border: #1e293b;
+  --site-footer-text: #CBD5E1;
+  --site-hero-start: #0f172a;
+  --site-hero-end: #0284c7;
 }
 
 /* ── Theme: Sunrise ─────────────────────────────────────────────────────── */

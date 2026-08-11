@@ -36,6 +36,7 @@
               return;
             }
           }
+          document.documentElement.setAttribute("data-site-theme", "sky-blue");
           fetch("/api/settings/public")
             .then(function(r) { return r.json(); })
             .then(function(d) {
@@ -47,21 +48,11 @@
                     customThemes: Array.isArray(d.customThemes) ? d.customThemes : []
                   }));
                 } catch(e) {}
-              } else {
-                document.documentElement.setAttribute("data-site-theme", "sunrise");
               }
             })
-            .catch(function() {
-              document.documentElement.setAttribute("data-site-theme", "sunrise");
-            });
-
-          setTimeout(function() {
-            if (!document.documentElement.getAttribute("data-site-theme")) {
-              document.documentElement.setAttribute("data-site-theme", "sunrise");
-            }
-          }, 1200);
+            .catch(function() {});
         } catch(e) {
-          document.documentElement.setAttribute("data-site-theme", "sunrise");
+          document.documentElement.setAttribute("data-site-theme", "sky-blue");
         }
       })();
     </script>
