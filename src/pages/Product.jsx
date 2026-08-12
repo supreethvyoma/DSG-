@@ -332,6 +332,7 @@ function Product() {
       if (found) {
         setReviews(found.reviews || []);
         setHasMoreReviews((found.reviewsCount || 0) > (found.reviews?.length || 0));
+        axios.post(`/api/products/${found._id}/view`).catch(() => {});
       } else {
         setReviews([]);
         setHasMoreReviews(false);

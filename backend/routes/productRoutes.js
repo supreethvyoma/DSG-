@@ -1036,4 +1036,27 @@ router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/products/:id/view (PUBLIC - Anonymous Aggregate View Counter)
+router.post("/:id/view", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid product ID" });
+    }
+
+    const updated = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true, select: "views" }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json({ success: true, views: updated.views });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to log view", error: error.message });
+  }
+});
+
 module.exports = router;

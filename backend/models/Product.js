@@ -255,6 +255,11 @@ const productSchema = new mongoose.Schema(
     deletedBy: {
       name: { type: String, default: "" },
       email: { type: String, default: "" }
+    },
+    views: {
+      type: Number,
+      default: 0,
+      min: 0
     }
   },
   { timestamps: true }
@@ -283,5 +288,8 @@ productSchema.index({ name: "text", description: "text" }, { weights: { name: 10
 
 // 6. Rating sort
 productSchema.index({ rating: -1 });
+
+// 7. Popularity / total views sort
+productSchema.index({ views: -1 });
 
 module.exports = mongoose.model("Product", productSchema);
