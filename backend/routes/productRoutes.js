@@ -653,6 +653,65 @@ router.get("/debug/summary", async (req, res) => {
     res.status(500).json({ message: "Failed to load product summary", error: error.message });
   }
 });
+// GET /api/products/cleanup-imported-data (PUBLIC/SYSTEM UTILITY)
+router.get("/cleanup-imported-data", async (req, res) => {
+  try {
+    const products = await Product.find({});
+    let updatedCount = 0;
+
+    for (const p of products) {
+      let modified = false;
+
+      // 1. Replace old IP/domain URLs with live domain
+      if (p.image && /https?:\/\/(?:3\.108\.166\.236|localhost|vyomalabs\.in)/i.test(p.image)) {
+        p.image = p.image.replace(/https?:\/\/[^\/]+/gi, "https://digitalsanskritguru.com");
+        modified = true;
+      }
+
+      if (Array.isArray(p.images)) {
+        const fixedImgs = p.images.map((img) =>
+          img ? String(img).replace(/https?:\/\/[^\/]+/gi, "https://digitalsanskritguru.com") : ""
+        ).filter(Boolean);
+
+        if (JSON.stringify(fixedImgs) !== JSON.stringify(p.images)) {
+          p.images = fixedImgs;
+          modified = true;
+        }
+      }
+
+      // 2. Strip WordPress/Divi shortcodes [et_pb_...]
+      if (p.description && p.description.includes("[")) {
+        let cleaned = String(p.description);
+        cleaned = cleaned.replace(/\[\/?et_pb_[^\]]*\]/gi, "");
+        cleaned = cleaned.replace(/\[\/?vc_[^\]]*\]/gi, "");
+        cleaned = cleaned.replace(/\[\/?elementor[^\]]*\]/gi, "");
+        cleaned = cleaned.replace(/\[\/?[a-z0-9_-]+(?:\s+[^\]]+)?\]/gi, "");
+        cleaned = cleaned.replace(/&nbsp;/gi, " ");
+        cleaned = cleaned.replace(/&amp;/gi, "&");
+        cleaned = cleaned.replace(/&lt;/gi, "<");
+        cleaned = cleaned.replace(/&gt;/gi, ">");
+        cleaned = cleaned.replace(/\r\n/g, "\n");
+        cleaned = cleaned.replace(/\n\s*\n+/g, "\n\n").trim();
+
+        p.description = cleaned || p.name;
+        modified = true;
+      }
+
+      if (modified) {
+        await p.save();
+        updatedCount++;
+      }
+    }
+
+    // Invalidate product caches
+    invalidateProductCache();
+
+    res.json({ success: true, updatedCount, totalChecked: products.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get recommended products — cached 3 minutes
 router.get("/recommend/:productId", async (req, res) => {
   try {
@@ -1035,6 +1094,8 @@ router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
     res.status(500).json({ message: "Failed to submit enquiry", error: error.message });
   }
 });
+
+module.exports = router;
 
 // POST /api/products/:id/view (PUBLIC - Anonymous Aggregate View Counter)
 router.post("/:id/view", async (req, res) => {
