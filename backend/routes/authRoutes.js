@@ -445,47 +445,89 @@ router.get("/admin/security-logs", protect, admin, async (req, res) => {
 
 router.get("/admin/users-metrics", protect, admin, async (req, res) => {
   try {
-    const users = await User.find({ isDeleted: { $ne: true } }).select("name email isAdmin adminLevel adminRole allowedPages lastActiveAt totalTimeSpentSec").lean();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limitQuery = req.query.limit;
+    const isPaginated = limitQuery !== "all";
+    const limit = isPaginated ? Math.max(1, Math.min(100, parseInt(limitQuery, 10) || 25)) : 10000;
+    const search = String(req.query.search || "").trim();
+    const statusFilter = String(req.query.status || "All").trim();
+
+    const now = Date.now();
+    const activeWindowMs = 5 * 60 * 1000;
+    const activeThresholdDate = new Date(now - activeWindowMs);
+
+    // 1. Overall Metrics across ALL users in database
+    const [totalUsers, activeUsersCount, timeAgg] = await Promise.all([
+      User.countDocuments({ isDeleted: { $ne: true } }),
+      User.countDocuments({ isDeleted: { $ne: true }, lastActiveAt: { $gte: activeThresholdDate } }),
+      User.aggregate([
+        { $match: { isDeleted: { $ne: true } } },
+        { $group: { _id: null, totalSec: { $sum: "$totalTimeSpentSec" } } }
+      ])
+    ]);
+
+    const totalTimeSpentSec = timeAgg.length > 0 ? (timeAgg[0].totalSec || 0) : 0;
+
+    // 2. Build filter query for user listing
+    const query = { isDeleted: { $ne: true } };
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    if (statusFilter === "Online") {
+      query.lastActiveAt = { $gte: activeThresholdDate };
+    } else if (statusFilter === "Offline") {
+      query.$or = [
+        { lastActiveAt: { $lt: activeThresholdDate } },
+        { lastActiveAt: { $exists: false } },
+        { lastActiveAt: null }
+      ];
+    } else if (statusFilter === "Admin") {
+      query.isAdmin = true;
+    } else if (statusFilter === "Customer") {
+      query.isAdmin = { $ne: true };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [rawUsers, totalMatching] = await Promise.all([
+      User.find(query)
+        .select("name email isAdmin adminLevel adminRole allowedPages lastActiveAt totalTimeSpentSec")
+        .sort({ lastActiveAt: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      User.countDocuments(query)
+    ]);
+
+    const mappedUsers = rawUsers.map((user) => {
+      const lastActiveTs = user?.lastActiveAt ? new Date(user.lastActiveAt).getTime() : NaN;
+      const isActive = !Number.isNaN(lastActiveTs) && now - lastActiveTs <= activeWindowMs;
+      const adminLevel = Number(user?.adminLevel || 1);
+      return {
+        _id: String(user?._id || ""),
+        name: user?.name || "User",
+        email: user?.email || "",
+        isAdmin: Boolean(user?.isAdmin),
+        adminLevel,
+        adminRole: user?.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
+        allowedPages: Array.isArray(user?.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ["dashboard"],
+        lastActiveAt: user?.lastActiveAt || null,
+        totalTimeSpentSec: Math.max(0, Number(user?.totalTimeSpentSec || 0)),
+        isActive
+      };
+    });
+
     const adminUsersRaw = await User.find({ isAdmin: true, isDeleted: { $ne: true } })
       .select("name email isAdmin adminLevel adminRole allowedPages adminGrantedAt adminGrantedByName adminGrantedByEmail lastActiveAt")
       .sort({ adminGrantedAt: -1, createdAt: -1 })
       .lean();
-    const now = Date.now();
-    const activeWindowMs = 5 * 60 * 1000;
-
-    const mappedUsers = users
-      .map((user) => {
-        const lastActiveTs = user?.lastActiveAt ? new Date(user.lastActiveAt).getTime() : NaN;
-        const isActive = !Number.isNaN(lastActiveTs) && now - lastActiveTs <= activeWindowMs;
-        const adminLevel = Number(user?.adminLevel || 1);
-        return {
-          _id: String(user?._id || ""),
-          name: user?.name || "User",
-          email: user?.email || "",
-          isAdmin: Boolean(user?.isAdmin),
-          adminLevel,
-          adminRole: user?.adminRole || (adminLevel === 1 ? "Super Admin" : "Page Level Sub-Admin"),
-          allowedPages: Array.isArray(user?.allowedPages) && user.allowedPages.length > 0 ? user.allowedPages : ["dashboard"],
-          lastActiveAt: user?.lastActiveAt || null,
-          totalTimeSpentSec: Math.max(0, Number(user?.totalTimeSpentSec || 0)),
-          isActive
-        };
-      })
-      .sort((a, b) => {
-        const aTs = a.lastActiveAt ? new Date(a.lastActiveAt).getTime() : 0;
-        const bTs = b.lastActiveAt ? new Date(b.lastActiveAt).getTime() : 0;
-        return bTs - aTs;
-      });
-
-    const totalUsers = mappedUsers.length;
-    const activeUsers = mappedUsers.filter((user) => user.isActive).length;
-    const totalTimeSpentSec = mappedUsers.reduce((sum, user) => sum + Number(user.totalTimeSpentSec || 0), 0);
-
-    const latestAdminActionByEmail = new Map();
 
     const admins = adminUsersRaw.map((user) => {
-      const key = String(user?.email || "").trim().toLowerCase();
-      const latestAction = latestAdminActionByEmail.get(key) || null;
       const lastActiveTs = user?.lastActiveAt ? new Date(user.lastActiveAt).getTime() : NaN;
       const adminLevel = Number(user?.adminLevel || 1);
       return {
@@ -499,14 +541,24 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
         lastActiveAt: user?.lastActiveAt || null,
         adminGrantedAt: user?.adminGrantedAt || null,
         adminGrantedByName: String(user?.adminGrantedByName || "").trim(),
-        adminGrantedByEmail: String(user?.adminGrantedByEmail || "").trim().toLowerCase(),
-        latestActionAt: latestAction?.createdAt || null,
-        latestActionSummary: latestAction?.summary || "",
-        latestActionType: latestAction?.action || ""
+        adminGrantedByEmail: String(user?.adminGrantedByEmail || "").trim().toLowerCase()
       };
     });
 
-    res.json({ totalUsers, activeUsers, totalTimeSpentSec, users: mappedUsers.slice(0, 30), admins, recentAdminActions: [] });
+    res.json({
+      totalUsers,
+      activeUsers: activeUsersCount,
+      totalTimeSpentSec,
+      users: mappedUsers,
+      pagination: {
+        page,
+        limit,
+        total: totalMatching,
+        totalPages: Math.ceil(totalMatching / limit)
+      },
+      admins,
+      recentAdminActions: []
+    });
   } catch (err) {
     console.error("[Auth] Users-metrics error:", err.message);
     res.status(500).json({ message: "Failed to load user metrics." });

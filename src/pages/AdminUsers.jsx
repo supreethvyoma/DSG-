@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
@@ -18,8 +18,10 @@ function formatTimeSpent(totalSec) {
 
 function AdminUsers() {
   const { token, user } = useAuth();
+
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [metrics, setMetrics] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -27,30 +29,41 @@ function AdminUsers() {
     users: []
   });
 
-  const fetchMetrics = async () => {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 1 });
+
+  const fetchMetrics = useCallback(async (targetPage = page) => {
     try {
-      const res = await axios.get("/api/auth/admin/users-metrics", {
+      const params = new URLSearchParams({
+        page: targetPage,
+        limit: 25,
+        search: search.trim(),
+        status: statusFilter
+      });
+
+      const res = await axios.get(`/api/auth/admin/users-metrics?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
       setMetrics({
         totalUsers: Number(res?.data?.totalUsers || 0),
         activeUsers: Number(res?.data?.activeUsers || 0),
         totalTimeSpentSec: Number(res?.data?.totalTimeSpentSec || 0),
         users: Array.isArray(res?.data?.users) ? res.data.users : []
       });
+
+      if (res?.data?.pagination) {
+        setPagination(res.data.pagination);
+      }
       setError("");
     } catch {
-      setMetrics({
-        totalUsers: 0,
-        activeUsers: 0,
-        totalTimeSpentSec: 0,
-        users: []
-      });
       setError("Failed to load user activity metrics.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token, page, search, statusFilter]);
 
   const handleDeleteUser = async (userItem) => {
     if (userItem._id === user?._id) {
@@ -66,49 +79,17 @@ function AdminUsers() {
       await axios.delete(`/api/auth/admin/users/${userItem._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      fetchMetrics();
+      fetchMetrics(page);
     } catch (err) {
       alert(err.response?.data?.message || "Failed to soft delete user.");
     }
   };
 
   useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 15000);
+    fetchMetrics(page);
+    const interval = setInterval(() => fetchMetrics(page), 15000);
     return () => clearInterval(interval);
-  }, [token]);
-
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [page, setPage] = useState(1);
-  const itemsPerPage = 25;
-
-  const filteredUsers = useMemo(() => {
-    return metrics.users.filter((item) => {
-      // Search filter
-      const term = search.toLowerCase().trim();
-      const matchSearch =
-        !term ||
-        String(item.name || "").toLowerCase().includes(term) ||
-        String(item.email || "").toLowerCase().includes(term);
-
-      if (!matchSearch) return false;
-
-      // Status/Role filter
-      if (statusFilter === "Online") return item.isActive;
-      if (statusFilter === "Offline") return !item.isActive;
-      if (statusFilter === "Admin") return item.isAdmin;
-      if (statusFilter === "Customer") return !item.isAdmin;
-
-      return true;
-    });
-  }, [metrics.users, search, statusFilter]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
-  const paginatedUsers = useMemo(() => {
-    const start = (page - 1) * itemsPerPage;
-    return filteredUsers.slice(start, start + itemsPerPage);
-  }, [filteredUsers, page]);
+  }, [fetchMetrics, page]);
 
   const avgTimePerUser = useMemo(() => {
     if (metrics.totalUsers <= 0) return 0;
@@ -132,11 +113,11 @@ function AdminUsers() {
         <section className="users-metrics-grid">
           <div className="users-metric-card">
             <span>Total Registered Users</span>
-            <strong>{metrics.totalUsers}</strong>
+            <strong>{metrics.totalUsers.toLocaleString("en-IN")}</strong>
           </div>
           <div className="users-metric-card">
             <span>Active Users (Last 5 min)</span>
-            <strong>{metrics.activeUsers}</strong>
+            <strong>{metrics.activeUsers.toLocaleString("en-IN")}</strong>
           </div>
           <div className="users-metric-card">
             <span>Total Time Spent</span>
@@ -204,7 +185,7 @@ function AdminUsers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedUsers.map((item) => (
+                  {metrics.users.map((item) => (
                     <tr key={item._id}>
                       <td>
                         <strong>{item.name || "Customer"}</strong>
@@ -259,34 +240,34 @@ function AdminUsers() {
                   ))}
                 </tbody>
               </table>
-              {filteredUsers.length === 0 && <p style={{ margin: "16px 0", color: "#64748b" }}>No users match your search criteria.</p>}
+              {metrics.users.length === 0 && <p style={{ margin: "16px 0", color: "#64748b" }}>No users match your search criteria.</p>}
 
               {/* Pagination Controls */}
-              {filteredUsers.length > itemsPerPage && (
+              {pagination.total > pagination.limit && (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", padding: "12px 0", borderTop: "1px solid var(--border-color, #cbd5e1)" }}>
                   <span style={{ fontSize: "13px", color: "var(--admin-muted)" }}>
-                    Showing {(page - 1) * itemsPerPage + 1} - {Math.min(page * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+                    Showing {(pagination.page - 1) * pagination.limit + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total.toLocaleString("en-IN")} users
                   </span>
 
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
                       type="button"
-                      disabled={page <= 1}
-                      onClick={() => setPage(page - 1)}
-                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-color, #cbd5e1)", backgroundColor: "transparent", color: "inherit", cursor: page <= 1 ? "not-allowed" : "pointer" }}
+                      disabled={pagination.page <= 1}
+                      onClick={() => setPage(pagination.page - 1)}
+                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-color, #cbd5e1)", backgroundColor: "transparent", color: "inherit", cursor: pagination.page <= 1 ? "not-allowed" : "pointer" }}
                     >
                       Previous
                     </button>
 
                     <span style={{ padding: "6px 12px", fontWeight: "600", fontSize: "13.5px" }}>
-                      Page {page} of {totalPages}
+                      Page {pagination.page} of {pagination.totalPages || 1}
                     </span>
 
                     <button
                       type="button"
-                      disabled={page >= totalPages}
-                      onClick={() => setPage(page + 1)}
-                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-color, #cbd5e1)", backgroundColor: "transparent", color: "inherit", cursor: page >= totalPages ? "not-allowed" : "pointer" }}
+                      disabled={pagination.page >= pagination.totalPages}
+                      onClick={() => setPage(pagination.page + 1)}
+                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-color, #cbd5e1)", backgroundColor: "transparent", color: "inherit", cursor: pagination.page >= pagination.totalPages ? "not-allowed" : "pointer" }}
                     >
                       Next
                     </button>
