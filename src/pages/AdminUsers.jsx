@@ -78,6 +78,38 @@ function AdminUsers() {
     return () => clearInterval(interval);
   }, [token]);
 
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 25;
+
+  const filteredUsers = useMemo(() => {
+    return metrics.users.filter((item) => {
+      // Search filter
+      const term = search.toLowerCase().trim();
+      const matchSearch =
+        !term ||
+        String(item.name || "").toLowerCase().includes(term) ||
+        String(item.email || "").toLowerCase().includes(term);
+
+      if (!matchSearch) return false;
+
+      // Status/Role filter
+      if (statusFilter === "Online") return item.isActive;
+      if (statusFilter === "Offline") return !item.isActive;
+      if (statusFilter === "Admin") return item.isAdmin;
+      if (statusFilter === "Customer") return !item.isAdmin;
+
+      return true;
+    });
+  }, [metrics.users, search, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
+  const paginatedUsers = useMemo(() => {
+    const start = (page - 1) * itemsPerPage;
+    return filteredUsers.slice(start, start + itemsPerPage);
+  }, [filteredUsers, page]);
+
   const avgTimePerUser = useMemo(() => {
     if (metrics.totalUsers <= 0) return 0;
     return metrics.totalTimeSpentSec / metrics.totalUsers;
@@ -117,7 +149,45 @@ function AdminUsers() {
         </section>
 
         <section className="card">
-          <h3>Customer User Activity</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+            <h3 style={{ margin: 0 }}>Customer User Activity</h3>
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                type="text"
+                placeholder="🔍 Search user by name or email..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-color, #cbd5e1)",
+                  fontSize: "13.5px",
+                  minWidth: "260px",
+                  backgroundColor: "transparent",
+                  color: "inherit"
+                }}
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  border: "1px solid var(--border-color, #cbd5e1)",
+                  fontSize: "13.5px",
+                  backgroundColor: "transparent",
+                  color: "inherit"
+                }}
+              >
+                <option value="All">All Statuses & Roles</option>
+                <option value="Online">Online Now</option>
+                <option value="Offline">Offline</option>
+                <option value="Admin">Admin Accounts</option>
+                <option value="Customer">Customer Accounts</option>
+              </select>
+            </div>
+          </div>
+
           {isLoading ? (
             <p>Loading user activity...</p>
           ) : (
@@ -134,7 +204,7 @@ function AdminUsers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {metrics.users.map((item) => (
+                  {paginatedUsers.map((item) => (
                     <tr key={item._id}>
                       <td>
                         <strong>{item.name || "Customer"}</strong>
@@ -189,7 +259,40 @@ function AdminUsers() {
                   ))}
                 </tbody>
               </table>
-              {metrics.users.length === 0 && <p style={{ margin: "12px 0 0" }}>No registered users found.</p>}
+              {filteredUsers.length === 0 && <p style={{ margin: "16px 0", color: "#64748b" }}>No users match your search criteria.</p>}
+
+              {/* Pagination Controls */}
+              {filteredUsers.length > itemsPerPage && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "16px", padding: "12px 0", borderTop: "1px solid var(--border-color, #cbd5e1)" }}>
+                  <span style={{ fontSize: "13px", color: "var(--admin-muted)" }}>
+                    Showing {(page - 1) * itemsPerPage + 1} - {Math.min(page * itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+                  </span>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      disabled={page <= 1}
+                      onClick={() => setPage(page - 1)}
+                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-color, #cbd5e1)", backgroundColor: "transparent", color: "inherit", cursor: page <= 1 ? "not-allowed" : "pointer" }}
+                    >
+                      Previous
+                    </button>
+
+                    <span style={{ padding: "6px 12px", fontWeight: "600", fontSize: "13.5px" }}>
+                      Page {page} of {totalPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(page + 1)}
+                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border-color, #cbd5e1)", backgroundColor: "transparent", color: "inherit", cursor: page >= totalPages ? "not-allowed" : "pointer" }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
