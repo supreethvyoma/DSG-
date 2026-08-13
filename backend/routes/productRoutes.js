@@ -849,10 +849,25 @@ router.get("/:id", async (req, res) => {
     const cached = appCache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const product = await Product.findById(req.params.id)
-      .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
-      .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
-      .lean();
+    const targetId = req.params.id;
+    let product = null;
+
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      product = await Product.findById(targetId)
+        .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+        .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+        .lean();
+    }
+
+    if (!product) {
+      const numId = Number(targetId);
+      if (!isNaN(numId)) {
+        product = await Product.findOne({ wpProductId: numId, isDeleted: { $ne: true } })
+          .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+          .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+          .lean();
+      }
+    }
 
     if (!product || product.isDeleted === true) {
       return res.status(404).json({ message: "Product not found" });

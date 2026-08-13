@@ -419,7 +419,8 @@ function GuestBuy() {
   }
 
   const pricing = getProductPriceDetails(product, isDigital ? undefined : country);
-  const finalTotal = Number(pricing.price || 0);
+  const unitPrice = Number(pricing.price || 0);
+  const finalTotal = unitPrice * buyQuantity;
   const displayCurrency = pricing.currency || "INR";
 
   const hasShippingAddress = isDigital || (
