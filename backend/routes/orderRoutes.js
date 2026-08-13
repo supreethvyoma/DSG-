@@ -1834,6 +1834,40 @@ router.get("/my", protect, async (req, res) => {
   try {
     let orders = await Order.find({ user: req.user }).sort({ createdAt: -1 }).lean();
 
+    // Also fetch historical WordPress archive orders for this user
+    try {
+      const WpOrder = require("../models/WpOrder");
+      const userEmail = String(req.user.email || "").trim().toLowerCase();
+      const wpOrders = await WpOrder.find({
+        $or: [{ user: req.user._id }, { billingEmail: userEmail }]
+      }).sort({ wpCreatedAt: -1 }).lean();
+
+      const formattedWpOrders = wpOrders.map((wO) => ({
+        _id: `wp_${wO.wpOrderId}`,
+        isWpArchive: true,
+        wpOrderId: wO.wpOrderId,
+        orderNumber: `WP-#${wO.wpOrderId}`,
+        items: wO.items || [],
+        total: wO.total || 0,
+        subtotal: wO.subtotal || 0,
+        gstAmount: wO.gstAmount || 0,
+        deliveryCharge: wO.deliveryCharge || 0,
+        discount: wO.discount || 0,
+        couponCode: wO.couponCode || "",
+        status: wO.status || "Delivered",
+        paymentStatus: wO.paymentStatus || "Paid",
+        paymentMethod: wO.paymentMethod || "WordPress Import",
+        billing: wO.billing || {},
+        shipping: wO.shipping || {},
+        currencyDisplay: wO.currencyDisplay || { currency: "INR", amount: wO.total },
+        createdAt: wO.wpCreatedAt || wO.createdAt
+      }));
+
+      orders = [...orders, ...formattedWpOrders];
+    } catch (wpErr) {
+      console.error("[MyOrders] WP Archive fetch error:", wpErr.message);
+    }
+
     // Ensure gift pass codes exist for any paid gift orders
     for (let i = 0; i < orders.length; i++) {
       if (orders[i].isGift && orders[i].paymentStatus === "Paid") {

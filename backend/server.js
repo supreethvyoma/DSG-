@@ -146,6 +146,7 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
   app.use("/api/wishlist", requireDatabase, wishlistRoutes);
   app.use("/api/marketing", requireDatabase, marketingRoutes);
   app.use("/api/trash", requireDatabase, trashRoutes);
+  app.use("/api/admin/wp-archive", requireDatabase, require("./routes/wpArchiveRoutes"));
 
   // ── Static files (served after API routes) ─────────────────────────────────
   if (clientBuildExists) {
