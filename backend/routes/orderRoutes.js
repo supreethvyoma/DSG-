@@ -51,6 +51,28 @@ async function fireNotifications(fn) {
   }
 }
 
+// GET /api/orders/audit-migration (SYSTEM UTILITY)
+router.get("/audit-migration", async (req, res) => {
+  try {
+    const total = await Order.countDocuments();
+    const emptyItemsCount = await Order.countDocuments({ items: { $size: 0 } });
+    const noUserCount = await Order.countDocuments({ user: null });
+    const zeroTotalCount = await Order.countDocuments({ total: { $lte: 0 } });
+
+    const sampleEmpty = await Order.find({ items: { $size: 0 } }).limit(5).lean();
+
+    res.json({
+      total,
+      emptyItemsCount,
+      noUserCount,
+      zeroTotalCount,
+      sampleEmpty
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Low-stock alert helper: called after stock is decremented ─────────────────
 // Checks which of the just-ordered products are now at/below threshold
 // and sends push + email to admin + all users who wishlisted those products.

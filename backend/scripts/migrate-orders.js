@@ -27,7 +27,7 @@ function mapWpStatus(wpStatus) {
 
 async function migrateOrders() {
   console.log("==================================================");
-  console.log("🚀 WooCommerce Orders (8,573 items) -> MongoDB Migration");
+  console.log("🚀 Complete WooCommerce Orders (8,573) -> MongoDB Migration");
   console.log("==================================================");
 
   console.log("Connecting to MongoDB:", process.env.MONGO_URI);
@@ -40,7 +40,7 @@ async function migrateOrders() {
 
   try {
     // ── 1. Pre-fetch Mongo Products Map ───────────────────────────────────────
-    console.log("⚡ [1/5] Pre-fetching Mongo products...");
+    console.log("⚡ [1/6] Pre-fetching Mongo products...");
     const mongoProducts = await Product.find({}).select("_id name price image").lean();
     const productMapByTitle = new Map();
     for (const p of mongoProducts) {
@@ -49,7 +49,7 @@ async function migrateOrders() {
     console.log(`Loaded ${mongoProducts.length} MongoDB products.`);
 
     // ── 2. Pre-fetch WP Product Titles Map ────────────────────────────────────
-    console.log("⚡ [2/5] Pre-fetching MySQL Product Titles...");
+    console.log("⚡ [2/6] Pre-fetching MySQL Product Titles...");
     const [wpProducts] = await mysqlConn.query(`SELECT ID, post_title FROM wp_posts WHERE post_type = 'product'`);
     const wpIdToTitleMap = new Map();
     for (const p of wpProducts) {
@@ -57,19 +57,36 @@ async function migrateOrders() {
     }
     console.log(`Loaded ${wpIdToTitleMap.size} MySQL product titles.`);
 
-    // ── 3. Pre-fetch Mongo Users Map ──────────────────────────────────────────
-    console.log("⚡ [3/5] Pre-fetching Mongo users by email...");
-    const mongoUsers = await User.find({}).select("_id email").lean();
-    const userMapByEmail = new Map();
-    for (const u of mongoUsers) {
-      if (u.email) {
-        userMapByEmail.set(u.email.toLowerCase().trim(), u._id);
-      }
+    // ── 3. Pre-fetch WP Coupon Titles Map ─────────────────────────────────────
+    console.log("⚡ [3/6] Pre-fetching MySQL Coupons...");
+    const [couponLookup] = await mysqlConn.query(`
+      SELECT cl.order_id, cl.discount_amount, p.post_title AS coupon_code
+      FROM wp_wc_order_coupon_lookup cl
+      LEFT JOIN wp_posts p ON cl.coupon_id = p.ID
+    `);
+    const couponMap = new Map();
+    for (const c of couponLookup) {
+      couponMap.set(c.order_id, {
+        code: String(c.coupon_code || "DISCOUNT").trim().toUpperCase(),
+        discount: Number(c.discount_amount || 0)
+      });
     }
-    console.log(`Loaded ${mongoUsers.length} MongoDB users.`);
+    console.log(`Loaded coupons for ${couponMap.size} orders.`);
 
-    // ── 4. Pre-fetch Order Line Items ─────────────────────────────────────────
-    console.log("⚡ [4/5] Pre-fetching 11,626 order line items from MySQL...");
+    // ── 4. Pre-fetch Operational Data (Paid/Completed Dates) ──────────────────
+    console.log("⚡ [4/6] Pre-fetching operational data (dates/discounts)...");
+    const [opRows] = await mysqlConn.query(`
+      SELECT order_id, date_paid_gmt, date_completed_gmt, discount_total_amount
+      FROM wp_wc_order_operational_data
+    `);
+    const opMap = new Map();
+    for (const op of opRows) {
+      opMap.set(op.order_id, op);
+    }
+    console.log(`Loaded operational data for ${opMap.size} orders.`);
+
+    // ── 5. Pre-fetch Order Line Items ─────────────────────────────────────────
+    console.log("⚡ [5/6] Pre-fetching 11,626 order line items from MySQL...");
     const [itemRows] = await mysqlConn.query(`
       SELECT order_id, product_id, product_qty, product_net_revenue, product_gross_revenue
       FROM wp_wc_order_product_lookup
@@ -83,8 +100,8 @@ async function migrateOrders() {
     }
     console.log(`Loaded line items for ${orderItemsMap.size} unique orders.`);
 
-    // ── 5. Pre-fetch All Order Postmeta ───────────────────────────────────────
-    console.log("⚡ [5/5] Pre-fetching postmeta for all 8,573 orders...");
+    // ── 6. Pre-fetch All Order Postmeta ───────────────────────────────────────
+    console.log("⚡ [6/6] Pre-fetching postmeta for all 8,573 orders...");
     const [orderMetaRows] = await mysqlConn.query(`
       SELECT post_id, meta_key, meta_value 
       FROM wp_postmeta 
@@ -100,15 +117,59 @@ async function migrateOrders() {
     }
     console.log(`Loaded metadata for ${orderMetaMap.size} orders.`);
 
-    // ── STEP 6: Execute Bulk Order Migration ─────────────────────────────────
-    console.log("\n🛍️ Processing 8,573 WooCommerce Orders...");
+    // ── 7. Ensure All Customer Emails Have A MongoDB User Account ─────────────
+    console.log("\n👤 Upserting User Accounts for Guest Checkout Buyers...");
     const [orderPosts] = await mysqlConn.query(`
       SELECT ID, post_status, post_date_gmt, post_date
       FROM wp_posts
       WHERE post_type = 'shop_order'
     `);
 
-    console.log(`Fetched ${orderPosts.length} shop_order records from wp_posts.`);
+    const userOps = [];
+    for (const oPost of orderPosts) {
+      const meta = orderMetaMap.get(oPost.ID) || {};
+      const email = String(meta._billing_email || "").trim().toLowerCase();
+      if (!email || !email.includes("@")) continue;
+
+      const name = `${meta._billing_first_name || ""} ${meta._billing_last_name || ""}`.trim() || "Sanskrit Learner";
+      const phone = String(meta._billing_phone || "").trim();
+
+      userOps.push({
+        updateOne: {
+          filter: { email: email },
+          update: {
+            $setOnInsert: {
+              name: name,
+              email: email,
+              password: "$2a$10$dummyLegacyImportedPasswordHashDoNotUseDirectly",
+              role: "customer",
+              phone: phone,
+              createdAt: oPost.post_date_gmt ? new Date(oPost.post_date_gmt) : new Date()
+            }
+          },
+          upsert: true
+        }
+      });
+    }
+
+    if (userOps.length > 0) {
+      for (let i = 0; i < userOps.length; i += 1000) {
+        await User.bulkWrite(userOps.slice(i, i + 1000));
+      }
+    }
+    console.log(`✅ Ensured User profiles exist for all customer emails.`);
+
+    // Re-fetch all Mongo User IDs mapped by email
+    const mongoUsers = await User.find({}).select("_id email").lean();
+    const userMapByEmail = new Map();
+    for (const u of mongoUsers) {
+      if (u.email) {
+        userMapByEmail.set(u.email.toLowerCase().trim(), u._id);
+      }
+    }
+
+    // ── 8. Execute Complete Order Migration ──────────────────────────────────
+    console.log(`\n🛍️ Processing and Migrating ${orderPosts.length} WooCommerce Orders...`);
 
     const orderOps = [];
 
@@ -116,6 +177,8 @@ async function migrateOrders() {
       const wpOrderId = oPost.ID;
       const legacyRef = `WP-ORDER-${wpOrderId}`;
       const meta = orderMetaMap.get(wpOrderId) || {};
+      const op = opMap.get(wpOrderId) || {};
+      const coupon = couponMap.get(wpOrderId) || {};
 
       const email = String(meta._billing_email || "").trim().toLowerCase();
       const userId = userMapByEmail.get(email) || null;
@@ -170,8 +233,25 @@ async function migrateOrders() {
       const totalAmount = Number(meta._order_total || 0);
       const taxAmount = Number(meta._order_tax || 0);
       const shippingAmount = Number(meta._order_shipping || 0);
-      const subtotal = Math.max(0, totalAmount - taxAmount - shippingAmount);
+      const discountAmount = Number(op.discount_total_amount || coupon.discount || meta._cart_discount || 0);
+      const couponCode = coupon.code || String(meta._coupon_code || "").trim().toUpperCase();
+
+      // Fallback line item for orders missing in lookup table
+      if (items.length === 0) {
+        items.push({
+          product: new mongoose.Types.ObjectId(),
+          name: `WooCommerce Order #${wpOrderId}`,
+          price: totalAmount,
+          quantity: 1,
+          image: ""
+        });
+      }
+
+      const subtotal = Math.max(0, totalAmount - taxAmount - shippingAmount + discountAmount);
       const orderDate = oPost.post_date_gmt ? new Date(oPost.post_date_gmt) : (oPost.post_date ? new Date(oPost.post_date) : new Date());
+
+      const paidAt = op.date_paid_gmt ? new Date(op.date_paid_gmt) : (paymentStatus === "Paid" ? orderDate : null);
+      const deliveredAt = op.date_completed_gmt ? new Date(op.date_completed_gmt) : (status === "Delivered" ? orderDate : null);
 
       orderOps.push({
         updateOne: {
@@ -184,12 +264,16 @@ async function migrateOrders() {
               total: totalAmount,
               gstAmount: taxAmount,
               deliveryCharge: shippingAmount,
+              discount: discountAmount,
+              couponCode: couponCode,
               status: status,
               paymentStatus: paymentStatus,
               paymentMethod: String(meta._payment_method || "Razorpay").trim(),
               refundStatus: refundStatus || "Not Applicable",
               billing: billing,
               shipping: shipping,
+              deliveredAt: deliveredAt,
+              shippedAt: status === "Delivered" || status === "Shipped" ? orderDate : null,
               currencyDisplay: {
                 currency: String(meta._order_currency || "INR").trim().toUpperCase(),
                 amount: totalAmount,
@@ -198,7 +282,7 @@ async function migrateOrders() {
               paymentMeta: {
                 razorpayOrderId: legacyRef,
                 razorpayPaymentId: String(meta._transaction_id || "").trim(),
-                paidAt: paymentStatus === "Paid" ? orderDate : null
+                paidAt: paidAt
               },
               createdAt: orderDate,
               updatedAt: orderDate
@@ -218,7 +302,7 @@ async function migrateOrders() {
     }
 
     console.log("\n==================================================");
-    console.log(`🎉 SUCCESSFULLY MIGRATED ALL ${orderOps.length} ORDERS TO MONGODB!`);
+    console.log(`🎉 COMPLETE ORDER MIGRATION FINISHED FOR ${orderOps.length} ORDERS!`);
     console.log("==================================================");
   } catch (error) {
     console.error("Migration Error:", error);
