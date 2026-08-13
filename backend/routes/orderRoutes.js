@@ -1837,9 +1837,15 @@ router.get("/my", protect, async (req, res) => {
     // Also fetch historical WordPress archive orders for this user
     try {
       const WpOrder = require("../models/WpOrder");
-      const userEmail = String(req.user.email || "").trim().toLowerCase();
+      const userId = req.user;
+      const currentUserDoc = await User.findById(userId).select("email").lean();
+      const userEmail = currentUserDoc ? String(currentUserDoc.email || "").trim().toLowerCase() : "";
+
       const wpOrders = await WpOrder.find({
-        $or: [{ user: req.user._id }, { billingEmail: userEmail }]
+        $or: [
+          { user: userId },
+          ...(userEmail ? [{ billingEmail: userEmail }] : [])
+        ]
       }).sort({ wpCreatedAt: -1 }).lean();
 
       const formattedWpOrders = wpOrders.map((wO) => ({
