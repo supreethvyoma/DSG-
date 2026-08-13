@@ -285,19 +285,62 @@ function Product() {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!product) return;
-    const shareUrl = `${window.location.origin}/#/product/${product._id}`;
+    const origin = window.location.origin;
+    const pathname = window.location.pathname.endsWith("/") 
+      ? window.location.pathname.slice(0, -1) 
+      : window.location.pathname;
+    const shareUrl = `${origin}${pathname}/#/product/${product._id}`;
+
+    // 1. Web Share API (Mobile & supported desktop browsers)
     if (navigator.share) {
-      navigator.share({
-        title: product.name,
-        text: product.description || `Check out ${product.name} on Digital Sanskrit Guru!`,
-        url: shareUrl
-      }).catch((err) => console.log("Sharing failed", err));
-    } else {
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        showToast("Link copied to clipboard!");
-      }).catch((err) => console.error("Failed to copy link", err));
+      try {
+        await navigator.share({
+          title: product.name,
+          text: product.description 
+            ? `${product.name} - ${product.description.substring(0, 80).replace(/\n/g, " ")}...`
+            : `Check out ${product.name} on Digital Sanskrit Guru!`,
+          url: shareUrl
+        });
+        showToast("Product link shared!");
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return; // User closed share menu
+      }
+    }
+
+    // 2. Modern Clipboard API
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("Product link copied to clipboard!");
+        return;
+      }
+    } catch (clipErr) {
+      console.warn("Clipboard API write failed, using execCommand fallback:", clipErr);
+    }
+
+    // 3. Fallback textarea copy for older devices & HTTP / iframe contexts
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = shareUrl;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      if (successful) {
+        showToast("Product link copied to clipboard!");
+      } else {
+        prompt("Copy product share link:", shareUrl);
+      }
+    } catch (e) {
+      prompt("Copy product share link:", shareUrl);
     }
   };
 

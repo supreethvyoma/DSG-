@@ -129,6 +129,25 @@ function App() {
   const [lastBannerText, setLastBannerText] = useState("");
 
   useEffect(() => {
+    // Redirect shared product links without HashRouter fragment (e.g. /product/123 -> /#/product/123)
+    const pathname = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+
+    if (pathname.includes("/product/") && !window.location.hash) {
+      const parts = pathname.split("/product/");
+      const productId = parts[1];
+      if (productId) {
+        window.location.replace(`${window.location.origin}${parts[0]}/#/product/${productId}`);
+      }
+    } else if (searchParams.has("product") && !window.location.hash) {
+      const productId = searchParams.get("product");
+      if (productId) {
+        window.location.replace(`${window.location.origin}/#/product/${productId}`);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     if (festiveBanner.text && festiveBanner.text !== lastBannerText) {
       if (lastBannerText !== "") {
         try {
