@@ -12,11 +12,13 @@ const emailLogSchema = new mongoose.Schema(
         "campaign",
         "low-stock-admin",
         "wishlist-alert",
+        "wishlist-reminder",
         "broadcast",
         "test",
         "password-reset",
         "gift-pass",
-        "bulk-enquiry"
+        "bulk-enquiry",
+        "welcome-credentials"
       ],
       default: "campaign"
     },

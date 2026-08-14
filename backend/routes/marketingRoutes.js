@@ -364,6 +364,35 @@ router.post("/test-email", async (req, res) => {
   }
 });
 
+// ── POST /api/marketing/test-wishlist-email ──────────────────────────────────
+// Send a test Wishlist Reminder email to admin / target user
+router.post("/test-wishlist-email", async (req, res) => {
+  try {
+    const to = String(req.body?.to || req.user?.email || process.env.ADMIN_EMAIL || "").trim();
+    if (!to) return res.status(400).json({ message: "Email address required." });
+
+    const sampleProducts = await Product.find({ isDeleted: { $ne: true } }).limit(2).lean();
+    const { sendWishlistReminderEmail } = require("../utils/email");
+
+    await sendWishlistReminderEmail({ name: req.user?.name || "Store Admin", email: to }, sampleProducts);
+    res.json({ message: `Test wishlist reminder email sent to ${to}.` });
+  } catch (err) {
+    res.status(500).json({ message: `Failed to send test wishlist email: ${err.message}` });
+  }
+});
+
+// ── POST /api/marketing/trigger-wishlist-nudges ──────────────────────────────
+// Manually run the Wishlist Nudge scheduler
+router.post("/trigger-wishlist-nudges", async (_req, res) => {
+  try {
+    const { processWishlistNudges } = require("../services/wishlistScheduler");
+    const result = await processWishlistNudges();
+    res.json({ message: "Wishlist nudge execution completed.", result });
+  } catch (err) {
+    res.status(500).json({ message: `Failed to execute wishlist nudges: ${err.message}` });
+  }
+});
+
 // ── GET /api/marketing/email-log ─────────────────────────────────────────────
 // Recent email send history
 router.get("/email-log", async (req, res) => {
@@ -379,7 +408,7 @@ router.get("/email-log", async (req, res) => {
 });
 
 // ── PUT /api/marketing/settings ──────────────────────────────────────────────
-// Update low-stock threshold + notification email
+// Update low-stock threshold + notification email + wishlist nudge settings
 router.put("/settings", async (req, res) => {
   try {
     const threshold = Math.max(0, Number(req.body?.lowStockThreshold ?? 5));

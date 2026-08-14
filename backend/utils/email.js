@@ -69,9 +69,10 @@ async function sendEmail({ to, subject, html, type = "campaign", orderId = "", p
       return { skipped: true };
     }
 
+    const senderAddress = process.env.SENDER_EMAIL || process.env.SMTP_USER;
     const transporterInstance = await getTransporter();
     const info = await transporterInstance.sendMail({
-      from: `"${SITE_NAME}" <${process.env.SMTP_USER}>`,
+      from: `"${SITE_NAME}" <${senderAddress}>`,
       to,
       subject,
       html
@@ -609,6 +610,71 @@ async function sendWelcomeCredentialsEmail(user, plainPassword) {
   });
 }
 
+async function sendWishlistReminderEmail(user, wishlistItems = []) {
+  const to = String(user?.email || "").trim().toLowerCase();
+  if (!to || !Array.isArray(wishlistItems) || wishlistItems.length === 0) return;
+
+  const siteUrl = process.env.SITE_URL || "https://digitalsanskritguru.com";
+  const userName = user.name || "Sanskrit Enthusiast";
+
+  const productRowsHtml = wishlistItems.slice(0, 5).map((item) => {
+    const pName = item.name || "Product";
+    const pPrice = item.price ? `₹${item.price}` : "Available now";
+    const pImg = item.image || "https://digitalsanskritguru.com/placeholder.png";
+    const pLink = `${siteUrl}/#/product/${item._id || ""}`;
+
+    return `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; width: 70px; text-align: center;">
+          <img src="${pImg}" alt="${pName}" style="width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid #cbd5e1;" />
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+          <a href="${pLink}" style="font-size: 14px; font-weight: bold; color: #1e293b; text-decoration: none;">${pName}</a>
+          <div style="font-size: 13px; color: #2563eb; font-weight: 600; margin-top: 4px;">${pPrice}</div>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; vertical-align: middle; width: 100px;">
+          <a href="${pLink}" style="display: inline-block; padding: 6px 12px; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 12px; font-weight: bold; border-radius: 4px;">Buy Now</a>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  const bodyHtml = `
+    <p>Namaste <strong>${userName}</strong>,</p>
+    <p>We noticed you saved some valuable titles to your Wishlist recently! They are still waiting for you:</p>
+
+    <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+      ${productRowsHtml}
+    </table>
+
+    <div style="text-align: center; margin: 28px 0 16px 0;">
+      <a href="${siteUrl}/#/wishlist" style="display: inline-block; padding: 12px 24px; background-color: #d97706; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: bold; border-radius: 6px; box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);">
+        🎁 View Complete Wishlist
+      </a>
+    </div>
+
+    <p style="color: #64748b; font-size: 13px; text-align: center; margin-top: 20px;">
+      Need assistance or bulk print copies? Reply to this email or chat with our team anytime!
+    </p>
+  `;
+
+  const html = htmlWrapper(
+    "Wishlist Reminder — Digital Sanskrit Guru",
+    bodyHtml,
+    "#1e293b",
+    "#d97706",
+    "Your Wishlist is Waiting! 🎁",
+    "Pick up where you left off"
+  );
+
+  return sendEmail({
+    to,
+    subject: `🎁 Items in your wishlist are waiting for you, ${userName}!`,
+    html,
+    type: "wishlist-reminder"
+  });
+}
+
 module.exports = {
   sendEmail,
   sendOrderConfirmation,
@@ -619,5 +685,6 @@ module.exports = {
   sendTestEmail,
   sendGiftPassEmail,
   sendBulkEnquiryEmail,
-  sendWelcomeCredentialsEmail
+  sendWelcomeCredentialsEmail,
+  sendWishlistReminderEmail
 };

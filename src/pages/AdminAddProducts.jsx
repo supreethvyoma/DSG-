@@ -509,10 +509,7 @@ function AdminAddProducts() {
 
   const formSummary = useMemo(() => {
     const normalizedName = name.trim();
-    const hasBundleItems = bundleItems.some(
-      (item) => Boolean(item?.name?.trim()) || Boolean(item?.productId?.trim()) || Boolean(item?.product)
-    );
-    const effectiveType = productType === "bundle" || hasBundleItems ? "bundle" : productType;
+    const effectiveType = productType;
     const numericPrice = effectiveType === "bundle"
       ? Number(calculatedBundlePrice || price || 0)
       : Number(price || 0);
@@ -1104,8 +1101,6 @@ function AdminAddProducts() {
       })
       .filter(Boolean);
 
-    const effectiveProductType = processedBundleItems.length > 0 ? "bundle" : productType;
-
     const payload = {
       name: formSummary.normalizedName,
       price: formSummary.numericPrice,
@@ -1135,7 +1130,7 @@ function AdminAddProducts() {
       aboutProduct,
       festiveOffer,
       festiveDiscountPercent: festiveOffer ? Math.min(95, Math.max(0, Number(festiveDiscountPercent || 0))) : 0,
-      productType: effectiveProductType,
+      productType: productType,
       isDigital,
       digitalType,
       webReaderLink: webReaderLink.trim(),
@@ -1143,7 +1138,7 @@ function AdminAddProducts() {
       kindleAsin: kindleAsin.trim(),
       digitalInstructions: digitalInstructions.trim(),
       courseLink: courseLink.trim(),
-      bundleItems: processedBundleItems,
+      bundleItems: productType === "bundle" ? processedBundleItems : [],
       relatedProducts: relatedProductItems
         .map((item) => ({
           productId: String(item.productId || "").trim()

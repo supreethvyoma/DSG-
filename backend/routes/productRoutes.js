@@ -354,7 +354,7 @@ router.post("/", protect, admin, largeJson, async (req, res) => {
     const images = normalizeImages(req.body.images, req.body.image);
     const rawBundleItems = normalizeBundleItems(req.body.bundleItems);
     const typeCandidate = String(req.body?.productType || "single").trim().toLowerCase();
-    const productType = ["bundle", "bulk"].includes(typeCandidate) || rawBundleItems.length > 0 ? "bundle" : "single";
+    const productType = typeCandidate === "bundle" ? "bundle" : (["single", "bulk"].includes(typeCandidate) ? typeCandidate : "single");
     const bundleItems = productType === "bundle" ? rawBundleItems : [];
     const relatedProducts = normalizeRelatedProducts(req.body.relatedProducts);
     const festiveOffer = req.body?.festiveOffer === true;
@@ -455,7 +455,7 @@ router.put("/:id", protect, admin, largeJson, async (req, res) => {
       ? normalizeBundleItems(req.body.bundleItems)
       : normalizeBundleItems(product.bundleItems);
     const typeCandidateUpdate = String(req.body?.productType || product.productType || "single").trim().toLowerCase();
-    product.productType = ["bundle", "bulk"].includes(typeCandidateUpdate) || rawBundleItemsUpdate.length > 0 ? "bundle" : "single";
+    product.productType = typeCandidateUpdate === "bundle" ? "bundle" : (["single", "bulk"].includes(typeCandidateUpdate) ? typeCandidateUpdate : "single");
     product.bundleItems = product.productType === "bundle" ? rawBundleItemsUpdate : [];
     product.relatedProducts =
       req.body.relatedProducts !== undefined

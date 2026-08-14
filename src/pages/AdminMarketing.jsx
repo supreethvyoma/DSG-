@@ -44,6 +44,12 @@ function AdminMarketing() {
   const [testEmailTo, setTestEmailTo] = useState("");
   const [isSendingTest, setIsSendingTest] = useState(false);
 
+  // ── Wishlist Reminder Automation State ─────────────────────────────────────
+  const [testWishlistEmailTo, setTestWishlistEmailTo] = useState("");
+  const [isSendingWishlistTest, setIsSendingWishlistTest] = useState(false);
+  const [isTriggeringWishlistNudges, setIsTriggeringWishlistNudges] = useState(false);
+  const [wishlistTestMsg, setWishlistTestMsg] = useState("");
+
   // ── Campaign Email Branding state ──────────────────────────────────────────
   const [campaignLogoUrl, setCampaignLogoUrl] = useState("");
   const [campaignHeaderBg, setCampaignHeaderBg] = useState("#0f172a");
@@ -391,6 +397,33 @@ function AdminMarketing() {
       setEmailMsg(err?.response?.data?.message || "Test failed.");
     } finally {
       setIsSendingTest(false);
+    }
+  };
+
+  const handleSendTestWishlistEmail = async () => {
+    setIsSendingWishlistTest(true);
+    setWishlistTestMsg("");
+    try {
+      const res = await axios.post("/api/marketing/test-wishlist-email", { to: testWishlistEmailTo }, { headers: getAuthHeaders() });
+      setWishlistTestMsg(res.data?.message || "Test wishlist email sent successfully!");
+    } catch (err) {
+      setWishlistTestMsg(err?.response?.data?.message || "Failed to send test wishlist email.");
+    } finally {
+      setIsSendingWishlistTest(false);
+    }
+  };
+
+  const handleTriggerWishlistNudges = async () => {
+    setIsTriggeringWishlistNudges(true);
+    setWishlistTestMsg("");
+    try {
+      const res = await axios.post("/api/marketing/trigger-wishlist-nudges", {}, { headers: getAuthHeaders() });
+      const sentCount = res.data?.result?.sentCount ?? 0;
+      setWishlistTestMsg(`Wishlist nudges executed! Sent ${sentCount} reminder email(s).`);
+    } catch (err) {
+      setWishlistTestMsg(err?.response?.data?.message || "Failed to run wishlist nudges.");
+    } finally {
+      setIsTriggeringWishlistNudges(false);
     }
   };
 
@@ -943,6 +976,33 @@ function AdminMarketing() {
                   {isSendingTest ? "Sending..." : "Send Test"}
                 </button>
               </div>
+            </div>
+
+            <div className="card mkt-card">
+              <h3>🎁 Automated Abandoned Wishlist Reminders</h3>
+              <p className="mkt-hint">
+                Automatically sends personalized HTML reminder emails to registered users who saved products to their Wishlist but haven't purchased after 24 hours. Includes direct <strong>Buy Now</strong> buttons & product thumbnails.
+              </p>
+              <div className="mkt-inline" style={{ marginTop: "12px", gap: "10px", flexWrap: "wrap" }}>
+                <input
+                  type="email"
+                  placeholder="admin@example.com (enter email to receive test)"
+                  value={testWishlistEmailTo}
+                  onChange={(e) => setTestWishlistEmailTo(e.target.value)}
+                  style={{ flex: 1, minWidth: "220px" }}
+                />
+                <button className="secondary-btn" onClick={handleSendTestWishlistEmail} disabled={isSendingWishlistTest}>
+                  {isSendingWishlistTest ? "Sending Test..." : "✉️ Send Test Wishlist Email"}
+                </button>
+                <button className="primary-btn" onClick={handleTriggerWishlistNudges} disabled={isTriggeringWishlistNudges}>
+                  {isTriggeringWishlistNudges ? "Running..." : "🚀 Run Wishlist Nudges Now"}
+                </button>
+              </div>
+              {wishlistTestMsg && (
+                <p className="mkt-msg" style={{ marginTop: "10px", color: wishlistTestMsg.toLowerCase().includes("fail") ? "#ef4444" : "#10b981", fontWeight: 600 }}>
+                  {wishlistTestMsg}
+                </p>
+              )}
             </div>
 
             <div className="card mkt-card">

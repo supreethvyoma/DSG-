@@ -60,6 +60,7 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
   const marketingRoutes = require("./routes/marketingRoutes");
   const trashRoutes = require("./routes/trashRoutes");
   const { initVapid } = require("./utils/webPush");
+  const { initWishlistScheduler } = require("./services/wishlistScheduler");
   const vulnerabilityGuard = require("./middleware/vulnerabilityGuard");
 
   const app = express();
@@ -207,6 +208,7 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
 
   connectToDatabase();
   initVapid();
+  initWishlistScheduler();
 
   // Retry connection if disconnected
   setInterval(() => {
