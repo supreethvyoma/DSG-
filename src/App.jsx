@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
 import axios from "axios";
 import { apiBaseUrl } from "./lib/api";
 import Navbar from "./components/layout/Navbar";
+import Breadcrumb from "./components/layout/Breadcrumb";
 import Footer from "./components/layout/Footer";
 import WhatsAppButton from "./components/layout/WhatsAppButton";
 import CookieConsent from "./components/layout/CookieConsent";
@@ -333,6 +334,7 @@ function App() {
         customAnimations={festiveAnimation.customAnimations || []}
       />
       <Navbar bannerActive={isBannerActive} />
+      <Breadcrumb />
 
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>

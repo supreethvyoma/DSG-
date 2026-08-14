@@ -1,0 +1,105 @@
+/* Global Breadcrumb Navigation Bar */
+.site-breadcrumb-nav {
+  width: 100%;
+  background: color-mix(in srgb, var(--site-surface, #ffffff) 92%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--site-border, #e2e8f0);
+  padding: 8px 0;
+  position: relative;
+  z-index: 90;
+  margin-bottom: 12px;
+}
+
+.site-breadcrumb-container {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 0 16px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.site-breadcrumb-container::-webkit-scrollbar {
+  display: none;
+}
+
+.site-breadcrumb-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.site-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--site-text-muted, #64748b);
+}
+
+.site-breadcrumb-separator {
+  color: var(--site-muted, #cbd5e1);
+  font-size: 14px;
+  font-weight: 400;
+  user-select: none;
+}
+
+.site-breadcrumb-link {
+  color: var(--site-text-soft, #475569);
+  text-decoration: none;
+  transition: color 0.15s ease, transform 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.site-breadcrumb-link:hover {
+  color: var(--site-link, #2563eb);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.site-breadcrumb-current {
+  color: var(--site-text, #0f172a);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.breadcrumb-home-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .site-breadcrumb-nav {
+    padding: 6px 0;
+    margin-bottom: 8px;
+  }
+
+  .site-breadcrumb-container {
+    padding: 0 12px;
+  }
+
+  .site-breadcrumb-list {
+    font-size: 12px;
+  }
+
+  .site-breadcrumb-current {
+    max-width: 180px;
+  }
+}
