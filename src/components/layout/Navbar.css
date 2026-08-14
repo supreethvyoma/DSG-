@@ -1045,13 +1045,15 @@ html.banner-active .navbar {
   }
 
   .navbar-attached-bar {
-    max-height: 36px;
+    max-height: 26px;
+    height: 26px;
   }
 
   .navbar-attached-bar-inner {
     min-height: 26px;
-    padding: 1px 0;
-    gap: 6px;
+    height: 26px;
+    padding: 0 4px;
+    gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -1062,21 +1064,24 @@ html.banner-active .navbar {
   }
 
   .navbar-attached-bar-start {
-    gap: 4px;
+    gap: 2px;
+    align-items: center;
+    height: 100%;
   }
 
   .navbar-quick-nav-btn {
-    font-size: 12px;
-    padding: 0 6px;
-    height: 24px;
-    line-height: 24px;
+    font-size: 11px;
+    padding: 0 5px;
+    height: 20px;
+    line-height: 20px;
+    font-weight: 500;
   }
 
   .navbar-collection-menu-btn {
-    height: 24px;
-    padding: 0 6px;
-    font-size: 12px;
-    line-height: 24px;
+    height: 20px;
+    padding: 0 5px;
+    font-size: 11px;
+    line-height: 20px;
   }
 
   .navbar-collection-filter-menu {
