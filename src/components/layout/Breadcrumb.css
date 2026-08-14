@@ -1,7 +1,7 @@
 /* Global Breadcrumb Navigation Bar */
 .site-breadcrumb-nav {
   width: 100%;
-  background: color-mix(in srgb, var(--site-surface, #ffffff) 92%, transparent);
+  background: color-mix(in srgb, var(--site-surface, #ffffff) 94%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--site-border, #e2e8f0);
@@ -19,42 +19,72 @@
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  align-items: center;
 }
 
 .site-breadcrumb-container::-webkit-scrollbar {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .site-breadcrumb-list {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 6px;
   list-style: none;
   margin: 0;
   padding: 0;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .site-breadcrumb-item {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 6px;
   color: var(--site-text-muted, #64748b);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.site-breadcrumb-link {
+  color: var(--site-primary, #0284c7);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  white-space: nowrap;
+}
+
+.site-breadcrumb-link:hover {
+  color: var(--site-primary-hover, #0369a1);
+  text-decoration: underline;
+}
+
+.site-breadcrumb-current {
+  color: var(--site-text-muted, #64748b);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .site-breadcrumb-separator {
   color: var(--site-muted, #94a3b8);
-  font-size: 12px;
-  font-weight: 500;
-  margin: 0 2px;
+  font-size: 13px;
+  font-weight: 400;
   user-select: none;
+  display: inline-block;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
+/* Mobile Optimizations */
 @media (max-width: 768px) {
   .site-breadcrumb-nav {
-    padding: 6px 0;
+    padding: 7px 0;
     margin-bottom: 8px;
   }
 
@@ -64,9 +94,23 @@
 
   .site-breadcrumb-list {
     font-size: 12px;
+    gap: 5px;
+  }
+
+  .site-breadcrumb-item {
+    gap: 5px;
+  }
+
+  .site-breadcrumb-separator {
+    font-size: 12px;
   }
 
   .site-breadcrumb-current {
-    max-width: 180px;
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
   }
 }

@@ -103,7 +103,7 @@ export default function Breadcrumb() {
     if (segments[0] === "collection") {
       items.push({ label: "Store Catalog", path: "/collection" });
       const categoryParam = searchParams.get("category");
-      if (categoryParam) {
+      if (categoryParam && categoryParam.toLowerCase() !== "store catalog" && categoryParam.toLowerCase() !== "collection") {
         items.push({ label: categoryParam, path: `/collection?category=${encodeURIComponent(categoryParam)}` });
       }
       return items;
@@ -135,7 +135,11 @@ export default function Breadcrumb() {
       items.push({ label: formattedLabel, path: `/${primarySegment}` });
     }
 
-    return items;
+    // Filter consecutive duplicate labels
+    return items.filter((item, idx) => {
+      if (idx === 0) return true;
+      return item.label.toLowerCase().trim() !== items[idx - 1].label.toLowerCase().trim();
+    });
   }, [location.pathname, location.search]);
 
   // Inject Structured Data (JSON-LD BreadcrumbList) for SEO
