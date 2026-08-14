@@ -1268,12 +1268,65 @@ border-bottom:none;
     gap: 10px !important;
   }
 
-  .products-tools input,
-  .products-tools select,
-  .admin-filter-bar input,
-  .admin-filter-bar select {
+  /* Tax & Delivery Controls Collapsible Card Mobile Layout Fix */
+  .pricing-controls-toggle {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .pricing-controls-toggle-left {
     width: 100% !important;
     min-width: 0 !important;
+  }
+
+  .pricing-controls-toggle-left h3 {
+    font-size: 17px !important;
+    line-height: 1.3 !important;
+    margin: 0 !important;
+  }
+
+  .pricing-controls-toggle-left p {
+    font-size: 12.5px !important;
+    margin-top: 4px !important;
+    line-height: 1.4 !important;
+    color: var(--admin-muted) !important;
+  }
+
+  .pricing-controls-toggle-right {
+    width: 100% !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    padding-top: 10px !important;
+    border-top: 1px dashed var(--admin-border, #cbd5e1) !important;
+  }
+
+  .pricing-preview-chips-inline {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .pricing-preview-chips-inline .pricing-preview-chip {
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+  }
+
+  .pricing-preview-chips-inline .pricing-preview-chip span {
+    font-size: 10.5px !important;
+  }
+
+  .pricing-preview-chips-inline .pricing-preview-chip strong {
+    font-size: 14px !important;
+  }
+
+  .pricing-panel-grid,
+  .distance-pricing-grid,
+  .delivery-zone-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 }
 
