@@ -1129,15 +1129,15 @@ html.banner-active .navbar {
     left: 0;
     right: 0;
     z-index: 1000;
-    height: 56px;
-    background: color-mix(in srgb, var(--site-surface) 94%, transparent);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    height: calc(68px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--site-surface) 96%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--site-border);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.09);
     justify-content: space-around;
     align-items: center;
-    padding: 0 var(--space-1);
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobile-bottom-item {
@@ -1148,13 +1148,13 @@ html.banner-active .navbar {
     justify-content: center;
     text-decoration: none;
     color: var(--site-text-soft);
-    gap: 2px;
-    padding: 3px 0;
+    gap: 3px;
+    padding: 4px 0;
     border: none;
     background: transparent;
     cursor: pointer;
     transition: color 0.15s ease, transform 0.15s ease;
-    min-height: 44px !important;
+    min-height: 52px !important;
   }
 
   .mobile-bottom-item:hover,
@@ -1163,18 +1163,19 @@ html.banner-active .navbar {
   }
 
   .mobile-bottom-item:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
   }
 
   .mobile-bottom-icon {
-    font-size: 18px;
+    font-size: 22px;
     line-height: 1;
   }
 
   .mobile-bottom-label {
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
     text-transform: capitalize;
+    letter-spacing: -0.1px;
   }
 
   .mobile-bottom-cart-wrap {
@@ -1185,13 +1186,13 @@ html.banner-active .navbar {
   .mobile-bottom-badge {
     position: absolute;
     top: -5px;
-    right: -8px;
+    right: -9px;
     background: var(--site-badge-bg);
     color: var(--site-badge-text);
     font-size: 9px;
     font-weight: 800;
-    min-width: 15px;
-    height: 15px;
+    min-width: 16px;
+    height: 16px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1200,7 +1201,7 @@ html.banner-active .navbar {
   }
 
   body {
-    padding-bottom: 56px !important;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
