@@ -444,11 +444,15 @@ function AdminAddProducts() {
   const selectedBundleProducts = useMemo(() => {
     return bundleItems
       .map((item) => {
-        if (item.itemType === "custom") {
-          if (!item.name?.trim()) return null;
+        const customName = String(item?.name || "").trim();
+        const rawProductId = String(item?.productId || item?.product?._id || item?.product || "").trim();
+        const isCustomItem = item?.itemType === "custom" || (Boolean(customName) && !rawProductId);
+
+        if (isCustomItem) {
+          if (!customName) return null;
           return {
-            _id: `custom-${item.name}`,
-            name: item.name,
+            _id: `custom-${customName}`,
+            name: customName,
             price: Number(item.price || 0),
             quantity: Math.max(1, Number(item.quantity || 1)),
             image: item.image,
@@ -456,7 +460,7 @@ function AdminAddProducts() {
           };
         }
         const matchedProduct = availableBundleProducts.find(
-          (product) => String(product?._id || "") === String(item.productId || "")
+          (product) => String(product?._id || "") === rawProductId
         );
         if (!matchedProduct) return null;
         return {
@@ -505,27 +509,32 @@ function AdminAddProducts() {
 
   const formSummary = useMemo(() => {
     const normalizedName = name.trim();
-    const numericPrice = productType === "bundle" ? Number(calculatedBundlePrice || 0) : Number(price);
-    const numericStock = Number(stock);
+    const hasBundleItems = bundleItems.some(
+      (item) => Boolean(item?.name?.trim()) || Boolean(item?.productId?.trim()) || Boolean(item?.product)
+    );
+    const effectiveType = productType === "bundle" || hasBundleItems ? "bundle" : productType;
+    const numericPrice = effectiveType === "bundle"
+      ? Number(calculatedBundlePrice || price || 0)
+      : Number(price || 0);
+    const numericStock = Number(stock ?? 1);
     const primaryImage = image.trim();
 
     return {
       isNameValid: normalizedName.length > 0,
-      isPriceValid: !Number.isNaN(numericPrice) && numericPrice > 0,
+      isPriceValid: !Number.isNaN(numericPrice) && numericPrice >= 0,
       isStockValid: !Number.isNaN(numericStock) && numericStock >= 0,
       hasPrimaryImage: primaryImage.length > 0,
       isValid:
         normalizedName.length > 0 &&
         !Number.isNaN(numericPrice) &&
-        numericPrice > 0 &&
+        numericPrice >= 0 &&
         !Number.isNaN(numericStock) &&
-        numericStock >= 0 &&
-        primaryImage.length > 0,
+        numericStock >= 0,
       normalizedName,
       numericPrice,
       numericStock
     };
-  }, [calculatedBundlePrice, image, name, price, productType, stock]);
+  }, [bundleItems, calculatedBundlePrice, image, name, price, productType, stock]);
 
   const productComposerStats = useMemo(() => {
     const extraImageCount = imagesInput
@@ -1041,12 +1050,13 @@ function AdminAddProducts() {
 
   const saveProduct = async () => {
     if (!formSummary.isValid) {
-      setFormMessage("Complete name, price, stock, and primary image before saving.");
-      return;
-    }
-
-    if (productType === "bundle" && selectedBundleProducts.length === 0) {
-      setFormMessage("Select at least one existing product for the bundle.");
+      if (!formSummary.isNameValid) {
+        setFormMessage("Please enter a Product Name.");
+      } else if (!formSummary.isPriceValid) {
+        setFormMessage("Please enter a valid Product Price.");
+      } else {
+        setFormMessage("Please complete product name and price before saving.");
+      }
       return;
     }
 
@@ -1059,6 +1069,42 @@ function AdminAddProducts() {
       setFormMessage("Complete each Market Pricing row with both market and regular price, or remove the unfinished row.");
       return;
     }
+
+    const processedBundleItems = bundleItems
+      .map((item) => {
+        const customName = String(item.name || "").trim();
+        const rawProductId = String(item.productId || item.product?._id || item.product || "").trim();
+        const isCustomItem = item.itemType === "custom" || (Boolean(customName) && !rawProductId);
+
+        if (isCustomItem) {
+          if (!customName) return null;
+          return {
+            itemType: "custom",
+            product: null,
+            name: customName,
+            image: String(item.image || "").trim(),
+            description: String(item.description || "").trim(),
+            price: Math.max(0, Number(item.price || 0)),
+            isDigital: item.isDigital === true,
+            webReaderLink: String(item.webReaderLink || "").trim(),
+            kindleLink: String(item.kindleLink || "").trim(),
+            quantity: Math.max(1, Number(item.quantity || 1))
+          };
+        }
+
+        if (!rawProductId) return null;
+        return {
+          itemType: "existing",
+          product: rawProductId,
+          name: customName,
+          image: String(item.image || "").trim(),
+          price: Math.max(0, Number(item.price || 0)),
+          quantity: Math.max(1, Number(item.quantity || 1))
+        };
+      })
+      .filter(Boolean);
+
+    const effectiveProductType = processedBundleItems.length > 0 ? "bundle" : productType;
 
     const payload = {
       name: formSummary.normalizedName,
@@ -1089,7 +1135,7 @@ function AdminAddProducts() {
       aboutProduct,
       festiveOffer,
       festiveDiscountPercent: festiveOffer ? Math.min(95, Math.max(0, Number(festiveDiscountPercent || 0))) : 0,
-      productType,
+      productType: effectiveProductType,
       isDigital,
       digitalType,
       webReaderLink: webReaderLink.trim(),
@@ -1097,31 +1143,7 @@ function AdminAddProducts() {
       kindleAsin: kindleAsin.trim(),
       digitalInstructions: digitalInstructions.trim(),
       courseLink: courseLink.trim(),
-      bundleItems:
-        productType === "bundle"
-          ? bundleItems
-              .map((item) => {
-                if (item.itemType === "custom") {
-                  return {
-                    itemType: "custom",
-                    name: String(item.name || "").trim(),
-                    image: String(item.image || "").trim(),
-                    description: String(item.description || "").trim(),
-                    price: Math.max(0, Number(item.price || 0)),
-                    isDigital: item.isDigital === true,
-                    webReaderLink: String(item.webReaderLink || "").trim(),
-                    kindleLink: String(item.kindleLink || "").trim(),
-                    quantity: Math.max(1, Number(item.quantity || 1))
-                  };
-                }
-                return {
-                  itemType: "existing",
-                  product: String(item.productId || "").trim(),
-                  quantity: Math.max(1, Number(item.quantity || 1))
-                };
-              })
-              .filter((item) => (item.itemType === "custom" ? Boolean(item.name) : Boolean(item.product)))
-          : [],
+      bundleItems: processedBundleItems,
       relatedProducts: relatedProductItems
         .map((item) => ({
           productId: String(item.productId || "").trim()
@@ -1425,7 +1447,14 @@ function AdminAddProducts() {
 
   const updateBundleItem = (index, field, value) => {
     setBundleItems((current) =>
-      current.map((item, itemIndex) => (itemIndex === index ? { ...item, [field]: value } : item))
+      current.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+        const updated = { ...item, [field]: value };
+        if (field === "name" && String(value || "").trim() && !updated.productId) {
+          updated.itemType = "custom";
+        }
+        return updated;
+      })
     );
   };
 

@@ -74,15 +74,19 @@ const normalizeBundleItems = (rawBundleItems = []) => {
   const seen = new Set();
 
   return rawBundleItems.reduce((acc, item) => {
-    const itemType = String(item?.itemType || (item?.product || item?.productId ? "existing" : "custom")).toLowerCase();
-    
-    if (itemType === "custom") {
-      const name = String(item?.name || "").trim();
-      if (!name) return acc;
+    const customName = String(item?.name || "").trim();
+    const rawProductId = String(item?.product?._id || item?.product || item?.productId || item?._id || "").trim();
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(rawProductId);
+
+    // Automatically recognize custom item if explicitly selected, if item.name is present, or if no valid catalog ObjectId
+    const isCustom = item?.itemType === "custom" || (Boolean(customName) && !isValidObjectId) || !rawProductId;
+
+    if (isCustom) {
+      if (!customName) return acc;
       acc.push({
         itemType: "custom",
         product: null,
-        name,
+        name: customName,
         image: String(item?.image || "").trim(),
         description: String(item?.description || "").trim(),
         price: Math.max(0, Number(item?.price || 0)),
@@ -94,16 +98,15 @@ const normalizeBundleItems = (rawBundleItems = []) => {
       return acc;
     }
 
-    const productId = String(item?.product || item?.productId || item?._id || "").trim();
-    if (!productId || seen.has(productId)) {
+    if (seen.has(rawProductId)) {
       return acc;
     }
 
-    seen.add(productId);
+    seen.add(rawProductId);
     acc.push({
       itemType: "existing",
-      product: productId,
-      name: String(item?.name || "").trim(),
+      product: rawProductId,
+      name: customName,
       image: String(item?.image || "").trim(),
       price: Math.max(0, Number(item?.price || 0)),
       quantity: Math.max(1, Number(item?.quantity || 1))
@@ -349,9 +352,10 @@ router.post("/", protect, admin, largeJson, async (req, res) => {
   try {
     const actor = await getAdminActorSnapshot(req.user);
     const images = normalizeImages(req.body.images, req.body.image);
+    const rawBundleItems = normalizeBundleItems(req.body.bundleItems);
     const typeCandidate = String(req.body?.productType || "single").trim().toLowerCase();
-    const productType = ["bundle", "bulk"].includes(typeCandidate) ? typeCandidate : "single";
-    const bundleItems = productType === "bundle" ? normalizeBundleItems(req.body.bundleItems) : [];
+    const productType = ["bundle", "bulk"].includes(typeCandidate) || rawBundleItems.length > 0 ? "bundle" : "single";
+    const bundleItems = productType === "bundle" ? rawBundleItems : [];
     const relatedProducts = normalizeRelatedProducts(req.body.relatedProducts);
     const festiveOffer = req.body?.festiveOffer === true;
     const price = normalizeProductPrice(req.body?.price);
@@ -447,11 +451,12 @@ router.put("/:id", protect, admin, largeJson, async (req, res) => {
     product.festiveDiscountPercent = product.festiveOffer
       ? normalizeFestiveDiscountPercent(req.body?.festiveDiscountPercent)
       : 0;
+    const rawBundleItemsUpdate = req.body.bundleItems !== undefined
+      ? normalizeBundleItems(req.body.bundleItems)
+      : normalizeBundleItems(product.bundleItems);
     const typeCandidateUpdate = String(req.body?.productType || product.productType || "single").trim().toLowerCase();
-    product.productType = ["bundle", "bulk"].includes(typeCandidateUpdate) ? typeCandidateUpdate : "single";
-    product.bundleItems = product.productType === "bundle"
-      ? normalizeBundleItems(req.body.bundleItems ?? product.bundleItems)
-      : [];
+    product.productType = ["bundle", "bulk"].includes(typeCandidateUpdate) || rawBundleItemsUpdate.length > 0 ? "bundle" : "single";
+    product.bundleItems = product.productType === "bundle" ? rawBundleItemsUpdate : [];
     product.relatedProducts =
       req.body.relatedProducts !== undefined
         ? normalizeRelatedProducts(req.body.relatedProducts, product._id)
@@ -550,13 +555,11 @@ router.get("/", async (req, res) => {
       req.query.category !== undefined;
 
     if (!hasPaginationQuery) {
-      // Full product list (admin panel, etc.) — cache 60s
-      const products = await cacheAside("products:all", TTL.PRODUCTS_LIST, () =>
-        Product.find({ isDeleted: { $ne: true } })
-          .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category")
-          .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
-          .lean()
-      );
+      // Full product list (admin panel, etc.) — always fetch fresh from DB
+      const products = await Product.find({ isDeleted: { $ne: true } })
+        .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+        .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+        .lean();
       return res.json(products);
     }
 
