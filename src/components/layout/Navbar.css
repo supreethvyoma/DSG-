@@ -1044,8 +1044,14 @@ html.banner-active .navbar {
     padding-top: 52px;
   }
 
+  .navbar-attached-bar {
+    max-height: 36px;
+  }
+
   .navbar-attached-bar-inner {
-    gap: 10px;
+    min-height: 26px;
+    padding: 1px 0;
+    gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -1056,19 +1062,21 @@ html.banner-active .navbar {
   }
 
   .navbar-attached-bar-start {
-    gap: 6px;
+    gap: 4px;
   }
 
   .navbar-quick-nav-btn {
-    font-size: 13px;
-    padding: 0 8px;
-    height: 32px;
+    font-size: 12px;
+    padding: 0 6px;
+    height: 24px;
+    line-height: 24px;
   }
 
   .navbar-collection-menu-btn {
-    height: 32px;
+    height: 24px;
     padding: 0 6px;
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 24px;
   }
 
   .navbar-collection-filter-menu {
