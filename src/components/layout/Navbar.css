@@ -1045,15 +1045,15 @@ html.banner-active .navbar {
   }
 
   .navbar-attached-bar {
-    max-height: 26px;
-    height: 26px;
+    max-height: 34px;
+    height: 34px;
   }
 
   .navbar-attached-bar-inner {
-    min-height: 26px;
-    height: 26px;
-    padding: 0 4px;
-    gap: 4px;
+    min-height: 34px;
+    height: 34px;
+    padding: 0 6px;
+    gap: 6px;
     overflow-x: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -1064,24 +1064,24 @@ html.banner-active .navbar {
   }
 
   .navbar-attached-bar-start {
-    gap: 2px;
+    gap: 4px;
     align-items: center;
     height: 100%;
   }
 
   .navbar-quick-nav-btn {
-    font-size: 11px;
-    padding: 0 5px;
-    height: 20px;
-    line-height: 20px;
+    font-size: 12px;
+    padding: 0 6px;
+    height: 26px;
+    line-height: 26px;
     font-weight: 500;
   }
 
   .navbar-collection-menu-btn {
-    height: 20px;
-    padding: 0 5px;
-    font-size: 11px;
-    line-height: 20px;
+    height: 26px;
+    padding: 0 6px;
+    font-size: 12px;
+    line-height: 26px;
   }
 
   .navbar-collection-filter-menu {
