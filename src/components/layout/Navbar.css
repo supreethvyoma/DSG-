@@ -1129,15 +1129,15 @@ html.banner-active .navbar {
     left: 0;
     right: 0;
     z-index: 1000;
-    height: 60px;
-    background: color-mix(in srgb, var(--site-surface) 92%, transparent);
+    height: 44px;
+    background: color-mix(in srgb, var(--site-surface) 94%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top: 1px solid var(--site-border);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
     justify-content: space-around;
     align-items: center;
-    padding: 0 var(--space-2);
+    padding: 0 var(--space-1);
   }
 
   .mobile-bottom-item {
@@ -1148,13 +1148,13 @@ html.banner-active .navbar {
     justify-content: center;
     text-decoration: none;
     color: var(--site-text-soft);
-    gap: 3px;
-    padding: var(--space-1) 0;
+    gap: 1px;
+    padding: 1px 0;
     border: none;
     background: transparent;
     cursor: pointer;
     transition: color 0.15s ease, transform 0.15s ease;
-    min-height: 48px !important;
+    min-height: 36px !important;
   }
 
   .mobile-bottom-item:hover,
@@ -1167,14 +1167,15 @@ html.banner-active .navbar {
   }
 
   .mobile-bottom-icon {
-    font-size: 20px;
+    font-size: 16px;
     line-height: 1;
   }
 
   .mobile-bottom-label {
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
     text-transform: capitalize;
+    letter-spacing: -0.2px;
   }
 
   .mobile-bottom-cart-wrap {
@@ -1184,14 +1185,14 @@ html.banner-active .navbar {
 
   .mobile-bottom-badge {
     position: absolute;
-    top: -5px;
-    right: -8px;
+    top: -4px;
+    right: -7px;
     background: var(--site-badge-bg);
     color: var(--site-badge-text);
-    font-size: 9px;
+    font-size: 8.5px;
     font-weight: 800;
-    min-width: 15px;
-    height: 15px;
+    min-width: 14px;
+    height: 14px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -1200,7 +1201,7 @@ html.banner-active .navbar {
   }
 
   body {
-    padding-bottom: 60px !important;
+    padding-bottom: 44px !important;
   }
 }
 

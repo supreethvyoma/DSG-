@@ -1196,7 +1196,7 @@ border-bottom:none;
 
 @media (max-width: 768px) {
   .admin-mobile-nav-toggle {
-    bottom: 78px;
+    bottom: 56px;
   }
 
   /* Universal Mobile Responsiveness Rules for Admin Dashboard Pages */
