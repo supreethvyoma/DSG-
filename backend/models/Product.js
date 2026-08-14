@@ -59,15 +59,49 @@ const bundleItemSchema = new mongoose.Schema(
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
-      required: true
+      default: null,
+      required: false
+    },
+    itemType: {
+      type: String,
+      enum: ["existing", "custom"],
+      default: "existing"
     },
     quantity: {
       type: Number,
       default: 1,
       min: 1
+    },
+    name: {
+      type: String,
+      default: ""
+    },
+    image: {
+      type: String,
+      default: ""
+    },
+    description: {
+      type: String,
+      default: ""
+    },
+    price: {
+      type: Number,
+      default: 0
+    },
+    isDigital: {
+      type: Boolean,
+      default: false
+    },
+    webReaderLink: {
+      type: String,
+      default: ""
+    },
+    kindleLink: {
+      type: String,
+      default: ""
     }
   },
-  { _id: false }
+  { _id: true }
 );
 
 const productSchema = new mongoose.Schema(

@@ -627,3 +627,104 @@ cursor:pointer;
   font-size: 13px;
   color: var(--admin-muted, #64748b);
 }
+
+/* Bundle Builder Cards & Dual-Mode Controls */
+.bundle-builder-card {
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--admin-surface, #ffffff);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bundle-builder-type-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.bundle-type-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--admin-surface-2, #f1f5f9);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.bundle-type-tab {
+  border: none;
+  background: transparent;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  color: var(--admin-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bundle-type-tab.active {
+  background: var(--admin-surface, #ffffff);
+  color: var(--admin-text, #0f172a);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.bundle-remove-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.custom-bundle-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--admin-surface-2, #f8fafc);
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--admin-border, #cbd5e1);
+}
+
+.custom-bundle-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 80px;
+  gap: 10px;
+}
+
+.custom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.custom-field span {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--admin-muted, #64748b);
+}
+
+.custom-field input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid var(--admin-border, #cbd5e1);
+  border-radius: 6px;
+  background: var(--admin-surface, #ffffff);
+}
+
+.custom-bundle-digital-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .custom-bundle-grid {
+    grid-template-columns: 1fr;
+  }
+}

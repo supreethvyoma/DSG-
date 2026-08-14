@@ -23,7 +23,18 @@ function createEmptyHeroBanner() {
 }
 
 function createEmptyBundleItem() {
-  return { productId: "", quantity: "1" };
+  return {
+    itemType: "existing",
+    productId: "",
+    quantity: "1",
+    name: "",
+    image: "",
+    description: "",
+    price: "",
+    isDigital: false,
+    webReaderLink: "",
+    kindleLink: ""
+  };
 }
 
 function createEmptyCountryPrice() {
@@ -433,6 +444,17 @@ function AdminAddProducts() {
   const selectedBundleProducts = useMemo(() => {
     return bundleItems
       .map((item) => {
+        if (item.itemType === "custom") {
+          if (!item.name?.trim()) return null;
+          return {
+            _id: `custom-${item.name}`,
+            name: item.name,
+            price: Number(item.price || 0),
+            quantity: Math.max(1, Number(item.quantity || 1)),
+            image: item.image,
+            isCustom: true
+          };
+        }
         const matchedProduct = availableBundleProducts.find(
           (product) => String(product?._id || "") === String(item.productId || "")
         );
@@ -1078,11 +1100,27 @@ function AdminAddProducts() {
       bundleItems:
         productType === "bundle"
           ? bundleItems
-              .map((item) => ({
-                productId: String(item.productId || "").trim(),
-                quantity: Math.max(1, Number(item.quantity || 1))
-              }))
-              .filter((item) => item.productId)
+              .map((item) => {
+                if (item.itemType === "custom") {
+                  return {
+                    itemType: "custom",
+                    name: String(item.name || "").trim(),
+                    image: String(item.image || "").trim(),
+                    description: String(item.description || "").trim(),
+                    price: Math.max(0, Number(item.price || 0)),
+                    isDigital: item.isDigital === true,
+                    webReaderLink: String(item.webReaderLink || "").trim(),
+                    kindleLink: String(item.kindleLink || "").trim(),
+                    quantity: Math.max(1, Number(item.quantity || 1))
+                  };
+                }
+                return {
+                  itemType: "existing",
+                  product: String(item.productId || "").trim(),
+                  quantity: Math.max(1, Number(item.quantity || 1))
+                };
+              })
+              .filter((item) => (item.itemType === "custom" ? Boolean(item.name) : Boolean(item.product)))
           : [],
       relatedProducts: relatedProductItems
         .map((item) => ({
@@ -1178,8 +1216,16 @@ function AdminAddProducts() {
     setBundleItems(
       Array.isArray(product.bundleItems) && product.bundleItems.length > 0
         ? product.bundleItems.map((item) => ({
+            itemType: item?.itemType || (item?.product ? "existing" : "custom"),
             productId: String(item?.product?._id || item?.product || ""),
-            quantity: String(Math.max(1, Number(item?.quantity || 1)))
+            quantity: String(Math.max(1, Number(item?.quantity || 1))),
+            name: String(item?.name || item?.product?.name || ""),
+            image: String(item?.image || item?.product?.image || ""),
+            description: String(item?.description || ""),
+            price: String(item?.price || item?.product?.price || ""),
+            isDigital: item?.isDigital === true || item?.product?.isDigital === true,
+            webReaderLink: String(item?.webReaderLink || item?.product?.webReaderLink || ""),
+            kindleLink: String(item?.kindleLink || item?.product?.kindleLink || "")
           }))
         : [createEmptyBundleItem()]
     );
@@ -1904,33 +1950,133 @@ function AdminAddProducts() {
                       <span>Bundle Products</span>
                       <div className="admin-bundle-builder">
                         <div className="admin-bundle-builder-head">
-                          <strong>Create this bundle from existing products</strong>
+                          <div>
+                            <strong>Build your bundle with catalog products or custom items</strong>
+                            <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--admin-muted)" }}>
+                              Add existing products from store or create custom items directly inside this bundle.
+                            </p>
+                          </div>
                           <button type="button" onClick={addBundleItem}>
-                            Add Bundle Item
+                            ＋ Add Bundle Item
                           </button>
                         </div>
 
                         <div className="admin-bundle-builder-list">
                           {bundleItems.map((item, index) => (
-                            <div key={`bundle-item-${index}`} className="admin-bundle-builder-row">
-                              <SearchableProductSelect
-                                products={availableBundleProducts}
-                                value={item.productId}
-                                onChange={(val) => updateBundleItem(index, "productId", val)}
-                                placeholder="Search & select bundle product..."
-                              />
+                            <div key={`bundle-item-${index}`} className="bundle-builder-card">
+                              <div className="bundle-builder-type-bar">
+                                <div className="bundle-type-tabs">
+                                  <button
+                                    type="button"
+                                    className={`bundle-type-tab ${item.itemType !== "custom" ? "active" : ""}`}
+                                    onClick={() => updateBundleItem(index, "itemType", "existing")}
+                                  >
+                                    📦 Store Catalog Product
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`bundle-type-tab ${item.itemType === "custom" ? "active" : ""}`}
+                                    onClick={() => updateBundleItem(index, "itemType", "custom")}
+                                  >
+                                    ✍️ Create Custom Item
+                                  </button>
+                                </div>
+                                <button type="button" className="danger bundle-remove-btn" onClick={() => removeBundleItem(index)}>
+                                  ✕ Remove
+                                </button>
+                              </div>
 
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.quantity}
-                                onChange={(e) => updateBundleItem(index, "quantity", e.target.value)}
-                                placeholder="Qty"
-                              />
+                              {item.itemType === "custom" ? (
+                                <div className="custom-bundle-fields">
+                                  <div className="custom-bundle-grid">
+                                    <label className="custom-field">
+                                      <span>Item Title *</span>
+                                      <input
+                                        type="text"
+                                        placeholder="e.g. Bhagavad Gita Audio Guide"
+                                        value={item.name || ""}
+                                        onChange={(e) => updateBundleItem(index, "name", e.target.value)}
+                                      />
+                                    </label>
+                                    <label className="custom-field">
+                                      <span>Item Value (Rs)</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="e.g. 299"
+                                        value={item.price || ""}
+                                        onChange={(e) => updateBundleItem(index, "price", e.target.value)}
+                                      />
+                                    </label>
+                                    <label className="custom-field custom-field-sm">
+                                      <span>Quantity</span>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        value={item.quantity || "1"}
+                                        onChange={(e) => updateBundleItem(index, "quantity", e.target.value)}
+                                      />
+                                    </label>
+                                  </div>
 
-                              <button type="button" className="danger" onClick={() => removeBundleItem(index)}>
-                                Remove
-                              </button>
+                                  <div className="custom-bundle-grid">
+                                    <label className="custom-field">
+                                      <span>Thumbnail Image URL (optional)</span>
+                                      <input
+                                        type="text"
+                                        placeholder="https://example.com/item.jpg"
+                                        value={item.image || ""}
+                                        onChange={(e) => updateBundleItem(index, "image", e.target.value)}
+                                      />
+                                    </label>
+                                    <label className="custom-field">
+                                      <span>Short Description</span>
+                                      <input
+                                        type="text"
+                                        placeholder="Brief details about what is included"
+                                        value={item.description || ""}
+                                        onChange={(e) => updateBundleItem(index, "description", e.target.value)}
+                                      />
+                                    </label>
+                                  </div>
+
+                                  <div className="custom-bundle-digital-row">
+                                    <label className="checkbox-label">
+                                      <input
+                                        type="checkbox"
+                                        checked={item.isDigital === true}
+                                        onChange={(e) => updateBundleItem(index, "isDigital", e.target.checked)}
+                                      />
+                                      <span>Is Digital Item (Web Reader / Downloadable)</span>
+                                    </label>
+                                    {item.isDigital && (
+                                      <input
+                                        type="text"
+                                        placeholder="Web Reader Link URL (unlocked in My Library)"
+                                        value={item.webReaderLink || ""}
+                                        onChange={(e) => updateBundleItem(index, "webReaderLink", e.target.value)}
+                                        style={{ marginTop: "6px" }}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="admin-bundle-builder-row">
+                                  <SearchableProductSelect
+                                    products={availableBundleProducts}
+                                    value={item.productId}
+                                    onChange={(val) => updateBundleItem(index, "productId", val)}
+                                    placeholder="Search & select bundle product..."
+                                  />
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={item.quantity}
+                                    onChange={(e) => updateBundleItem(index, "quantity", e.target.value)}
+                                    placeholder="Qty"
+                                  />
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

@@ -74,6 +74,26 @@ const normalizeBundleItems = (rawBundleItems = []) => {
   const seen = new Set();
 
   return rawBundleItems.reduce((acc, item) => {
+    const itemType = String(item?.itemType || (item?.product || item?.productId ? "existing" : "custom")).toLowerCase();
+    
+    if (itemType === "custom") {
+      const name = String(item?.name || "").trim();
+      if (!name) return acc;
+      acc.push({
+        itemType: "custom",
+        product: null,
+        name,
+        image: String(item?.image || "").trim(),
+        description: String(item?.description || "").trim(),
+        price: Math.max(0, Number(item?.price || 0)),
+        isDigital: item?.isDigital === true,
+        webReaderLink: String(item?.webReaderLink || "").trim(),
+        kindleLink: String(item?.kindleLink || "").trim(),
+        quantity: Math.max(1, Number(item?.quantity || 1))
+      });
+      return acc;
+    }
+
     const productId = String(item?.product || item?.productId || item?._id || "").trim();
     if (!productId || seen.has(productId)) {
       return acc;
@@ -81,7 +101,11 @@ const normalizeBundleItems = (rawBundleItems = []) => {
 
     seen.add(productId);
     acc.push({
+      itemType: "existing",
       product: productId,
+      name: String(item?.name || "").trim(),
+      image: String(item?.image || "").trim(),
+      price: Math.max(0, Number(item?.price || 0)),
       quantity: Math.max(1, Number(item?.quantity || 1))
     });
     return acc;

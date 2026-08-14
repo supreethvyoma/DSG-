@@ -610,7 +610,10 @@ function Product() {
   const calculatedTotalPrice = Math.round(displayPrice * currentQty * 100) / 100;
   const bundleOriginalTotal = bundleItems.reduce((sum, item) => {
     const bundledProduct = item?.product;
-    return sum + Number(getProductPriceDetails(bundledProduct, selectedAddress?.country).price || 0) * Math.max(1, Number(item?.quantity || 1));
+    const itemPrice = bundledProduct
+      ? Number(getProductPriceDetails(bundledProduct, selectedAddress?.country).price || 0)
+      : Number(item?.price || 0);
+    return sum + itemPrice * Math.max(1, Number(item?.quantity || 1));
   }, 0);
   const bundleSavings = Math.max(0, bundleOriginalTotal - displayPrice);
   const marketRegularPrice = Number(pricing.marketRegularPrice || 0);
@@ -1091,20 +1094,56 @@ function Product() {
 
         {isBundle && bundleItems.length > 0 ? (
           <div className="product-details-description">
-            <h4>Included in this bundle</h4>
+            <h4>Included in this bundle ({bundleItems.length} Items)</h4>
             <ul className="product-bundle-list">
               {bundleItems.map((item, index) => {
                 const includedProduct = item?.product;
                 const includedId = includedProduct?._id || item?.product;
-                const includedName = includedProduct?.name || "Included product";
+                const includedName = includedProduct?.name || item?.name || "Included Item";
+                const includedImage = includedProduct?.image || item?.image || "";
+                const includedPrice = includedProduct ? Number(getProductPriceDetails(includedProduct, selectedAddress?.country).price || 0) : Number(item?.price || 0);
+                const isDigitalItem = item?.isDigital === true || includedProduct?.isDigital === true;
+                const qty = Math.max(1, Number(item?.quantity || 1));
+                const itemDescription = item?.description || includedProduct?.description || "";
+
                 return (
-                  <li key={`${includedId || "bundle-item"}-${index}`}>
-                    <div>
-                      <strong>{includedName}</strong>
-                      <span>Quantity: {Math.max(1, Number(item?.quantity || 1))}</span>
+                  <li key={`${includedId || "bundle-item"}-${index}`} className="bundle-item-card">
+                    {includedImage ? (
+                      <div className="bundle-item-img-wrap">
+                        <img src={includedImage} alt={includedName} className="bundle-item-img" />
+                      </div>
+                    ) : null}
+
+                    <div className="bundle-item-content">
+                      <div className="bundle-item-header">
+                        <strong>{includedName}</strong>
+                        <span className="bundle-item-qty-badge">x{qty}</span>
+                      </div>
+                      
+                      <div className="bundle-item-meta">
+                        {isDigitalItem ? (
+                          <span className="bundle-format-tag bundle-format-tag--digital">💻 Digital Version</span>
+                        ) : (
+                          <span className="bundle-format-tag bundle-format-tag--physical">📚 Printed Book</span>
+                        )}
+                        {includedPrice > 0 ? (
+                          <span className="bundle-item-price-val">
+                            Value: {formatCurrencyExact(includedPrice * qty, displayCurrency)}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {itemDescription ? (
+                        <p className="bundle-item-desc">
+                          {itemDescription.length > 120 ? `${itemDescription.substring(0, 120)}...` : itemDescription}
+                        </p>
+                      ) : null}
                     </div>
+
                     {includedProduct?._id ? (
-                      <Link to={`/product/${includedProduct._id}`}>View item</Link>
+                      <Link to={`/product/${includedProduct._id}`} className="bundle-view-link">
+                        View item →
+                      </Link>
                     ) : null}
                   </li>
                 );
