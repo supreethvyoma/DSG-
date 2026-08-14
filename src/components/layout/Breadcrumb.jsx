@@ -176,15 +176,13 @@ export default function Breadcrumb() {
             const isLast = idx === breadcrumbs.length - 1;
             return (
               <li key={`${crumb.path}-${idx}`} className={`site-breadcrumb-item ${isLast ? "active" : ""}`}>
-                {idx > 0 && <span className="site-breadcrumb-separator">›</span>}
+                {idx > 0 && <span className="site-breadcrumb-separator">/</span>}
                 {isLast ? (
                   <span className="site-breadcrumb-current" aria-current="page">
-                    {idx === 0 && <span className="breadcrumb-home-icon">🏠 </span>}
                     {crumb.label}
                   </span>
                 ) : (
                   <Link to={crumb.path} className="site-breadcrumb-link">
-                    {idx === 0 && <span className="breadcrumb-home-icon">🏠 </span>}
                     {crumb.label}
                   </Link>
                 )}
