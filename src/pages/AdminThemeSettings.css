@@ -938,3 +938,85 @@ color:var(--admin-muted);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+
+/* Mobile Responsiveness for Homepage Hero Banners Section */
+@media (max-width: 900px) {
+  .hero-banner-admin-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .admin-card-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  .add-product-status-badges {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+  }
+
+  .hero-banner-admin-list {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+
+  .hero-banner-admin-tab-item {
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+  }
+
+  .hero-banner-admin-add-btn,
+  .hero-banner-admin-upload-btn {
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+  }
+
+  .hero-banner-field-label-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+  }
+
+  .field-action-btns {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+
+  .hero-banner-admin-meta {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-banner-preview-box {
+    padding: 12px !important;
+  }
+
+  .preview-segmented-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .preview-switcher {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  .preview-switch-btn {
+    flex: 1 !important;
+    text-align: center !important;
+  }
+
+  .hero-banner-actions-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .hero-banner-actions-footer button {
+    width: 100% !important;
+  }
+}
