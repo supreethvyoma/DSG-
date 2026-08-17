@@ -10,6 +10,7 @@ import { formatCurrencyForUser } from "../utils/currency";
 import { formatDate } from "../utils/date";
 import "./MyAccount.css";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import { Bell, BellOff } from "lucide-react";
 
 // ── Push Notification Subscribe Section ──────────────────────────────────────
 function PushSubscribeSection({ token }) {
@@ -90,50 +91,69 @@ function PushSubscribeSection({ token }) {
     }
   };
 
-  if (!("Notification" in window) || !("serviceWorker" in navigator)) return null;
+  const isGranted = permission === "granted";
 
   return (
     <section className="my-account-panel my-account-panel-compact">
       <div className="my-account-panel-head">
-        <div>
-          <p className="my-account-section-kicker">Notifications</p>
-          <h2>Push Notifications</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div className={`my-account-bell-icon-badge ${isGranted ? "active" : ""}`}>
+            {isGranted ? <Bell size={20} /> : <BellOff size={20} />}
+          </div>
+          <div>
+            <p className="my-account-section-kicker">Notifications</p>
+            <h2>Push Notifications</h2>
+          </div>
         </div>
       </div>
+
       <div className="my-account-push-box">
         <p className="my-account-push-desc">
           Get instant alerts for order updates, delivery status, and low-stock warnings for your wishlist items.
         </p>
-        <div className="my-account-push-status">
-          <span className={`my-account-push-dot ${permission === "granted" ? "on" : "off"}`} />
-          {permission === "granted" ? "Notifications enabled" : permission === "denied" ? "Notifications blocked in browser" : "Notifications not enabled"}
-        </div>
-        {status && <p className="my-account-push-msg">{status}</p>}
+
         <div className="notifications-toggle-row">
           <label className={`notifications-toggle-label${permission === "denied" ? " disabled" : ""}`}>
             <button
               type="button"
-              className={`notifications-toggle${permission === "granted" ? " on" : ""}`}
-              onClick={permission === "granted" ? unsubscribe : subscribe}
+              className={`notifications-toggle${isGranted ? " on" : ""}`}
+              onClick={isGranted ? unsubscribe : subscribe}
               disabled={isSubscribing || permission === "denied"}
               role="switch"
-              aria-checked={permission === "granted"}
+              aria-checked={isGranted}
               aria-label="Toggle push notifications"
             >
-              <span className="notifications-toggle-thumb" />
+              <span className="notifications-toggle-thumb">
+                {isSubscribing ? (
+                  <span className="notifications-spinner-dot" />
+                ) : isGranted ? (
+                  <Bell size={12} style={{ color: "#059669" }} />
+                ) : (
+                  <BellOff size={12} style={{ color: "#64748b" }} />
+                )}
+              </span>
             </button>
-            <span className="notifications-toggle-text">
-              {isSubscribing
-                ? "Processing..."
-                : permission === "granted"
-                  ? "Notifications are enabled"
-                  : "Notifications are disabled"}
-            </span>
+
+            <div className="notifications-toggle-info">
+              <span className="notifications-toggle-text">
+                {isSubscribing
+                  ? "Updating notification settings..."
+                  : isGranted
+                  ? "Push notifications are active"
+                  : "Push notifications are turned off"}
+              </span>
+              <span className={`notifications-status-pill ${isGranted ? "active" : ""}`}>
+                {isGranted ? "Enabled" : permission === "denied" ? "Blocked in browser" : "Off"}
+              </span>
+            </div>
           </label>
         </div>
+
+        {status && <p className="my-account-push-msg">{status}</p>}
+
         {permission === "denied" && (
           <p className="my-account-push-hint" style={{ marginTop: "8px", fontSize: "13px", color: "var(--site-text-soft)" }}>
-            To re-enable, click the lock icon in your browser address bar → Notifications → Allow.
+            🔒 To re-enable, click the lock icon in your browser address bar → Notifications → Allow.
           </p>
         )}
       </div>
