@@ -227,6 +227,7 @@ function MyAccount() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [confirmDeleteIndex, setConfirmDeleteIndex] = useState(null);
   const [addressError, setAddressError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [addressLabel, setAddressLabel] = useState("Home");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -431,6 +432,7 @@ function MyAccount() {
     setCountry("India");
     setEditingIndex(null);
     setAddressError("");
+    setFieldErrors({});
   };
 
   const closeAddressForm = () => {
@@ -453,31 +455,43 @@ function MyAccount() {
   };
 
   const saveAddress = async () => {
+    const errors = {};
     const digits = String(phone || "").replace(/\D/g, "");
+    const cleanName = String(name || "").trim();
+    const cleanAddress = String(address || "").trim();
+    const cleanCity = String(city || "").trim();
+    const cleanState = String(state || "").trim();
     const cleanPincode = String(pincode || "").trim();
     const cleanCountry = String(country || "").trim();
 
-    if (!name || !digits || !address || !city || !state || !cleanPincode || !cleanCountry) {
-      setAddressError("Please fill full name, phone, address, city, state, postal code, and country.");
-      return;
-    }
+    if (!cleanName) errors.name = "Full Name is required.";
+    if (!cleanAddress) errors.address = "Complete Address is required.";
+    if (!cleanCity) errors.city = "City is required.";
+    if (!cleanState) errors.state = "State is required.";
+    if (!cleanCountry) errors.country = "Country is required.";
 
     const isIndia = !cleanCountry || cleanCountry.toLowerCase() === "india";
-    if (isIndia && !/^[6-9]\d{9}$/.test(digits)) {
-      setAddressError("Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9 (e.g. 9876543210).");
+    if (!digits) {
+      errors.phone = "Phone number is required.";
+    } else if (isIndia && !/^[6-9]\d{9}$/.test(digits)) {
+      errors.phone = "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9 (e.g. 9876543210).";
+    } else if (!isIndia && (digits.length < 7 || digits.length > 15)) {
+      errors.phone = "Please enter a valid phone number (7 to 15 digits).";
+    }
+
+    if (!cleanPincode) {
+      errors.pincode = "Postal code is required.";
+    } else if (!/^[A-Za-z0-9\s-]{3,12}$/.test(cleanPincode)) {
+      errors.pincode = "Enter a valid postal code (e.g. 560072 or 110001).";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setAddressError("Please fix the highlighted errors below.");
       return;
     }
 
-    if (!isIndia && (digits.length < 7 || digits.length > 15)) {
-      setAddressError("Please enter a valid phone number (7 to 15 digits).");
-      return;
-    }
-
-    if (!/^[A-Za-z0-9\s-]{3,12}$/.test(cleanPincode)) {
-      setAddressError("Enter a valid postal code (e.g. 560072 or 110001).");
-      return;
-    }
-
+    setFieldErrors({});
     setAddressError("");
 
     const existingAddress = editingIndex === null ? null : addresses[editingIndex] || null;
@@ -875,7 +889,17 @@ function MyAccount() {
 
             <label>
               <span>Full Name</span>
-              <input ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rohan Sharma" />
+              <input
+                ref={nameInputRef}
+                value={name}
+                className={fieldErrors.name ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: "" }));
+                }}
+                placeholder="e.g. Rohan Sharma"
+              />
+              {fieldErrors.name && <span className="my-account-inline-error">⚠️ {fieldErrors.name}</span>}
             </label>
             <label>
               <span>Phone Number</span>
@@ -883,17 +907,27 @@ function MyAccount() {
                 type="tel"
                 maxLength={15}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ""))}
+                className={fieldErrors.phone ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/[^\d+]/g, ""));
+                  if (fieldErrors.phone) setFieldErrors((prev) => ({ ...prev, phone: "" }));
+                }}
                 placeholder="e.g. 9876543210"
               />
+              {fieldErrors.phone && <span className="my-account-inline-error">⚠️ {fieldErrors.phone}</span>}
             </label>
             <label>
               <span>Complete Address</span>
               <textarea
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                className={fieldErrors.address ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setAddress(e.target.value);
+                  if (fieldErrors.address) setFieldErrors((prev) => ({ ...prev, address: "" }));
+                }}
                 placeholder="Flat, house no., building, street, area"
               />
+              {fieldErrors.address && <span className="my-account-inline-error">⚠️ {fieldErrors.address}</span>}
             </label>
             <label>
               <span>Landmark</span>
@@ -901,19 +935,55 @@ function MyAccount() {
             </label>
             <label>
               <span>City</span>
-              <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Delhi" />
+              <input
+                value={city}
+                className={fieldErrors.city ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  if (fieldErrors.city) setFieldErrors((prev) => ({ ...prev, city: "" }));
+                }}
+                placeholder="e.g. Delhi"
+              />
+              {fieldErrors.city && <span className="my-account-inline-error">⚠️ {fieldErrors.city}</span>}
             </label>
             <label>
               <span>State</span>
-              <input value={state} onChange={(e) => setState(e.target.value)} placeholder="e.g. Uttar Pradesh" />
+              <input
+                value={state}
+                className={fieldErrors.state ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setState(e.target.value);
+                  if (fieldErrors.state) setFieldErrors((prev) => ({ ...prev, state: "" }));
+                }}
+                placeholder="e.g. Uttar Pradesh"
+              />
+              {fieldErrors.state && <span className="my-account-inline-error">⚠️ {fieldErrors.state}</span>}
             </label>
             <label>
               <span>Postal Code</span>
-              <input value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="e.g. 110001 or SW1A 1AA" />
+              <input
+                value={pincode}
+                className={fieldErrors.pincode ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setPincode(e.target.value);
+                  if (fieldErrors.pincode) setFieldErrors((prev) => ({ ...prev, pincode: "" }));
+                }}
+                placeholder="e.g. 110001 or SW1A 1AA"
+              />
+              {fieldErrors.pincode && <span className="my-account-inline-error">⚠️ {fieldErrors.pincode}</span>}
             </label>
             <label>
               <span>Country</span>
-              <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. India, USA, UK" />
+              <input
+                value={country}
+                className={fieldErrors.country ? "invalid-input" : ""}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  if (fieldErrors.country) setFieldErrors((prev) => ({ ...prev, country: "" }));
+                }}
+                placeholder="e.g. India, USA, UK"
+              />
+              {fieldErrors.country && <span className="my-account-inline-error">⚠️ {fieldErrors.country}</span>}
             </label>
 
             {addressError && (
