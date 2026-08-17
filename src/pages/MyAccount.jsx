@@ -112,41 +112,41 @@ function PushSubscribeSection({ token }) {
           Get instant alerts for order updates, delivery status, and low-stock warnings for your wishlist items.
         </p>
 
-        <div className="notifications-toggle-row">
-          <label className={`notifications-toggle-label${permission === "denied" ? " disabled" : ""}`}>
-            <button
-              type="button"
-              className={`notifications-toggle${isGranted ? " on" : ""}`}
-              onClick={isGranted ? unsubscribe : subscribe}
-              disabled={isSubscribing || permission === "denied"}
-              role="switch"
-              aria-checked={isGranted}
-              aria-label="Toggle push notifications"
-            >
-              <span className="notifications-toggle-thumb">
-                {isSubscribing ? (
-                  <span className="notifications-spinner-dot" />
-                ) : isGranted ? (
-                  <Bell size={12} style={{ color: "#059669" }} />
-                ) : (
-                  <BellOff size={12} style={{ color: "#64748b" }} />
-                )}
-              </span>
-            </button>
-
-            <div className="notifications-toggle-info">
-              <span className="notifications-toggle-text">
-                {isSubscribing
-                  ? "Updating notification settings..."
-                  : isGranted
-                  ? "Push notifications are active"
-                  : "Push notifications are turned off"}
-              </span>
+        <div className="notifications-toggle-card">
+          <div className="notifications-toggle-info">
+            <span className="notifications-toggle-text">
+              {isSubscribing
+                ? "Updating settings..."
+                : isGranted
+                ? "Push Notifications Active"
+                : "Push Notifications Off"}
+            </span>
+            <div className="notifications-status-row">
               <span className={`notifications-status-pill ${isGranted ? "active" : ""}`}>
-                {isGranted ? "Enabled" : permission === "denied" ? "Blocked in browser" : "Off"}
+                {isGranted ? "Enabled" : permission === "denied" ? "Blocked in browser" : "Disabled"}
               </span>
             </div>
-          </label>
+          </div>
+
+          <button
+            type="button"
+            className={`notifications-toggle${isGranted ? " on" : ""}`}
+            onClick={isGranted ? unsubscribe : subscribe}
+            disabled={isSubscribing || permission === "denied"}
+            role="switch"
+            aria-checked={isGranted}
+            aria-label="Toggle push notifications"
+          >
+            <span className="notifications-toggle-thumb">
+              {isSubscribing ? (
+                <span className="notifications-spinner-dot" />
+              ) : isGranted ? (
+                <Bell size={12} style={{ color: "#059669" }} />
+              ) : (
+                <BellOff size={12} style={{ color: "#64748b" }} />
+              )}
+            </span>
+          </button>
         </div>
 
         {status && <p className="my-account-push-msg">{status}</p>}
