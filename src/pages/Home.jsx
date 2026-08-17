@@ -441,11 +441,11 @@ function Home() {
             {/* <p>Start with the items other customers already rate highly.</p> */}
           </div>
           <div className="home-slider-controls">
-            <button type="button" onClick={() => scrollSpotlight(-1)} aria-label="Scroll top rated left">
-              <span aria-hidden="true">{"\u2039"}</span>
+            <button type="button" onClick={() => scrollSpotlight(-1)} aria-label="Previous items">
+              <ChevronLeft size={18} />
             </button>
-            <button type="button" onClick={() => scrollSpotlight(1)} aria-label="Scroll top rated right">
-              <span aria-hidden="true">{"\u203A"}</span>
+            <button type="button" onClick={() => scrollSpotlight(1)} aria-label="Next items">
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>

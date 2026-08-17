@@ -13,11 +13,25 @@ function Register() {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setPhoneError("");
+
+    const digits = String(phone || "").replace(/\D/g, "");
+    if (!digits) {
+      setPhoneError("Phone number is required.");
+      return;
+    }
+
+    if (!/^[6-9]\d{9}$/.test(digits) && (digits.length < 7 || digits.length > 15)) {
+      setPhoneError("Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9 (e.g. 9876543210).");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -66,14 +80,27 @@ function Register() {
               required
             />
 
-            <label htmlFor="register-phone">Phone Number (optional)</label>
+            <label htmlFor="register-phone">
+              Phone Number <span style={{ color: "#ef4444" }}>*</span>
+            </label>
             <input
               id="register-phone"
               type="tel"
-              placeholder="Enter your phone number"
+              maxLength={15}
+              placeholder="e.g. 9876543210"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              className={phoneError ? "invalid-input" : ""}
+              onChange={(e) => {
+                setPhone(e.target.value.replace(/[^\d+]/g, ""));
+                if (phoneError) setPhoneError("");
+              }}
+              required
             />
+            {phoneError && (
+              <span className="register-field-error" style={{ color: "#dc2626", fontSize: "12px", fontWeight: "600", marginTop: "4px", display: "block" }}>
+                ⚠️ {phoneError}
+              </span>
+            )}
 
             <label htmlFor="register-password">Password</label>
             <input
