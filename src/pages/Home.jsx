@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import RecentlyViewed from "../components/RecentlyViewed";
 import { formatResolvedPrice } from "../utils/currency";
@@ -147,6 +147,9 @@ function Home() {
   const [showSecondarySections, setShowSecondarySections] = useState(false);
   const [sponsorsList, setSponsorsList] = useState([]);
   const spotlightRef = useRef(null);
+  const festiveRef = useRef(null);
+  const bundleRef = useRef(null);
+  const catalogPreviewRef = useRef(null);
   const catalogRef = useRef(null);
   const location = useLocation();
 
@@ -225,8 +228,8 @@ function Home() {
     };
   }, []);
 
-  const scrollSpotlight = (direction) => {
-    spotlightRef.current?.scrollBy({ left: direction * 320, behavior: "smooth" });
+  const scrollRow = (targetRef, direction) => {
+    targetRef?.current?.scrollBy({ left: direction * 340, behavior: "smooth" });
   };
 
   // Handle scrollTo query param from navbar quick-nav buttons
@@ -438,28 +441,39 @@ function Home() {
           <div>
             <span className="home-section-kicker">Most trusted</span>
             <h2>Top Rated Picks</h2>
-            {/* <p>Start with the items other customers already rate highly.</p> */}
-          </div>
-          <div className="home-slider-controls">
-            <button type="button" onClick={() => scrollSpotlight(-1)} aria-label="Previous items">
-              <ChevronLeft size={18} />
-            </button>
-            <button type="button" onClick={() => scrollSpotlight(1)} aria-label="Next items">
-              <ChevronRight size={18} />
-            </button>
           </div>
         </div>
 
-        <div ref={spotlightRef} className="home-spotlight-row">
-          {isLoadingProducts ? (
-            <LoadingSpinner text="Loading top rated picks..." minHeight="200px" />
-          ) : (
-            topRatedProducts.map((product) => (
-              <div key={product._id} className="home-spotlight-item">
-                <ProductCard product={product} showDescription={false} variant="home" />
-              </div>
-            ))
-          )}
+        <div className="home-slider-wrapper">
+          <button
+            type="button"
+            className="home-slider-arrow left"
+            onClick={() => scrollRow(spotlightRef, -1)}
+            aria-label="Previous items"
+          >
+            <ChevronsLeft size={22} />
+          </button>
+
+          <div ref={spotlightRef} className="home-spotlight-row">
+            {isLoadingProducts ? (
+              <LoadingSpinner text="Loading top rated picks..." minHeight="200px" />
+            ) : (
+              topRatedProducts.map((product) => (
+                <div key={product._id} className="home-spotlight-item">
+                  <ProductCard product={product} showDescription={false} variant="home" />
+                </div>
+              ))
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="home-slider-arrow right"
+            onClick={() => scrollRow(spotlightRef, 1)}
+            aria-label="Next items"
+          >
+            <ChevronsRight size={22} />
+          </button>
         </div>
       </section>
 
@@ -564,26 +578,49 @@ function Home() {
               <div>
                 <span className="home-section-kicker">Seasonal picks</span>
                 <h2>Festive Offers</h2>
-                {/* <p>Shop festive offer products highlighted by admin.</p> */}
               </div>
               <Link to="/collection" className="home-inline-link">View all</Link>
             </div>
 
-            <div className="home-catalog-preview-row">
-              {isLoadingProducts ? (
-                <LoadingSpinner text="Loading festive offers..." minHeight="180px" />
-              ) : festiveOfferProducts.length > 0 ? (
-                festiveOfferProducts.map((product) => (
-                  <div key={product._id} className="home-catalog-preview-item">
-                    <ProductCard product={product} showDescription={false} variant="home" />
+            <div className="home-slider-wrapper">
+              {festiveOfferProducts.length > 0 ? (
+                <button
+                  type="button"
+                  className="home-slider-arrow left"
+                  onClick={() => scrollRow(festiveRef, -1)}
+                  aria-label="Previous festive offers"
+                >
+                  <ChevronsLeft size={22} />
+                </button>
+              ) : null}
+
+              <div ref={festiveRef} className="home-catalog-preview-row">
+                {isLoadingProducts ? (
+                  <LoadingSpinner text="Loading festive offers..." minHeight="180px" />
+                ) : festiveOfferProducts.length > 0 ? (
+                  festiveOfferProducts.map((product) => (
+                    <div key={product._id} className="home-catalog-preview-item">
+                      <ProductCard product={product} showDescription={false} variant="home" />
+                    </div>
+                  ))
+                ) : (
+                  <div className="home-empty-state">
+                    <strong>No festive offers yet</strong>
+                    <p>Products marked as festive offers by admin will appear here automatically.</p>
                   </div>
-                ))
-              ) : (
-                <div className="home-empty-state">
-                  <strong>No festive offers yet</strong>
-                  <p>Products marked as festive offers by admin will appear here automatically.</p>
-                </div>
-              )}
+                )}
+              </div>
+
+              {festiveOfferProducts.length > 0 ? (
+                <button
+                  type="button"
+                  className="home-slider-arrow right"
+                  onClick={() => scrollRow(festiveRef, 1)}
+                  aria-label="Next festive offers"
+                >
+                  <ChevronsRight size={22} />
+                </button>
+              ) : null}
             </div>
           </section>
         </DeferredHomeSection>
@@ -595,26 +632,48 @@ function Home() {
             <div>
               <span className="home-section-kicker">Bundle deals</span>
               <h2>Bundle Products</h2>
-              {/* <p>Explore curated bundles created by admin from existing products.</p> */}
             </div>
             <Link to="/collection" className="home-inline-link">View all</Link>
           </div>
 
-          <div className="home-catalog-preview-row">
-            {isLoadingProducts ? (
-              <LoadingSpinner text="Loading bundle deals..." minHeight="180px" />
-            ) : bundleProducts.length > 0 ? (
-              bundleProducts.map((product) => (
-                <div key={product._id} className="home-catalog-preview-item">
-                  <ProductCard product={product} showDescription={false} variant="home" />
+          <div className="home-slider-wrapper">
+            {bundleProducts.length > 0 ? (
+              <button
+                type="button"
+                className="home-slider-arrow left"
+                onClick={() => scrollRow(bundleRef, -1)}
+                aria-label="Previous bundle products"
+              >
+                <ChevronsLeft size={22} />
+              </button>
+            ) : null}
+
+            <div ref={bundleRef} className="home-catalog-preview-row">
+              {isLoadingProducts ? (
+                <LoadingSpinner text="Loading bundle deals..." minHeight="180px" />
+              ) : bundleProducts.length > 0 ? (
+                bundleProducts.map((product) => (
+                  <div key={product._id} className="home-catalog-preview-item">
+                    <ProductCard product={product} showDescription={false} variant="home" />
+                  </div>
+                ))
+              ) : (
+                <div className="home-empty-state">
+                  <strong>No bundle products yet</strong>
                 </div>
-              ))
-            ) : (
-              <div className="home-empty-state">
-                <strong>No bundle products yet</strong>
-                {/* <p>Bundle products created by admin will appear here automatically.</p> */}
-              </div>
-            )}
+              )}
+            </div>
+
+            {bundleProducts.length > 0 ? (
+              <button
+                type="button"
+                className="home-slider-arrow right"
+                onClick={() => scrollRow(bundleRef, 1)}
+                aria-label="Next bundle products"
+              >
+                <ChevronsRight size={22} />
+              </button>
+            ) : null}
           </div>
         </section>
       </DeferredHomeSection>
@@ -629,33 +688,55 @@ function Home() {
             <div>
               <span className="home-section-kicker">Catalog</span>
               <h2>Browse the Collection</h2>
-              {/* <p>Swipe horizontally to explore products across the full collection.</p> */}
             </div>
             <Link to="/collection" className="home-inline-link">see all products</Link>
           </div>
 
-          <div className="home-catalog-preview-row">
-            {isLoadingProducts ? (
-              <LoadingSpinner text="Loading collection..." minHeight="180px" />
-            ) : catalogPreviewProducts.length > 0 ? (
-              <>
-                {catalogPreviewProducts.map((product) => (
-                  <div key={product._id} className="home-catalog-preview-item">
-                    <ProductCard product={product} showDescription={false} variant="home" />
-                  </div>
-                ))}
-                <Link to="/collection" className="home-catalog-see-more-card">
-                  <span>See more</span>
-                  <strong>Open full collection</strong>
-                  {/* <p>View all products on a dedicated page.</p> */}
-                </Link>
-              </>
-            ) : (
-              <div className="home-empty-state">
-                <strong>No products found</strong>
-                <p>Try another category to see more products.</p>
-              </div>
-            )}
+          <div className="home-slider-wrapper">
+            {catalogPreviewProducts.length > 0 ? (
+              <button
+                type="button"
+                className="home-slider-arrow left"
+                onClick={() => scrollRow(catalogPreviewRef, -1)}
+                aria-label="Previous catalog items"
+              >
+                <ChevronsLeft size={22} />
+              </button>
+            ) : null}
+
+            <div ref={catalogPreviewRef} className="home-catalog-preview-row">
+              {isLoadingProducts ? (
+                <LoadingSpinner text="Loading collection..." minHeight="180px" />
+              ) : catalogPreviewProducts.length > 0 ? (
+                <>
+                  {catalogPreviewProducts.map((product) => (
+                    <div key={product._id} className="home-catalog-preview-item">
+                      <ProductCard product={product} showDescription={false} variant="home" />
+                    </div>
+                  ))}
+                  <Link to="/collection" className="home-catalog-see-more-card">
+                    <span>See more</span>
+                    <strong>Open full collection</strong>
+                  </Link>
+                </>
+              ) : (
+                <div className="home-empty-state">
+                  <strong>No products found</strong>
+                  <p>Try another category to see more products.</p>
+                </div>
+              )}
+            </div>
+
+            {catalogPreviewProducts.length > 0 ? (
+              <button
+                type="button"
+                className="home-slider-arrow right"
+                onClick={() => scrollRow(catalogPreviewRef, 1)}
+                aria-label="Next catalog items"
+              >
+                <ChevronsRight size={22} />
+              </button>
+            ) : null}
           </div>
         </section>
       </DeferredHomeSection>
