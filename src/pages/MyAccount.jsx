@@ -306,6 +306,9 @@ function MyAccount() {
     }
 
     let active = true;
+    const safetyTimer = setTimeout(() => {
+      if (active) setIsLoadingOrders(false);
+    }, 2500);
 
     axios
       .get("/api/orders/my", {
@@ -321,11 +324,13 @@ function MyAccount() {
       })
       .finally(() => {
         if (!active) return;
+        clearTimeout(safetyTimer);
         setIsLoadingOrders(false);
       });
 
     return () => {
       active = false;
+      clearTimeout(safetyTimer);
     };
   }, [token]);
 
