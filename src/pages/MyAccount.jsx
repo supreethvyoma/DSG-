@@ -436,6 +436,7 @@ function MyAccount() {
   const closeAddressForm = () => {
     resetAddressForm();
     setShowAddressForm(false);
+    window.location.reload();
   };
 
   const openNewAddressForm = () => {
