@@ -279,7 +279,7 @@ const buildHomePayload = (products = [], settings = {}) => {
   const festiveOfferProducts = products
     .filter((product) => product?.festiveOffer === true)
     .slice(0, 8);
-  const catalogPreviewProducts = products.slice(0, 4);
+  const catalogPreviewProducts = products.slice(0, 8);
 
   return {
     heroBanners: Array.isArray(settings?.heroBanners) ? settings.heroBanners : [],
