@@ -430,6 +430,25 @@ function MyAccount() {
     setPincode("");
     setCountry("India");
     setEditingIndex(null);
+    setAddressError("");
+  };
+
+  const closeAddressForm = () => {
+    resetAddressForm();
+    setShowAddressForm(false);
+  };
+
+  const openNewAddressForm = () => {
+    resetAddressForm();
+    setShowAddressForm(true);
+    setTimeout(() => {
+      if (addressFormRef.current) {
+        addressFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (nameInputRef.current) {
+        nameInputRef.current.focus();
+      }
+    }, 80);
   };
 
   const saveAddress = async () => {
@@ -711,35 +730,24 @@ function MyAccount() {
             <p className="my-account-section-kicker">Address Book</p>
             <h2>Manage addresses</h2>
           </div>
-          <button
-            type="button"
-            className="my-account-inline-link my-account-inline-btn"
-            onClick={() => {
-              if (showAddressForm) {
-                resetAddressForm();
-                setShowAddressForm(false);
-                setAddressError("");
-              } else {
-                resetAddressForm();
-                setShowAddressForm(true);
-                setAddressError("");
-                setTimeout(() => {
-                  if (addressFormRef.current) {
-                    addressFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }
-                  if (nameInputRef.current) {
-                    nameInputRef.current.focus();
-                  }
-                }, 80);
-              }
-            }}
-          >
-            {showAddressForm
-              ? editingIndex !== null
-                ? `✏️ Editing Address #${editingIndex + 1} — Close Form`
-                : "✕ Close Form"
-              : "➕ Add New Address"}
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            {showAddressForm ? (
+              <button
+                type="button"
+                className="my-account-inline-link my-account-inline-btn"
+                onClick={closeAddressForm}
+              >
+                ✕ Close Form
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="my-account-inline-link my-account-inline-btn"
+              onClick={openNewAddressForm}
+            >
+              ➕ Add New Address
+            </button>
+          </div>
         </div>
 
         {addresses.length > 0 ? (
@@ -839,11 +847,7 @@ function MyAccount() {
               <button
                 type="button"
                 className="my-account-form-close-btn"
-                onClick={() => {
-                  resetAddressForm();
-                  setShowAddressForm(false);
-                  setAddressError("");
-                }}
+                onClick={closeAddressForm}
               >
                 ✕ Close
               </button>
@@ -909,11 +913,7 @@ function MyAccount() {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  resetAddressForm();
-                  setShowAddressForm(false);
-                  setAddressError("");
-                }}
+                onClick={closeAddressForm}
               >
                 Cancel
               </button>
