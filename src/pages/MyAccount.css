@@ -369,6 +369,73 @@
   font-weight:700;
 }
 
+.my-account-address-item.editing-active {
+  border: 2px solid var(--site-link, #0284c7) !important;
+  background: color-mix(in srgb, var(--site-link, #0284c7) 5%, var(--site-surface, #ffffff)) !important;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.14) !important;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.my-account-editing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--site-link, #0284c7);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  letter-spacing: 0.02em;
+}
+
+.my-account-editing-cancel-btn {
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+  font-weight: 600 !important;
+}
+
+.my-account-editing-cancel-btn:hover {
+  background: #fee2e2 !important;
+  border-color: #f87171 !important;
+}
+
+.my-account-address-form-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--site-border, #e2e8f0);
+  margin-bottom: 8px;
+}
+
+.my-account-address-form-header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--site-text, #0f172a);
+}
+
+.my-account-form-close-btn {
+  background: transparent;
+  border: 1px solid var(--site-border, #cbd5e1);
+  border-radius: var(--radius-sm, 6px);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--site-text-soft, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.my-account-form-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
 .my-account-address-form{
   margin-top:var(--space-2);
   display:grid;

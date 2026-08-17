@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { apiBaseUrl } from "../lib/api";
@@ -198,6 +198,8 @@ function MyAccount() {
   const { wishlist } = useWishlist();
   const { addresses, addAddress, updateAddress, removeAddress, setDefaultAddress } = useDeliveryLocation();
   const location = useLocation();
+  const addressFormRef = useRef(null);
+  const nameInputRef = useRef(null);
   const [orders, setOrders] = useState([]);
   const [showAddressForm, setShowAddressForm] = useState(addresses.length === 0);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -474,6 +476,16 @@ function MyAccount() {
     setCountry(current.country || "India");
     setEditingIndex(index);
     setShowAddressForm(true);
+    setAddressError("");
+
+    setTimeout(() => {
+      if (addressFormRef.current) {
+        addressFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      if (nameInputRef.current) {
+        nameInputRef.current.focus();
+      }
+    }, 80);
   };
 
   const deleteAddress = (index) => {
@@ -666,45 +678,89 @@ function MyAccount() {
             type="button"
             className="my-account-inline-link my-account-inline-btn"
             onClick={() => {
-              if (showAddressForm && editingIndex !== null) {
+              if (showAddressForm) {
                 resetAddressForm();
+                setShowAddressForm(false);
+                setAddressError("");
+              } else {
+                resetAddressForm();
+                setShowAddressForm(true);
+                setAddressError("");
+                setTimeout(() => {
+                  if (addressFormRef.current) {
+                    addressFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                  if (nameInputRef.current) {
+                    nameInputRef.current.focus();
+                  }
+                }, 80);
               }
-              setShowAddressForm((current) => !current);
             }}
           >
-            {showAddressForm ? "Close" : "Add New Address"}
+            {showAddressForm
+              ? editingIndex !== null
+                ? `✏️ Editing Address #${editingIndex + 1} — Close Form`
+                : "✕ Close Form"
+              : "➕ Add New Address"}
           </button>
         </div>
 
         {addresses.length > 0 ? (
           <div className="my-account-address-list">
-            {addresses.map((item, index) => (
-              <div key={`${item.name}-${item.pincode}-${index}`} className="my-account-address-item">
-                <div className="my-account-address-top">
-                  <strong>{item.name || "Address"}</strong>
-                  <span>{item.label || "Saved address"}</span>
-                </div>
-                <p>{item.phone}</p>
-                <p>{item.address}</p>
-                {item.landmark ? <p>Landmark: {item.landmark}</p> : null}
-                <p>{[item.city, item.state, item.pincode, item.country].filter(Boolean).join(", ")}</p>
-                <div className="my-account-address-actions">
-                  <button type="button" onClick={() => editAddress(index)}>
-                    Edit
-                  </button>
-                  <button type="button" className="danger" onClick={() => deleteAddress(index)}>
-                    Delete
-                  </button>
-                  {!item.isDefault ? (
-                    <button type="button" onClick={() => setDefaultAddress(index)}>
-                      Set Default
+            {addresses.map((item, index) => {
+              const isEditingThisCard = editingIndex === index && showAddressForm;
+
+              return (
+                <div
+                  key={`${item.name}-${item.pincode}-${index}`}
+                  className={`my-account-address-item ${isEditingThisCard ? "editing-active" : ""}`}
+                >
+                  <div className="my-account-address-top">
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <strong>{item.name || "Address"}</strong>
+                      {isEditingThisCard && (
+                        <span className="my-account-editing-badge">✏️ Editing Now</span>
+                      )}
+                    </div>
+                    <span>{item.label || "Saved address"}</span>
+                  </div>
+                  <p>{item.phone}</p>
+                  <p>{item.address}</p>
+                  {item.landmark ? <p>Landmark: {item.landmark}</p> : null}
+                  <p>{[item.city, item.state, item.pincode, item.country].filter(Boolean).join(", ")}</p>
+                  
+                  <div className="my-account-address-actions">
+                    {isEditingThisCard ? (
+                      <button
+                        type="button"
+                        className="my-account-editing-cancel-btn"
+                        onClick={() => {
+                          resetAddressForm();
+                          setShowAddressForm(false);
+                          setAddressError("");
+                        }}
+                      >
+                        ✕ Cancel Editing
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => editAddress(index)}>
+                        Edit
+                      </button>
+                    )}
+                    <button type="button" className="danger" onClick={() => deleteAddress(index)}>
+                      Delete
                     </button>
-                  ) : (
-                    <span className="my-account-default-pill">Default</span>
-                  )}
+                    {!item.isDefault ? (
+                      <button type="button" onClick={() => setDefaultAddress(index)}>
+                        Set Default
+                      </button>
+                    ) : (
+                      <span className="my-account-default-pill">Default</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="my-account-empty">
@@ -713,7 +769,26 @@ function MyAccount() {
         )}
 
         {showAddressForm ? (
-          <div className="my-account-address-form">
+          <div ref={addressFormRef} className="my-account-address-form">
+            <div className="my-account-address-form-header">
+              <h3>
+                {editingIndex !== null
+                  ? `✏️ Edit Address: ${addresses[editingIndex]?.name || name || "Address"}`
+                  : "➕ Add New Address"}
+              </h3>
+              <button
+                type="button"
+                className="my-account-form-close-btn"
+                onClick={() => {
+                  resetAddressForm();
+                  setShowAddressForm(false);
+                  setAddressError("");
+                }}
+              >
+                ✕ Close
+              </button>
+            </div>
+
             <div className="my-account-label-row">
               {["Home", "Work", "Other"].map((option) => (
                 <button
@@ -729,7 +804,7 @@ function MyAccount() {
 
             <label>
               <span>Full Name</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rohan Sharma" />
+              <input ref={nameInputRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Rohan Sharma" />
             </label>
             <label>
               <span>Phone Number</span>
@@ -770,20 +845,18 @@ function MyAccount() {
 
             <div className="my-account-address-form-actions">
               <button type="button" className="primary" onClick={saveAddress}>
-                {editingIndex === null ? "Save Address" : "Update Address"}
+                {editingIndex === null ? "💾 Save Address" : "💾 Update Address"}
               </button>
-              {editingIndex !== null ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetAddressForm();
-                    setShowAddressForm(false);
-                    setAddressError("");
-                  }}
-                >
-                  Cancel
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  resetAddressForm();
+                  setShowAddressForm(false);
+                  setAddressError("");
+                }}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         ) : null}
