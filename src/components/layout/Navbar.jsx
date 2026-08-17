@@ -151,7 +151,16 @@ function Navbar({ bannerActive = false }) {
     if (location.pathname === "/") {
       const elem = document.getElementById(targetId);
       if (elem) {
-        elem.scrollIntoView({ behavior: "smooth", block: "center" });
+        const header = document.querySelector(".navbar-container") || document.querySelector("header");
+        const navbarHeight = header ? header.getBoundingClientRect().height : 120;
+        const elementPosition = elem.getBoundingClientRect().top + window.pageYOffset;
+        const offsetPosition = Math.max(0, elementPosition - navbarHeight - 16);
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth"
+        });
+
         elem.classList.remove("home-section-highlighted");
         void elem.offsetWidth;
         elem.classList.add("home-section-highlighted");

@@ -241,7 +241,16 @@ function Home() {
       const element = document.getElementById(targetId);
       if (element) {
         window.setTimeout(() => {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          const header = document.querySelector(".navbar-container") || document.querySelector("header");
+          const navbarHeight = header ? header.getBoundingClientRect().height : 120;
+          const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+          const offsetPosition = Math.max(0, elementPosition - navbarHeight - 16);
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth"
+          });
+
           element.classList.remove("home-section-highlighted");
           void element.offsetWidth;
           element.classList.add("home-section-highlighted");

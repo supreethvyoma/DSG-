@@ -1054,3 +1054,10 @@
   animation: sectionHighlightPulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
   z-index: 5;
 }
+
+/* Ensure top section scroll alignment under sticky header */
+#home-section-top-rated,
+#home-section-new-arrivals,
+#home-section-budget-picks {
+  scroll-margin-top: 130px;
+}
