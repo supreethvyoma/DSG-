@@ -103,7 +103,7 @@ export default function Breadcrumb() {
     if (segments[0] === "collection") {
       items.push({ label: "Store Catalog", path: "/collection" });
       const categoryParam = searchParams.get("category");
-      if (categoryParam && categoryParam.toLowerCase() !== "store catalog" && categoryParam.toLowerCase() !== "collection") {
+      if (categoryParam) {
         items.push({ label: categoryParam, path: `/collection?category=${encodeURIComponent(categoryParam)}` });
       }
       return items;
@@ -135,11 +135,7 @@ export default function Breadcrumb() {
       items.push({ label: formattedLabel, path: `/${primarySegment}` });
     }
 
-    // Filter consecutive duplicate labels
-    return items.filter((item, idx) => {
-      if (idx === 0) return true;
-      return item.label.toLowerCase().trim() !== items[idx - 1].label.toLowerCase().trim();
-    });
+    return items;
   }, [location.pathname, location.search]);
 
   // Inject Structured Data (JSON-LD BreadcrumbList) for SEO
@@ -173,121 +169,20 @@ export default function Breadcrumb() {
   }
 
   return (
-    <nav
-      className="site-breadcrumb-nav"
-      aria-label="Breadcrumb"
-      style={{
-        width: "100%",
-        background: "rgba(255, 255, 255, 0.96)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        borderBottom: "1px solid #e2e8f0",
-        padding: "6px 0",
-        marginBottom: "8px",
-        position: "relative",
-        zIndex: 90,
-        overflow: "hidden"
-      }}
-    >
-      <div
-        className="site-breadcrumb-container"
-        style={{
-          maxWidth: "1300px",
-          margin: "0 auto",
-          padding: "0 12px",
-          overflowX: "auto",
-          overflowY: "hidden",
-          whiteSpace: "nowrap",
-          WebkitOverflowScrolling: "touch",
-          scrollbarWidth: "none",
-          msOverflowStyle: "none",
-          display: "flex",
-          alignItems: "center"
-        }}
-      >
-        <ol
-          className="site-breadcrumb-list"
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "nowrap",
-            alignItems: "center",
-            gap: "6px",
-            listStyle: "none",
-            margin: 0,
-            padding: 0,
-            fontSize: "12px",
-            fontWeight: 500,
-            lineHeight: 1.2,
-            whiteSpace: "nowrap",
-            width: "max-content",
-            minWidth: "100%"
-          }}
-        >
+    <nav className="site-breadcrumb-nav" aria-label="Breadcrumb">
+      <div className="site-breadcrumb-container">
+        <ol className="site-breadcrumb-list">
           {breadcrumbs.map((crumb, idx) => {
             const isLast = idx === breadcrumbs.length - 1;
             return (
-              <li
-                key={`${crumb.path}-${idx}`}
-                className={`site-breadcrumb-item ${isLast ? "active" : ""}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  flexWrap: "nowrap",
-                  flexShrink: 0,
-                  whiteSpace: "nowrap",
-                  gap: "6px",
-                  color: "#64748b"
-                }}
-              >
-                {idx > 0 && (
-                  <span
-                    className="site-breadcrumb-separator"
-                    style={{
-                      color: "#94a3b8",
-                      fontSize: "11px",
-                      fontWeight: 400,
-                      userSelect: "none",
-                      display: "inline-block",
-                      flexShrink: 0,
-                      whiteSpace: "nowrap",
-                      lineHeight: 1,
-                      margin: "0 2px"
-                    }}
-                  >
-                    /
-                  </span>
-                )}
+              <li key={`${crumb.path}-${idx}`} className={`site-breadcrumb-item ${isLast ? "active" : ""}`}>
+                {idx > 0 && <span className="site-breadcrumb-separator">/</span>}
                 {isLast ? (
-                  <span
-                    className="site-breadcrumb-current"
-                    aria-current="page"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: 500,
-                      maxWidth: "160px",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      display: "inline-block",
-                      verticalAlign: "middle",
-                      flexShrink: 0
-                    }}
-                  >
+                  <span className="site-breadcrumb-current" aria-current="page">
                     {crumb.label}
                   </span>
                 ) : (
-                  <Link
-                    to={crumb.path}
-                    className="site-breadcrumb-link"
-                    style={{
-                      color: "#0284c7",
-                      textDecoration: "none",
-                      whiteSpace: "nowrap",
-                      display: "inline-block",
-                      flexShrink: 0
-                    }}
-                  >
+                  <Link to={crumb.path} className="site-breadcrumb-link">
                     {crumb.label}
                   </Link>
                 )}
