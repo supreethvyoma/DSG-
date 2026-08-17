@@ -168,8 +168,10 @@ export default function Breadcrumb() {
     return null;
   }
 
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
   return (
-    <nav className="site-breadcrumb-nav" aria-label="Breadcrumb">
+    <nav className={`site-breadcrumb-nav ${isAdminRoute ? "admin-breadcrumb-nav" : ""}`} aria-label="Breadcrumb">
       <div className="site-breadcrumb-container">
         <ol className="site-breadcrumb-list">
           {breadcrumbs.map((crumb, idx) => {

@@ -70,3 +70,18 @@
     max-width: 180px;
   }
 }
+
+/* Admin Console Breadcrumb Sidebar Alignment */
+@media (min-width: 992px) {
+  .site-breadcrumb-nav.admin-breadcrumb-nav {
+    padding-left: var(--admin-sidebar-width, 272px);
+    transition: padding-left 0.2s ease;
+  }
+
+  .site-breadcrumb-nav.admin-breadcrumb-nav .site-breadcrumb-container {
+    max-width: 100%;
+    margin: 0;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
