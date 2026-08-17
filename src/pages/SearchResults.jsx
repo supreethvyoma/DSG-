@@ -5,6 +5,7 @@ import ProductCard from "../components/ProductCard";
 import "./Home.css";
 import "./SearchResults.css";
 import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 function getCategoryLabel(product) {
   const raw = String(product?.category || "").trim();
@@ -153,14 +154,7 @@ function SearchResults() {
 
               <div className="search-results-grid">
               {isLoadingProducts ? (
-                Array.from({ length: 8 }).map((_, index) => (
-                  <div key={`search-results-skeleton-${index}`} className="home-skeleton-card">
-                    <span className="home-skeleton home-skeleton-image" />
-                    <span className="home-skeleton home-skeleton-line short" />
-                    <span className="home-skeleton home-skeleton-line" />
-                    <span className="home-skeleton home-skeleton-line medium" />
-                  </div>
-                ))
+                <LoadingSpinner text={`Searching for "${query}"...`} minHeight="240px" />
               ) : sortedProducts.length > 0 ? (
                 sortedProducts.map((product) => <ProductCard key={product._id} product={product} variant="search" />)
               ) : (

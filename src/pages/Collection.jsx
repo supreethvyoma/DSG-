@@ -5,6 +5,7 @@ import { SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import "./Collection.css";
 import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 const PRODUCTS_PER_PAGE = 8;
 
@@ -293,14 +294,7 @@ function Collection() {
 
             <div className="collection-grid">
               {isLoadingProducts ? (
-                Array.from({ length: PRODUCTS_PER_PAGE }).map((_, index) => (
-                  <div key={`collection-skeleton-${index}`} className="collection-skeleton-card">
-                    <span className="collection-skeleton collection-skeleton-image" />
-                    <span className="collection-skeleton collection-skeleton-line short" />
-                    <span className="collection-skeleton collection-skeleton-line" />
-                    <span className="collection-skeleton collection-skeleton-line medium" />
-                  </div>
-                ))
+                <LoadingSpinner text="Loading catalog items..." minHeight="240px" />
               ) : products.length > 0 ? (
                 products.map((product) => (
                   <ProductCard key={product._id} product={product} showDescription={false} variant="home" />

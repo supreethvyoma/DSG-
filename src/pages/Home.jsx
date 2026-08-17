@@ -8,6 +8,7 @@ import { formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
 import "./Home.css";
 import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 const HOME_REQUEST_RETRY_DELAYS = [800, 1800];
 
@@ -24,26 +25,7 @@ function DeferredHomeSection({ isReady, children, skeletonCount = 4, label = "Lo
 
   return (
     <section className="home-section home-deferred-placeholder" aria-label={label}>
-      <div className="home-section-head home-section-head-catalog">
-        <div>
-          <span className="home-section-kicker">Loading</span>
-          <h2>Preparing more products</h2>
-          <p>More recommendations will appear in a moment.</p>
-        </div>
-      </div>
-
-      <div className="home-catalog-preview-row">
-        {Array.from({ length: skeletonCount }).map((_, index) => (
-          <div key={`deferred-skeleton-${label}-${index}`} className="home-catalog-preview-item">
-            <div className="home-skeleton-card">
-              <span className="home-skeleton home-skeleton-image" />
-              <span className="home-skeleton home-skeleton-line short" />
-              <span className="home-skeleton home-skeleton-line" />
-              <span className="home-skeleton home-skeleton-line medium" />
-            </div>
-          </div>
-        ))}
-      </div>
+      <LoadingSpinner text="Preparing recommendations..." minHeight="160px" />
     </section>
   );
 }
@@ -361,7 +343,7 @@ function Home() {
       <h1 className="sr-only">Digital Sanskrit Guru - Premium Sanskrit Learning Store</h1>
       {isLoadingHeroBanners ? (
         <section className="home-banner home-banner-loading" aria-label="Loading homepage banner">
-          <span className="home-skeleton home-banner-skeleton" />
+          <LoadingSpinner text="Loading banner..." minHeight="220px" />
         </section>
       ) : activeHeroBanner ? (
         activeHeroBanner.productId ? (
@@ -469,20 +451,15 @@ function Home() {
         </div>
 
         <div ref={spotlightRef} className="home-spotlight-row">
-          {isLoadingProducts
-            ? Array.from({ length: 4 }).map((_, index) => (
-              <div key={`spotlight-skeleton-${index}`} className="home-skeleton-card">
-                <span className="home-skeleton home-skeleton-image" />
-                <span className="home-skeleton home-skeleton-line short" />
-                <span className="home-skeleton home-skeleton-line" />
-                <span className="home-skeleton home-skeleton-line medium" />
-              </div>
-            ))
-            : topRatedProducts.map((product) => (
+          {isLoadingProducts ? (
+            <LoadingSpinner text="Loading top rated picks..." minHeight="200px" />
+          ) : (
+            topRatedProducts.map((product) => (
               <div key={product._id} className="home-spotlight-item">
                 <ProductCard product={product} showDescription={false} variant="home" />
               </div>
-            ))}
+            ))
+          )}
         </div>
       </section>
 
@@ -496,14 +473,10 @@ function Home() {
             <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
           <div className="home-mini-grid home-desktop-only">
-            {isLoadingProducts
-              ? Array.from({ length: 4 }).map((_, index) => (
-                <div className="home-mini-skeleton" key={`arrival-skeleton-${index}`}>
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                </div>
-              ))
-              : newArrivals.map((product) => (
+            {isLoadingProducts ? (
+              <LoadingSpinner text="Loading new arrivals..." minHeight="160px" />
+            ) : (
+              newArrivals.map((product) => (
                 <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
                   <img
                     src={product.image || "https://picsum.photos/220"}
@@ -520,24 +493,20 @@ function Home() {
                   <strong>{product.name}</strong>
                   <span>{getAverageRating(product).toFixed(1)} rated by readers</span>
                 </Link>
-              ))}
+              ))
+            )}
           </div>
 
           <div className="home-mobile-image-strip">
-            {isLoadingProducts
-              ? Array.from({ length: 4 }).map((_, index) => (
-                <div key={`arrival-mobile-skeleton-${index}`} className="home-skeleton-card home-spotlight-item">
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                  <span className="home-skeleton home-skeleton-line" />
-                  <span className="home-skeleton home-skeleton-line medium" />
-                </div>
-              ))
-              : newArrivals.map((product) => (
+            {isLoadingProducts ? (
+              <LoadingSpinner text="Loading new arrivals..." minHeight="160px" />
+            ) : (
+              newArrivals.map((product) => (
                 <div key={product._id} className="home-spotlight-item">
                   <ProductCard product={product} showDescription={false} variant="home" />
                 </div>
-              ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -550,14 +519,10 @@ function Home() {
             <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
           <div className="home-mini-grid home-desktop-only">
-            {isLoadingProducts
-              ? Array.from({ length: 4 }).map((_, index) => (
-                <div className="home-mini-skeleton" key={`budget-skeleton-${index}`}>
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                </div>
-              ))
-              : budgetPicks.map((product) => (
+            {isLoadingProducts ? (
+              <LoadingSpinner text="Loading budget picks..." minHeight="160px" />
+            ) : (
+              budgetPicks.map((product) => (
                 <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
                   <img
                     src={product.image || "https://picsum.photos/220"}
@@ -574,24 +539,20 @@ function Home() {
                   <strong>{product.name}</strong>
                   <span>{Number(product?.stock || 0) > 0 ? "In stock now" : "Currently unavailable"}</span>
                 </Link>
-              ))}
+              ))
+            )}
           </div>
 
           <div className="home-mobile-image-strip">
-            {isLoadingProducts
-              ? Array.from({ length: 4 }).map((_, index) => (
-                <div key={`budget-mobile-skeleton-${index}`} className="home-skeleton-card home-spotlight-item">
-                  <span className="home-skeleton home-skeleton-image" />
-                  <span className="home-skeleton home-skeleton-line short" />
-                  <span className="home-skeleton home-skeleton-line" />
-                  <span className="home-skeleton home-skeleton-line medium" />
-                </div>
-              ))
-              : budgetPicks.map((product) => (
+            {isLoadingProducts ? (
+              <LoadingSpinner text="Loading budget picks..." minHeight="160px" />
+            ) : (
+              budgetPicks.map((product) => (
                 <div key={product._id} className="home-spotlight-item">
                   <ProductCard product={product} showDescription={false} variant="home" />
                 </div>
-              ))}
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -610,16 +571,7 @@ function Home() {
 
             <div className="home-catalog-preview-row">
               {isLoadingProducts ? (
-                Array.from({ length: 4 }).map((_, index) => (
-                  <div key={`festive-skeleton-${index}`} className="home-catalog-preview-item">
-                    <div className="home-skeleton-card">
-                      <span className="home-skeleton home-skeleton-image" />
-                      <span className="home-skeleton home-skeleton-line short" />
-                      <span className="home-skeleton home-skeleton-line" />
-                      <span className="home-skeleton home-skeleton-line medium" />
-                    </div>
-                  </div>
-                ))
+                <LoadingSpinner text="Loading festive offers..." minHeight="180px" />
               ) : festiveOfferProducts.length > 0 ? (
                 festiveOfferProducts.map((product) => (
                   <div key={product._id} className="home-catalog-preview-item">
@@ -650,16 +602,7 @@ function Home() {
 
           <div className="home-catalog-preview-row">
             {isLoadingProducts ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <div key={`bundle-skeleton-${index}`} className="home-catalog-preview-item">
-                  <div className="home-skeleton-card">
-                    <span className="home-skeleton home-skeleton-image" />
-                    <span className="home-skeleton home-skeleton-line short" />
-                    <span className="home-skeleton home-skeleton-line" />
-                    <span className="home-skeleton home-skeleton-line medium" />
-                  </div>
-                </div>
-              ))
+              <LoadingSpinner text="Loading bundle deals..." minHeight="180px" />
             ) : bundleProducts.length > 0 ? (
               bundleProducts.map((product) => (
                 <div key={product._id} className="home-catalog-preview-item">
@@ -693,16 +636,7 @@ function Home() {
 
           <div className="home-catalog-preview-row">
             {isLoadingProducts ? (
-              Array.from({ length: 6 }).map((_, index) => (
-                <div key={`catalog-skeleton-${index}`} className="home-catalog-preview-item">
-                  <div className="home-skeleton-card">
-                    <span className="home-skeleton home-skeleton-image" />
-                    <span className="home-skeleton home-skeleton-line short" />
-                    <span className="home-skeleton home-skeleton-line" />
-                    <span className="home-skeleton home-skeleton-line medium" />
-                  </div>
-                </div>
-              ))
+              <LoadingSpinner text="Loading collection..." minHeight="180px" />
             ) : catalogPreviewProducts.length > 0 ? (
               <>
                 {catalogPreviewProducts.map((product) => (

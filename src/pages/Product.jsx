@@ -11,6 +11,7 @@ import { formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails, isInternationalCountry } from "../utils/productPricing";
 import { isDigitalItem } from "../utils/deliveryPricing";
 import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 const PRODUCT_EXTRA_DETAILS = {
   soundaryalahari: {
@@ -143,33 +144,8 @@ function buildProductMediaItems(product, galleryImages, trailerVideo) {
 // ── Skeleton loader for product page ─────────────────────────────────────────
 function ProductSkeleton() {
   return (
-    <div className="product-skeleton-wrap" aria-label="Loading product" aria-busy="true">
-      <div className="product-container">
-        <div className="product-left">
-          <div className="image-gallery">
-            <div className="thumbnail-column">
-              {[0, 1, 2].map((i) => (
-                <span key={i} className="product-sk product-sk-thumb" />
-              ))}
-            </div>
-            <span className="product-sk product-sk-main-img" />
-          </div>
-        </div>
-        <div className="product-center">
-          <span className="product-sk product-sk-title" />
-          <span className="product-sk product-sk-line product-sk-short" />
-          <span className="product-sk product-sk-price" />
-          <span className="product-sk product-sk-line" />
-          <span className="product-sk product-sk-line product-sk-medium" />
-        </div>
-        <div className="product-right">
-          <div className="buy-box">
-            <span className="product-sk product-sk-price" />
-            <span className="product-sk product-sk-btn" />
-            <span className="product-sk product-sk-btn" />
-          </div>
-        </div>
-      </div>
+    <div className="product-skeleton-wrap" aria-label="Loading product" aria-busy="true" style={{ padding: "60px 0" }}>
+      <LoadingSpinner text="Loading product details..." minHeight="300px" size="44px" />
     </div>
   );
 }
