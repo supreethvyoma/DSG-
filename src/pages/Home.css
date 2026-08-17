@@ -1028,22 +1028,22 @@
   }
 }
 
-/* ── Section Highlight Pulse Effect ───────────────────────────────────── */
-@keyframes sectionHighlightPulse {
+/* ── Section Persistent Highlight Effect ───────────────────────────────────── */
+@keyframes sectionHighlightGlow {
   0% {
     box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.7);
     outline: 3px solid #0284c7;
     outline-offset: 4px;
   }
-  35% {
+  40% {
     box-shadow: 0 0 35px 12px rgba(2, 132, 199, 0.5);
     outline: 3px solid #0284c7;
     outline-offset: 6px;
     transform: scale(1.008);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(2, 132, 199, 0);
-    outline: 3px solid transparent;
+    box-shadow: 0 0 16px 4px rgba(2, 132, 199, 0.35);
+    outline: 3px solid #0284c7;
     outline-offset: 4px;
     transform: scale(1);
   }
@@ -1051,7 +1051,11 @@
 
 .home-section-highlighted {
   border-radius: var(--radius-md, 12px) !important;
-  animation: sectionHighlightPulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  outline: 3px solid #0284c7 !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 16px 4px rgba(2, 132, 199, 0.35) !important;
+  animation: sectionHighlightGlow 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  transition: all 0.25s ease !important;
   z-index: 5;
 }
 

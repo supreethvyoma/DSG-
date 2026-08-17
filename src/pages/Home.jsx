@@ -251,19 +251,29 @@ function Home() {
             behavior: "smooth"
           });
 
-          element.classList.remove("home-section-highlighted");
-          void element.offsetWidth;
+          document.querySelectorAll(".home-section-highlighted").forEach((el) => {
+            el.classList.remove("home-section-highlighted");
+          });
           element.classList.add("home-section-highlighted");
         }, 120);
-
-        const timer = window.setTimeout(() => {
-          element.classList.remove("home-section-highlighted");
-        }, 3000);
-
-        return () => window.clearTimeout(timer);
       }
     }
   }, [location.search, isLoadingProducts]);
+
+  // Clear persistent section highlight when user clicks any button/link/interactive element
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      if (e.target.closest(".navbar-quick-nav-btn")) return;
+
+      const highlightedElems = document.querySelectorAll(".home-section-highlighted");
+      if (highlightedElems.length > 0) {
+        highlightedElems.forEach((el) => el.classList.remove("home-section-highlighted"));
+      }
+    };
+
+    window.addEventListener("click", handleGlobalClick, true);
+    return () => window.removeEventListener("click", handleGlobalClick, true);
+  }, []);
 
   useEffect(() => {
     if (heroBanners.length <= 1) return undefined;

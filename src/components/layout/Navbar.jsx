@@ -149,6 +149,10 @@ function Navbar({ bannerActive = false }) {
   const handleSectionNav = (sectionKey) => {
     const targetId = `home-section-${sectionKey}`;
     if (location.pathname === "/") {
+      document.querySelectorAll(".home-section-highlighted").forEach((el) => {
+        el.classList.remove("home-section-highlighted");
+      });
+
       const elem = document.getElementById(targetId);
       if (elem) {
         const header = document.querySelector(".navbar-container") || document.querySelector("header");
@@ -161,10 +165,8 @@ function Navbar({ bannerActive = false }) {
           behavior: "smooth"
         });
 
-        elem.classList.remove("home-section-highlighted");
         void elem.offsetWidth;
         elem.classList.add("home-section-highlighted");
-        setTimeout(() => elem.classList.remove("home-section-highlighted"), 3000);
       }
     } else {
       navigate(`/?scrollTo=${sectionKey}`);
