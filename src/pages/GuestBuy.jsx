@@ -125,13 +125,26 @@ function GuestBuy() {
   const handlePayment = async (e) => {
     e.preventDefault();
 
+    const cleanPhone = String(phone || "").replace(/\D/g, "");
+    const cleanPincode = String(pincode || "").trim();
+
     if (!name.trim() || !email.trim() || !phone.trim()) {
       setCheckoutMessage("Please fill in your name, email, and phone number.");
       return;
     }
 
+    if (cleanPhone.length < 10) {
+      setCheckoutMessage("Enter a valid phone number (at least 10 digits).");
+      return;
+    }
+
     if (!isDigital && (!address.trim() || !city.trim() || !state.trim() || !pincode.trim())) {
       setCheckoutMessage("Please fill in your complete shipping address.");
+      return;
+    }
+
+    if (!isDigital && !/^[A-Za-z0-9\s-]{3,12}$/.test(cleanPincode)) {
+      setCheckoutMessage("Enter a valid postal code (e.g. 560072 or 110001).");
       return;
     }
 
