@@ -1267,3 +1267,35 @@ html.banner-active .navbar {
   width: 20px;
   height: 20px;
 }
+
+/* Navbar Address Delete Confirmation */
+.navbar-address-delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.navbar-confirm-yes {
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.navbar-confirm-no {
+  background: var(--site-surface-muted, #f1f5f9);
+  color: var(--site-text, #334155);
+  border: 1px solid var(--site-border, #cbd5e1);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}

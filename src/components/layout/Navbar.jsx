@@ -42,6 +42,7 @@ function Navbar({ bannerActive = false }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [confirmDeleteIndex, setConfirmDeleteIndex] = useState(null);
   const [isCollectionFilterMenuOpen, setIsCollectionFilterMenuOpen] = useState(false);
   const [isManagingAddresses, setIsManagingAddresses] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
@@ -655,15 +656,36 @@ function Navbar({ bannerActive = false }) {
                           </button>
                         ) : null}
                         {isManagingAddresses ? (
-                          <button
-                            type="button"
-                            className="navbar-address-action danger"
-                            onClick={() => {
-                              removeAddress(index);
-                            }}
-                          >
-                            Delete
-                          </button>
+                          confirmDeleteIndex === index ? (
+                            <div className="navbar-address-delete-confirm">
+                              <span>Delete?</span>
+                              <button
+                                type="button"
+                                className="navbar-confirm-yes"
+                                onClick={() => {
+                                  removeAddress(index);
+                                  setConfirmDeleteIndex(null);
+                                }}
+                              >
+                                Yes
+                              </button>
+                              <button
+                                type="button"
+                                className="navbar-confirm-no"
+                                onClick={() => setConfirmDeleteIndex(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="navbar-address-action danger"
+                              onClick={() => setConfirmDeleteIndex(index)}
+                            >
+                              Delete
+                            </button>
+                          )
                         ) : null}
                       </div>
                     </article>

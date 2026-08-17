@@ -763,3 +763,52 @@
   font-size: 13px;
   font-weight: 600;
 }
+
+/* Delete Confirmation Inline Styling */
+.my-account-delete-confirm-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  padding: 3px 8px;
+  border-radius: 6px;
+  animation: fadeIn 0.2s ease;
+}
+
+.my-account-delete-confirm-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.my-account-delete-confirm-btn {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 700 !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+  transition: opacity 0.15s ease !important;
+}
+
+.my-account-delete-confirm-btn:hover {
+  opacity: 0.9 !important;
+}
+
+.my-account-delete-cancel-btn {
+  background: var(--site-surface-muted, #f1f5f9) !important;
+  color: var(--site-text, #334155) !important;
+  border: 1px solid var(--site-border, #cbd5e1) !important;
+  font-weight: 600 !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  font-size: 11px !important;
+}
+
+.my-account-delete-cancel-btn:hover {
+  background: #e2e8f0 !important;
+}

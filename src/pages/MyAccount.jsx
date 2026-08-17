@@ -225,6 +225,7 @@ function MyAccount() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [showAddressForm, setShowAddressForm] = useState(addresses.length === 0);
   const [editingIndex, setEditingIndex] = useState(null);
+  const [confirmDeleteIndex, setConfirmDeleteIndex] = useState(null);
   const [addressError, setAddressError] = useState("");
   const [addressLabel, setAddressLabel] = useState("Home");
   const [name, setName] = useState("");
@@ -783,9 +784,32 @@ function MyAccount() {
                         Edit
                       </button>
                     )}
-                    <button type="button" className="danger" onClick={() => deleteAddress(index)}>
-                      Delete
-                    </button>
+                    {confirmDeleteIndex === index ? (
+                      <div className="my-account-delete-confirm-box">
+                        <span className="my-account-delete-confirm-text">Delete address?</span>
+                        <button
+                          type="button"
+                          className="my-account-delete-confirm-btn"
+                          onClick={() => {
+                            deleteAddress(index);
+                            setConfirmDeleteIndex(null);
+                          }}
+                        >
+                          ✓ Confirm
+                        </button>
+                        <button
+                          type="button"
+                          className="my-account-delete-cancel-btn"
+                          onClick={() => setConfirmDeleteIndex(null)}
+                        >
+                          ✕ Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="danger" onClick={() => setConfirmDeleteIndex(index)}>
+                        Delete
+                      </button>
+                    )}
                     {!item.isDefault ? (
                       <button type="button" onClick={() => setDefaultAddress(index)}>
                         Set Default
