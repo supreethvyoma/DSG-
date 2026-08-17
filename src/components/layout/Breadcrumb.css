@@ -57,13 +57,11 @@
   color: var(--site-text-muted, #64748b);
 }
 
-/* CSS ::before separator — strictly attached to item, impossible to wrap */
-.site-breadcrumb-item + .site-breadcrumb-item::before {
-  content: "/" !important;
+.site-breadcrumb-separator {
   color: var(--site-muted, #94a3b8) !important;
   font-size: 12px !important;
   font-weight: 400 !important;
-  margin: 0 6px !important;
+  margin: 0 4px !important;
   flex-shrink: 0 !important;
   display: inline-block !important;
   white-space: nowrap !important;
@@ -108,9 +106,9 @@
     font-size: 12px;
   }
 
-  .site-breadcrumb-item + .site-breadcrumb-item::before {
+  .site-breadcrumb-separator {
     font-size: 11px !important;
-    margin: 0 4px !important;
+    margin: 0 3px !important;
   }
 
   .site-breadcrumb-current {
