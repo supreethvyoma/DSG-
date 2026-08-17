@@ -9,6 +9,7 @@ import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { formatCurrencyForUser } from "../utils/currency";
 import { formatDate } from "../utils/date";
 import "./MyAccount.css";
+import LoadingSpinner from "../components/common/LoadingSpinner";
 
 // ── Push Notification Subscribe Section ──────────────────────────────────────
 function PushSubscribeSection({ token }) {
@@ -201,6 +202,7 @@ function MyAccount() {
   const addressFormRef = useRef(null);
   const nameInputRef = useRef(null);
   const [orders, setOrders] = useState([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [showAddressForm, setShowAddressForm] = useState(addresses.length === 0);
   const [editingIndex, setEditingIndex] = useState(null);
   const [addressError, setAddressError] = useState("");
@@ -298,7 +300,10 @@ function MyAccount() {
   }, [location.hash, location.search]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setIsLoadingOrders(false);
+      return;
+    }
 
     let active = true;
 
@@ -313,6 +318,10 @@ function MyAccount() {
       .catch(() => {
         if (!active) return;
         setOrders([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoadingOrders(false);
       });
 
     return () => {
@@ -508,7 +517,9 @@ function MyAccount() {
 
         <div className="my-account-highlight">
           <span className="my-account-highlight-label">Latest order</span>
-          {orderSummary.latestOrder ? (
+          {isLoadingOrders ? (
+            <LoadingSpinner text="Checking orders..." minHeight="70px" size="24px" />
+          ) : orderSummary.latestOrder ? (
             <>
               <strong>{formatDate(orderSummary.latestOrder.createdAt)}</strong>
               <p>
