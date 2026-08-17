@@ -125,16 +125,23 @@ function GuestBuy() {
   const handlePayment = async (e) => {
     e.preventDefault();
 
-    const cleanPhone = String(phone || "").replace(/\D/g, "");
+    const digits = String(phone || "").replace(/\D/g, "");
     const cleanPincode = String(pincode || "").trim();
+    const cleanCountry = String(country || "").trim();
 
     if (!name.trim() || !email.trim() || !phone.trim()) {
       setCheckoutMessage("Please fill in your name, email, and phone number.");
       return;
     }
 
-    if (cleanPhone.length < 10) {
-      setCheckoutMessage("Enter a valid phone number (at least 10 digits).");
+    const isIndia = !cleanCountry || cleanCountry.toLowerCase() === "india";
+    if (isIndia && !/^[6-9]\d{9}$/.test(digits)) {
+      setCheckoutMessage("Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9 (e.g. 9876543210).");
+      return;
+    }
+
+    if (!isIndia && (digits.length < 7 || digits.length > 15)) {
+      setCheckoutMessage("Please enter a valid phone number (7 to 15 digits).");
       return;
     }
 

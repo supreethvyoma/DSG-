@@ -261,22 +261,28 @@ function Checkout() {
   };
 
   const handleSaveNewAddress = async () => {
-    const cleanPhone = String(newPhone || "").replace(/\D/g, "");
+    const digits = String(newPhone || "").replace(/\D/g, "");
     const cleanPincode = String(newPincode || "").trim();
     const cleanCountry = String(newCountry || "").trim();
 
-    if (!newName || !cleanPhone || !newAddressText || !newCity || !newState || !cleanPincode || !cleanCountry) {
+    if (!newName || !digits || !newAddressText || !newCity || !newState || !cleanPincode || !cleanCountry) {
       setAddressError("Please fill full name, phone, address, city, state, postal code, and country.");
       return;
     }
 
-    if (cleanPhone.length < 10) {
-      setAddressError("Enter a valid phone number (at least 10 digits).");
+    const isIndia = !cleanCountry || cleanCountry.toLowerCase() === "india";
+    if (isIndia && !/^[6-9]\d{9}$/.test(digits)) {
+      setAddressError("Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9 (e.g. 9876543210).");
+      return;
+    }
+
+    if (!isIndia && (digits.length < 7 || digits.length > 15)) {
+      setAddressError("Please enter a valid phone number (7 to 15 digits).");
       return;
     }
 
     if (!/^[A-Za-z0-9\s-]{3,12}$/.test(cleanPincode)) {
-      setAddressError("Enter a valid postal code.");
+      setAddressError("Enter a valid postal code (e.g. 560072 or 110001).");
       return;
     }
 
