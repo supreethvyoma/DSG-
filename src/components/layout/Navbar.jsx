@@ -146,6 +146,22 @@ function Navbar({ bannerActive = false }) {
     navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/collection");
   };
 
+  const handleSectionNav = (sectionKey) => {
+    const targetId = `home-section-${sectionKey}`;
+    if (location.pathname === "/") {
+      const elem = document.getElementById(targetId);
+      if (elem) {
+        elem.scrollIntoView({ behavior: "smooth", block: "center" });
+        elem.classList.remove("home-section-highlighted");
+        void elem.offsetWidth;
+        elem.classList.add("home-section-highlighted");
+        setTimeout(() => elem.classList.remove("home-section-highlighted"), 3000);
+      }
+    } else {
+      navigate(`/?scrollTo=${sectionKey}`);
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const queryFromUrl = params.get("q") || params.get("search") || "";
@@ -479,39 +495,21 @@ function Navbar({ bannerActive = false }) {
                   <button
                     type="button"
                     className="navbar-quick-nav-btn"
-                    onClick={() => {
-                      if (location.pathname === "/") {
-                        document.getElementById("home-section-top-rated")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      } else {
-                        navigate("/?scrollTo=top-rated");
-                      }
-                    }}
+                    onClick={() => handleSectionNav("top-rated")}
                   >
                     Top Rated
                   </button>
                   <button
                     type="button"
                     className="navbar-quick-nav-btn"
-                    onClick={() => {
-                      if (location.pathname === "/") {
-                        document.getElementById("home-section-new-arrivals")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      } else {
-                        navigate("/?scrollTo=new-arrivals");
-                      }
-                    }}
+                    onClick={() => handleSectionNav("new-arrivals")}
                   >
                     New Arrivals
                   </button>
                   <button
                     type="button"
                     className="navbar-quick-nav-btn"
-                    onClick={() => {
-                      if (location.pathname === "/") {
-                        document.getElementById("home-section-budget-picks")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      } else {
-                        navigate("/?scrollTo=budget-picks");
-                      }
-                    }}
+                    onClick={() => handleSectionNav("budget-picks")}
                   >
                     Budget Picks
                   </button>

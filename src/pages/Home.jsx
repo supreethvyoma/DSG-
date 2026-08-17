@@ -241,8 +241,17 @@ function Home() {
       const element = document.getElementById(targetId);
       if (element) {
         window.setTimeout(() => {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.remove("home-section-highlighted");
+          void element.offsetWidth;
+          element.classList.add("home-section-highlighted");
+        }, 120);
+
+        const timer = window.setTimeout(() => {
+          element.classList.remove("home-section-highlighted");
+        }, 3000);
+
+        return () => window.clearTimeout(timer);
       }
     }
   }, [location.search, isLoadingProducts]);
