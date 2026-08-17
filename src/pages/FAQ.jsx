@@ -6,10 +6,7 @@ function FAQ() {
   const [expandedItems, setExpandedItems] = useState({});
 
   const toggleItem = (id) => {
-    setExpandedItems((prev) => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+    setExpandedItems((prev) => (prev[id] ? {} : { [id]: true }));
   };
 
   const faqData = {
