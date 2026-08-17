@@ -451,7 +451,7 @@ function Home() {
             onClick={() => scrollRow(spotlightRef, -1)}
             aria-label="Previous items"
           >
-            <ChevronsLeft size={22} />
+            <ChevronLeft size={38} strokeWidth={2.5} />
           </button>
 
           <div ref={spotlightRef} className="home-spotlight-row">
@@ -472,7 +472,7 @@ function Home() {
             onClick={() => scrollRow(spotlightRef, 1)}
             aria-label="Next items"
           >
-            <ChevronsRight size={22} />
+            <ChevronRight size={38} strokeWidth={2.5} />
           </button>
         </div>
       </section>
@@ -590,7 +590,7 @@ function Home() {
                   onClick={() => scrollRow(festiveRef, -1)}
                   aria-label="Previous festive offers"
                 >
-                  <ChevronsLeft size={22} />
+                  <ChevronLeft size={38} strokeWidth={2.5} />
                 </button>
               ) : null}
 
@@ -618,7 +618,7 @@ function Home() {
                   onClick={() => scrollRow(festiveRef, 1)}
                   aria-label="Next festive offers"
                 >
-                  <ChevronsRight size={22} />
+                  <ChevronRight size={38} strokeWidth={2.5} />
                 </button>
               ) : null}
             </div>
@@ -644,7 +644,7 @@ function Home() {
                 onClick={() => scrollRow(bundleRef, -1)}
                 aria-label="Previous bundle products"
               >
-                <ChevronsLeft size={22} />
+                <ChevronLeft size={38} strokeWidth={2.5} />
               </button>
             ) : null}
 
@@ -671,7 +671,7 @@ function Home() {
                 onClick={() => scrollRow(bundleRef, 1)}
                 aria-label="Next bundle products"
               >
-                <ChevronsRight size={22} />
+                <ChevronRight size={38} strokeWidth={2.5} />
               </button>
             ) : null}
           </div>
@@ -700,7 +700,7 @@ function Home() {
                 onClick={() => scrollRow(catalogPreviewRef, -1)}
                 aria-label="Previous catalog items"
               >
-                <ChevronsLeft size={22} />
+                <ChevronLeft size={38} strokeWidth={2.5} />
               </button>
             ) : null}
 
@@ -734,7 +734,7 @@ function Home() {
                 onClick={() => scrollRow(catalogPreviewRef, 1)}
                 aria-label="Next catalog items"
               >
-                <ChevronsRight size={22} />
+                <ChevronRight size={38} strokeWidth={2.5} />
               </button>
             ) : null}
           </div>
