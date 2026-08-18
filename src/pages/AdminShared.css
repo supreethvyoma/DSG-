@@ -10,19 +10,19 @@
 --admin-primary-2:#B45309;
 --admin-danger:#ef4444;
 --admin-sidebar-width:272px;
---admin-navbar-offset:124px;
+--admin-navbar-offset:34px;
 }
 
 html.banner-active {
---admin-navbar-offset:164px;
+--admin-navbar-offset:34px;
 }
 
 html.navbar-attached-hidden {
---admin-navbar-offset:72px;
+--admin-navbar-offset:34px;
 }
 
 html.banner-active.navbar-attached-hidden {
---admin-navbar-offset:112px;
+--admin-navbar-offset:34px;
 }
 
 body{

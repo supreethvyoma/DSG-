@@ -39,6 +39,8 @@ function Navbar({ bannerActive = false }) {
     useDeliveryLocation();
   const location = useLocation();
   const navigate = useNavigate();
+
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -396,100 +398,123 @@ function Navbar({ bannerActive = false }) {
 
   return (
     <>
-      <nav className={`navbar${bannerActive ? " banner-active" : ""}`}>
-        <div className="navbar-top">
-          <div className="navbar-inner">
-            <Link to="/" className="navbar-logo navbar-outline">
-              <img
-                src="/logo.png"
-                alt="Digital Sanskrit Guru"
-                className="navbar-logo-img"
-              />
-            </Link>
-
-            <button
-              type="button"
-              className="navbar-location navbar-location-btn navbar-outline"
-              onClick={() => setIsAddressModalOpen(true)}
-            >
-              <span className="navbar-location-icon" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-                <MapPin size={18} className="lucide-icon" />
-              </span>
-              <span className="navbar-location-text">
-                <span className="navbar-location-label">{deliveryLine1}</span>
-                <span className="navbar-location-value">{deliveryLine2}</span>
-              </span>
-            </button>
-
-            <form className="navbar-search-wrap" onSubmit={handleSearchSubmit}>
-              <input
-                className="navbar-search"
-                placeholder="Search products, courses, and topics"
-                aria-label="Search products, courses, and topics"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <button type="submit" className="navbar-search-btn" aria-label="Search">
-                <span className="navbar-search-btn-icon" aria-hidden="true">
-                  {renderIcon("search", storeIcons.search)}
-                </span>
-              </button>
-            </form>
-
-            <div className="navbar-right">
-              {user ? (
-                <Link className="navbar-account navbar-outline" to="/account">
-                  <span className="navbar-account-line1">Hello, {user.name}</span>
-                  <span className="navbar-account-line2">Your Account</span>
-                </Link>
-              ) : (
-                <Link className="navbar-account navbar-outline" to="/login">
-                  <span className="navbar-account-line1">Hello, Sign in</span>
-                  <span className="navbar-account-line2">Account & Lists</span>
-                </Link>
-              )}
-
-              <Link className="navbar-orders navbar-outline" to="/my-orders">
-                <span className="navbar-account-line1">Returns</span>
-                <span className="navbar-account-line2">& Orders</span>
-              </Link>
-
-              <Link className="navbar-orders navbar-outline" to="/faq">
-                <span className="navbar-account-line1">Help</span>
-                <span className="navbar-account-line2">& FAQs</span>
-              </Link>
-
-              <Link className="navbar-cart navbar-outline" to="/cart">
-                <span className="navbar-cart-icon" aria-hidden="true">
-                  {renderIcon("cart", storeIcons.cart)}
-                </span>
-                <span className="navbar-cart-label">Cart</span>
-                <span className="navbar-badge">
-                  {cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)}
-                </span>
+      <nav className={`navbar${bannerActive ? " banner-active" : ""}${isAdminRoute ? " admin-navbar-mode" : ""}`}>
+        {!isAdminRoute && (
+          <div className="navbar-top">
+            <div className="navbar-inner">
+              <Link to="/" className="navbar-logo navbar-outline">
+                <img
+                  src="/logo.png"
+                  alt="Digital Sanskrit Guru"
+                  className="navbar-logo-img"
+                />
               </Link>
 
               <button
                 type="button"
-                className="navbar-menu-toggle navbar-outline"
-                aria-expanded={isMenuOpen}
-                aria-controls="navbar-subbar-links"
-                aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-                onClick={() => setIsMenuOpen((current) => !current)}
+                className="navbar-location navbar-location-btn navbar-outline"
+                onClick={() => setIsAddressModalOpen(true)}
               >
-                <span className="navbar-menu-icon" aria-hidden="true">
-                  {isMenuOpen ? <X size={20} className="lucide-icon" /> : <Menu size={20} className="lucide-icon" />}
+                <span className="navbar-location-icon" aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  <MapPin size={18} className="lucide-icon" />
                 </span>
-                <span className="navbar-menu-text">{isMenuOpen ? "Close" : "Menu"}</span>
+                <span className="navbar-location-text">
+                  <span className="navbar-location-label">{deliveryLine1}</span>
+                  <span className="navbar-location-value">{deliveryLine2}</span>
+                </span>
               </button>
+
+              <form className="navbar-search-wrap" onSubmit={handleSearchSubmit}>
+                <input
+                  className="navbar-search"
+                  placeholder="Search products, courses, and topics"
+                  aria-label="Search products, courses, and topics"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <button type="submit" className="navbar-search-btn" aria-label="Search">
+                  <span className="navbar-search-btn-icon" aria-hidden="true">
+                    {renderIcon("search", storeIcons.search)}
+                  </span>
+                </button>
+              </form>
+
+              <div className="navbar-right">
+                {user ? (
+                  <Link className="navbar-account navbar-outline" to="/account">
+                    <span className="navbar-account-line1">Hello, {user.name}</span>
+                    <span className="navbar-account-line2">Your Account</span>
+                  </Link>
+                ) : (
+                  <Link className="navbar-account navbar-outline" to="/login">
+                    <span className="navbar-account-line1">Hello, Sign in</span>
+                    <span className="navbar-account-line2">Account & Lists</span>
+                  </Link>
+                )}
+
+                <Link className="navbar-orders navbar-outline" to="/my-orders">
+                  <span className="navbar-account-line1">Returns</span>
+                  <span className="navbar-account-line2">& Orders</span>
+                </Link>
+
+                <Link className="navbar-orders navbar-outline" to="/faq">
+                  <span className="navbar-account-line1">Help</span>
+                  <span className="navbar-account-line2">& FAQs</span>
+                </Link>
+
+                <Link className="navbar-cart navbar-outline" to="/cart">
+                  <span className="navbar-cart-icon" aria-hidden="true">
+                    {renderIcon("cart", storeIcons.cart)}
+                  </span>
+                  <span className="navbar-cart-label">Cart</span>
+                  <span className="navbar-badge">
+                    {cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)}
+                  </span>
+                </Link>
+
+                <button
+                  type="button"
+                  className="navbar-menu-toggle navbar-outline"
+                  aria-expanded={isMenuOpen}
+                  aria-controls="navbar-subbar-links"
+                  aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+                  onClick={() => setIsMenuOpen((current) => !current)}
+                >
+                  <span className="navbar-menu-icon" aria-hidden="true">
+                    {isMenuOpen ? <X size={20} className="lucide-icon" /> : <Menu size={20} className="lucide-icon" />}
+                  </span>
+                  <span className="navbar-menu-text">{isMenuOpen ? "Close" : "Menu"}</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        <div className={`navbar-attached-bar ${!showAttachedBar ? "navbar-attached-bar-hidden" : ""}`}>
+        <div className={`navbar-attached-bar ${!showAttachedBar && !isAdminRoute ? "navbar-attached-bar-hidden" : ""}`}>
           <div className="navbar-inner navbar-attached-bar-inner">
             <div className="navbar-attached-bar-start">
-              {!isAdminRoute ? (
+              {isAdminRoute ? (
+                <>
+                  <Link to="/" className="navbar-quick-nav-btn" style={{ fontWeight: 700, color: "#f59e0b" }}>
+                    ← Storefront
+                  </Link>
+                  <NavLink to="/admin" end className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
+                    Dashboard
+                  </NavLink>
+                  <NavLink to="/admin/sales" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
+                    Sales Analytics
+                  </NavLink>
+                  <NavLink to="/admin/orders" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
+                    Orders
+                  </NavLink>
+                  <NavLink to="/admin/products" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
+                    Products
+                  </NavLink>
+                  <NavLink to="/admin/users" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
+                    Users
+                  </NavLink>
+                </>
+              ) : (
                 <>
                   {location.pathname !== "/collection" && (
                     <button
@@ -525,7 +550,7 @@ function Navbar({ bannerActive = false }) {
                     Budget Picks
                   </button>
                 </>
-              ) : null}
+              )}
             </div>
             {/* {onDemandUrl ? (
               <a

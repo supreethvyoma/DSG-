@@ -1,7 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "./Footer.css";
 
 function Footer() {
+  const location = useLocation();
+
+  if (location.pathname.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <footer className="site-footer">
       <div className="footer-container">

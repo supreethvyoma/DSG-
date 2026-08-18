@@ -11,6 +11,13 @@
   overflow: visible;
 }
 
+.navbar.admin-navbar-mode .navbar-attached-bar {
+  height: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  box-sizing: border-box;
+}
+
 /* When festive banner is active, push navbar below the 40px fixed banner */
 html.banner-active .navbar {
   top: 40px;

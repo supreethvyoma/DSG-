@@ -265,3 +265,20 @@ html.banner-active body {
   }
 }
 
+/* Responsive Loading Spinner Overrides */
+.global-loading-spinner-wrapper {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .global-loading-spinner-wrapper {
+    min-height: 110px !important;
+    padding: 16px 12px !important;
+    gap: 10px !important;
+  }
+  .global-loading-spinner-text {
+    font-size: 12px !important;
+  }
+}
+
