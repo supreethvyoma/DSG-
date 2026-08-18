@@ -260,7 +260,7 @@ orderSchema.pre("save", function() {
     return Counter.findByIdAndUpdate(
       { _id: "orderInvoice" },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+      { returnDocument: 'after', upsert: true }
     )
       .then((counter) => {
         const year = new Date().getFullYear();

@@ -1149,7 +1149,7 @@ router.post("/:id/view", async (req, res) => {
     const updated = await Product.findByIdAndUpdate(
       req.params.id,
       { $inc: { views: 1 } },
-      { new: true, select: "views" }
+      { returnDocument: 'after', select: "views" }
     );
 
     if (!updated) {

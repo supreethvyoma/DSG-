@@ -30,7 +30,7 @@ router.post("/subscribe", protect, async (req, res) => {
     await PushSubscription.findOneAndUpdate(
       { endpoint },
       { user: req.user, endpoint, keys },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
 
     res.json({ message: "Subscribed to push notifications." });

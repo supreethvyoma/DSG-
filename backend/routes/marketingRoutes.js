@@ -419,7 +419,7 @@ router.put("/settings", async (req, res) => {
     const settings = await StoreSettings.findOneAndUpdate(
       {},
       { $set: { lowStockThreshold: threshold, notificationEmail, emailEnabled, pushEnabled } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     res.json({

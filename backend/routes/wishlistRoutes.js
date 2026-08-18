@@ -27,7 +27,7 @@ router.post("/sync", protect, async (req, res) => {
     const wishlist = await Wishlist.findOneAndUpdate(
       { user: req.user },
       { $set: { productIds } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     ).populate("productIds");
 
     const products = wishlist && Array.isArray(wishlist.productIds)
@@ -48,7 +48,7 @@ router.post("/add", protect, async (req, res) => {
     const wishlist = await Wishlist.findOneAndUpdate(
       { user: req.user },
       { $addToSet: { productIds: productId } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     ).populate("productIds");
 
     const products = wishlist && Array.isArray(wishlist.productIds)
@@ -69,7 +69,7 @@ router.delete("/:productId", protect, async (req, res) => {
     const wishlist = await Wishlist.findOneAndUpdate(
       { user: req.user },
       { $pull: { productIds: productId } },
-      { new: true }
+      { returnDocument: 'after' }
     ).populate("productIds");
 
     const products = wishlist && Array.isArray(wishlist.productIds)
