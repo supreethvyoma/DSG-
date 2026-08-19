@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { useCart } from "../hooks/useCart";
@@ -188,6 +188,13 @@ function Product() {
   const [comment, setComment] = useState("");
   const [reviewError, setReviewError] = useState("");
   const [selectedMedia, setSelectedMedia] = useState(null);
+  const [showAllThumbnails, setShowAllThumbnails] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
+
+  useEffect(() => {
+    setShowAllThumbnails(false);
+    setShowLightbox(false);
+  }, [id]);
 
   const [purchasedProducts, setPurchasedProducts] = useState([]);
   const [purchaseAsGift, setPurchaseAsGift] = useState(false);
@@ -247,6 +254,28 @@ function Product() {
         .catch((err) => console.error("Error fetching my orders:", err));
     }
   }, [token]);
+
+  const thumbnailColumnRef = useRef(null);
+
+  useEffect(() => {
+    if (thumbnailColumnRef.current && selectedMedia) {
+      const container = thumbnailColumnRef.current;
+      const activeElem = container.querySelector(".thumbnail.active");
+      if (activeElem) {
+        const elemTop = activeElem.offsetTop;
+        const elemHeight = activeElem.offsetHeight;
+        const containerHeight = container.clientHeight;
+        const containerScrollTop = container.scrollTop;
+
+        if (elemTop < containerScrollTop || elemTop + elemHeight > containerScrollTop + containerHeight) {
+          container.scrollTo({
+            top: Math.max(0, elemTop - containerHeight / 2 + elemHeight / 2),
+            behavior: "smooth"
+          });
+        }
+      }
+    }
+  }, [selectedMedia]);
 
   const isWishlisted = product ? wishlist.some((p) => p._id === product._id) : false;
 
@@ -632,46 +661,123 @@ function Product() {
   const alreadyPurchased = product && purchasedProducts.includes(String(product._id));
   const hasPurchasedWebVersion = isWebVersion && alreadyPurchased;
 
+  const activeMediaIndex = mediaItems.findIndex((item) => item.key === activeMedia?.key);
+  const currentMediaNum = activeMediaIndex >= 0 ? activeMediaIndex + 1 : 1;
+
+  const handlePrevMedia = (e) => {
+    e?.stopPropagation();
+    if (mediaItems.length <= 1) return;
+    const prevIdx = (activeMediaIndex - 1 + mediaItems.length) % mediaItems.length;
+    setSelectedMedia(mediaItems[prevIdx]);
+  };
+
+  const handleNextMedia = (e) => {
+    e?.stopPropagation();
+    if (mediaItems.length <= 1) return;
+    const nextIdx = (activeMediaIndex + 1) % mediaItems.length;
+    setSelectedMedia(mediaItems[nextIdx]);
+  };
+
   return (
     <>
       <div className="product-container">
         <div className="product-left">
           <div className={`image-gallery ${mediaItems.length <= 1 ? "single-media" : ""}`}>
             {mediaItems.length > 1 && (
-              <div className="thumbnail-column">
-                {mediaItems.map((item, i) => (
-                  item.kind === "image" ? (
-                    <img
-                      key={item.key}
-                      src={item.thumbnail || "/no-image.webp"}
-                      className={`thumbnail ${activeMedia?.key === item.key ? "active" : ""}`}
-                      onClick={() => setSelectedMedia(item)}
-                      alt={`${product.name} thumbnail ${i + 1}`}
-                      width="120"
-                      height="120"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <button
-                      key={item.key}
-                      type="button"
-                      className={`thumbnail thumbnail-video ${activeMedia?.key === item.key ? "active" : ""}`}
-                      onClick={() => setSelectedMedia(item)}
-                      aria-label="Open product trailer"
-                    >
+              <div className="thumbnail-column-wrapper">
+                <div ref={thumbnailColumnRef} className="thumbnail-column">
+                  {(mediaItems.length > 5 && !showAllThumbnails
+                    ? mediaItems.slice(0, 5)
+                    : mediaItems
+                  ).map((item, i) => {
+                    const isLastVisibleInCollapsed =
+                      mediaItems.length > 5 && !showAllThumbnails && i === 4;
+                    const remainingCount = mediaItems.length - 4;
+
+                    if (isLastVisibleInCollapsed) {
+                      return (
+                        <div
+                          key={item.key}
+                          className="thumbnail-more-wrap"
+                          onClick={() => {
+                            setSelectedMedia(item);
+                            setShowAllThumbnails(true);
+                          }}
+                          title={`Click to view all ${mediaItems.length} images`}
+                        >
+                          {item.kind === "image" ? (
+                            <img
+                              src={item.thumbnail || "/no-image.webp"}
+                              className={`thumbnail ${activeMedia?.key === item.key ? "active" : ""}`}
+                              alt={`${product.name} thumbnail ${i + 1}`}
+                              width="120"
+                              height="120"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          ) : (
+                            <div className={`thumbnail thumbnail-video ${activeMedia?.key === item.key ? "active" : ""}`}>
+                              <img
+                                src={item.thumbnail || "/no-image.webp"}
+                                alt={`${product.name} trailer thumbnail`}
+                                width="120"
+                                height="120"
+                                loading="lazy"
+                                decoding="async"
+                              />
+                              <span>Trailer</span>
+                            </div>
+                          )}
+                          <div className="thumbnail-more-overlay">
+                            <div>+{remainingCount}</div>
+                            <span>More</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return item.kind === "image" ? (
                       <img
+                        key={item.key}
                         src={item.thumbnail || "/no-image.webp"}
-                        alt={`${product.name} trailer thumbnail`}
+                        className={`thumbnail ${activeMedia?.key === item.key ? "active" : ""}`}
+                        onClick={() => setSelectedMedia(item)}
+                        alt={`${product.name} thumbnail ${i + 1}`}
                         width="120"
                         height="120"
                         loading="lazy"
                         decoding="async"
                       />
-                      <span>Trailer</span>
-                    </button>
-                  )
-                ))}
+                    ) : (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className={`thumbnail thumbnail-video ${activeMedia?.key === item.key ? "active" : ""}`}
+                        onClick={() => setSelectedMedia(item)}
+                        aria-label="Open product trailer"
+                      >
+                        <img
+                          src={item.thumbnail || "/no-image.webp"}
+                          alt={`${product.name} trailer thumbnail`}
+                          width="120"
+                          height="120"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                        <span>Trailer</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {mediaItems.length > 5 && (
+                  <button
+                    type="button"
+                    className="thumbnail-toggle-btn"
+                    onClick={() => setShowAllThumbnails((prev) => !prev)}
+                  >
+                    {showAllThumbnails ? "Show Less" : `+${mediaItems.length - 4} More`}
+                  </button>
+                )}
               </div>
             )}
 
@@ -725,6 +831,29 @@ function Product() {
                   </svg>
                 </button>
               </div>
+              {mediaItems.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    className="main-image-nav-btn prev-btn"
+                    onClick={handlePrevMedia}
+                    aria-label="Previous image"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="main-image-nav-btn next-btn"
+                    onClick={handleNextMedia}
+                    aria-label="Next image"
+                  >
+                    ›
+                  </button>
+                  <div className="main-image-counter-pill">
+                    {currentMediaNum} / {mediaItems.length}
+                  </div>
+                </>
+              )}
               {activeMedia?.kind === "trailer" ? (
                 activeMedia.trailerType === "iframe" ? (
                   <iframe
@@ -755,6 +884,9 @@ function Product() {
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
+                  onClick={() => setShowLightbox(true)}
+                  title="Click to view full screen"
+                  style={{ cursor: "zoom-in" }}
                 />
               )}
             </div>
@@ -1520,6 +1652,54 @@ function Product() {
                 </>
               )}
             </form>
+          </div>
+        </div>
+      )}
+
+      {showLightbox && activeMedia?.kind === "image" && (
+        <div className="product-lightbox-modal" onClick={() => setShowLightbox(false)}>
+          <div className="product-lightbox-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="lightbox-close-btn"
+              onClick={() => setShowLightbox(false)}
+              aria-label="Close image preview"
+            >
+              ✕
+            </button>
+
+            {mediaItems.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="lightbox-nav-btn prev"
+                  onClick={handlePrevMedia}
+                  aria-label="Previous image"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="lightbox-nav-btn next"
+                  onClick={handleNextMedia}
+                  aria-label="Next image"
+                >
+                  ›
+                </button>
+              </>
+            )}
+
+            <img
+              src={activeMedia?.src || galleryImages[0] || product.image || "/no-image.webp"}
+              alt={product.name}
+              className="product-lightbox-img"
+            />
+            <div
+              className="main-image-counter-pill"
+              style={{ position: "absolute", bottom: "-36px", right: "50%", transform: "translateX(50%)" }}
+            >
+              {currentMediaNum} / {mediaItems.length}
+            </div>
           </div>
         </div>
       )}

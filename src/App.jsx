@@ -395,6 +395,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/sales"
+            element={
+              <AdminRoute requiredPage="sales-dashboard">
+                <AdminSalesDashboard />
+              </AdminRoute>
+            }
+          />
+          <Route
             path="/admin/financial-dashboard"
             element={
               <AdminRoute requiredPage="financial-dashboard">

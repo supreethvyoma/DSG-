@@ -30,7 +30,7 @@ const ROUTE_MAP = {
   "sales-dashboard": { label: "Sales Analytics", path: "/admin/sales-dashboard", parent: { label: "Admin Console", path: "/admin" } },
   "financial-dashboard": { label: "Finance & Taxes", path: "/admin/financial-dashboard", parent: { label: "Admin Console", path: "/admin" } },
   orders: { label: "Orders", path: "/admin/orders", parent: { label: "Admin Console", path: "/admin" } },
-  products: { label: "Products Catalog", path: "/admin/products", parent: { label: "Admin Console", path: "/admin" } },
+  products: { label: "Warehouse", path: "/admin/products", parent: { label: "Admin Console", path: "/admin" } },
   "add-products": { label: "Add & Edit Products", path: "/admin/add-products", parent: { label: "Admin Console", path: "/admin" } },
   coupons: { label: "Discount Coupons", path: "/admin/coupons", parent: { label: "Admin Console", path: "/admin" } },
   users: { label: "User Insights", path: "/admin/users", parent: { label: "Admin Console", path: "/admin" } },

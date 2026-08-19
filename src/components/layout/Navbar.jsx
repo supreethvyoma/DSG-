@@ -501,14 +501,14 @@ function Navbar({ bannerActive = false }) {
                   <NavLink to="/admin" end className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
                     Dashboard
                   </NavLink>
-                  <NavLink to="/admin/sales" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
+                  <NavLink to="/admin/sales-dashboard" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
                     Sales Analytics
                   </NavLink>
                   <NavLink to="/admin/orders" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
                     Orders
                   </NavLink>
                   <NavLink to="/admin/products" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
-                    Products
+                    Warehouse
                   </NavLink>
                   <NavLink to="/admin/users" className={({ isActive }) => `navbar-quick-nav-btn${isActive ? " active" : ""}`}>
                     Users
