@@ -228,18 +228,29 @@ function Cart() {
   const totals = useMemo(() => {
     const isInternational = isInternationalCountry(selectedAddress?.country);
     const defaultGstPercent = isInternational ? 0 : Number(charges.gstPercent || 0);
+    let totalItemBase = 0;
     let totalItemGst = 0;
+
     cartItems.forEach((item) => {
-      if (isInternational) return;
       const qty = Math.max(1, Number(item.quantity || 1));
       const price = getItemUnitPrice(item);
       const lineTotal = qty * price;
+
+      if (isInternational) {
+        totalItemBase += lineTotal;
+        return;
+      }
+
       const hsnSac = getItemHsnSac(item);
       const gstRate = hsnSac === "4901" ? 0 : defaultGstPercent;
-      const itemGst = Math.round(((lineTotal * gstRate) / 100) * 100) / 100;
+      const lineBase = Math.round((lineTotal / (1 + gstRate / 100)) * 100) / 100;
+      const itemGst = Math.round((lineTotal - lineBase) * 100) / 100;
+
+      totalItemBase += lineBase;
       totalItemGst += itemGst;
     });
 
+    const cartSubtotal = roundMoney(totalItemBase);
     const gstAmount = roundMoney(totalItemGst);
     const deliveryCharge = roundMoney(
       convertCurrencyAmount(Number(deliveryDetails.deliveryCharge || 0), {
@@ -247,14 +258,15 @@ function Cart() {
         currency: displayCurrency
       })
     );
+
     return {
-      subtotal,
+      subtotal: cartSubtotal,
       gstAmount,
       deliveryCharge,
-      grandTotal: roundMoney(subtotal + gstAmount + deliveryCharge),
+      grandTotal: roundMoney(cartSubtotal + gstAmount + deliveryCharge),
       isInternational
     };
-  }, [cartItems, subtotal, charges.gstPercent, deliveryDetails.deliveryCharge, displayCurrency, selectedAddress?.country]);
+  }, [cartItems, charges.gstPercent, deliveryDetails.deliveryCharge, displayCurrency, selectedAddress?.country]);
 
   const hasPhysicalItems = useMemo(
     () => cartItems.some((item) => !isDigitalItem(item)),
@@ -378,7 +390,7 @@ function Cart() {
           <p>
             {totals.isInternational
               ? `GST (Export 0%): ${formatCurrencyExact(0, displayCurrency)}`
-              : `GST (${charges.gstPercent}%): ${formatCurrencyExact(totals.gstAmount, displayCurrency)}`}
+              : `GST (${charges.gstPercent}% Included): ${formatCurrencyExact(totals.gstAmount, displayCurrency)}`}
           </p>
           {deliveryDetails.pricingMode === "digital" || deliveryDetails.isDigitalOnly ? (
             <p className="cart-delivery-charge-info">
@@ -399,7 +411,8 @@ function Cart() {
           {deliveryDetails.pricingMode === "international" && deliveryDetails.matchedCountry && (
             <p>International delivery applied for {deliveryDetails.matchedCountry}.</p>
           )}
-          <h3>Order Total: {formatCurrencyExact(totals.grandTotal, displayCurrency)}</h3>
+          <h3 style={{ marginBottom: "2px" }}>Order Total: {formatCurrencyExact(totals.grandTotal, displayCurrency)}</h3>
+          <p style={{ fontSize: "11px", color: "var(--site-text-soft, #64748b)", margin: "0 0 16px 0" }}>(Inclusive of all taxes)</p>
 
           {isIntlPhysicalRestricted && (
             <div style={{

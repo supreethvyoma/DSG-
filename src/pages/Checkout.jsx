@@ -1302,7 +1302,7 @@ function Checkout() {
             <span>{formatCurrencyExact(totals.subtotal, displayCurrency)}</span>
           </div>
           <div className="summary-item">
-            <span>GST ({charges.gstPercent}%)</span>
+            <span>GST ({charges.gstPercent}% Included)</span>
             <span>{formatCurrencyExact(totals.gstAmount, displayCurrency)}</span>
           </div>
           <div className="summary-item">
@@ -1393,7 +1393,8 @@ function Checkout() {
 
           {discount > 0 && <p className="discount">Discount: -{formatCurrencyExact(discount, displayCurrency)}</p>}
 
-          <h3 className="final-total">Final Total: {formatCurrencyExact(finalTotal, displayCurrency)}</h3>
+          <h3 className="final-total" style={{ marginBottom: "2px" }}>Final Total: {formatCurrencyExact(finalTotal, displayCurrency)}</h3>
+          <p style={{ fontSize: "11.5px", color: "var(--site-text-soft)", margin: "0 0 12px 0", textAlign: "right" }}>(Inclusive of all taxes)</p>
           {isIntlPhysicalRestricted && (
             <div style={{
               margin: "14px 0",
