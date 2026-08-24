@@ -338,6 +338,7 @@ function AdminAddProducts() {
   const [isUploadingProductImages, setIsUploadingProductImages] = useState(false);
   const [isOptimizingStoredImages, setIsOptimizingStoredImages] = useState(false);
   const [heroBannerMessage, setHeroBannerMessage] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const imagePreview = image.trim() || "https://picsum.photos/120";
   const imagePreviews = imagesInput
     .split(/\r?\n/)
@@ -562,6 +563,13 @@ function AdminAddProducts() {
     };
   }, [aboutProduct, imagesInput, internationalCountryPrices, marketPrices, relatedProductItems]);
 
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const resetForm = () => {
     setName("");
     setPrice("");
@@ -592,6 +600,7 @@ function AdminAddProducts() {
     setWidth("0");
     setLength("0");
     setEditingProduct(null);
+    setFormMessage("");
   };
 
   const saveHeroBanner = async () => {
@@ -1180,7 +1189,10 @@ function AdminAddProducts() {
       }
 
       await loadProducts();
-      resetForm();
+      setTimeout(() => {
+        resetForm();
+        setIsFormOpen(false);
+      }, 1500);
     } catch (err) {
       setFormMessage(err?.response?.data?.message || "Could not save product. Try again.");
     } finally {
@@ -1189,6 +1201,7 @@ function AdminAddProducts() {
   };
 
   const startEdit = (product) => {
+    setIsFormOpen(true);
     setEditingProduct(product);
     setName(product.name || "");
     setPrice(String(product.price ?? ""));
@@ -1514,31 +1527,213 @@ function AdminAddProducts() {
       <AdminSidebar />
 
       <main className="admin-main">
-        <div className="admin-header">
+        <div className="admin-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
           <div>
             <h1>Add Products</h1>
             <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--admin-muted)" }}>
               Add one product quickly, or switch into edit mode from the list below.
             </p>
           </div>
+          <button
+            type="button"
+            className="admin-primary-btn"
+            onClick={() => {
+              if (isFormOpen && !editingProduct) {
+                setIsFormOpen(false);
+              } else {
+                resetForm();
+                setIsFormOpen(true);
+                requestAnimationFrame(() => {
+                  formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  nameInputRef.current?.focus();
+                });
+              }
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 20px",
+              borderRadius: "8px",
+              backgroundColor: isFormOpen && !editingProduct ? "#64748b" : "var(--site-button-bg, #0284c7)",
+              color: "#ffffff",
+              border: "none",
+              fontWeight: "600",
+              fontSize: "14px",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.12)",
+              transition: "all 0.2s ease"
+            }}
+          >
+            {isFormOpen && !editingProduct ? "✕ Close Form" : "+ Add New Product"}
+          </button>
         </div>
 
-        <section ref={formSectionRef} className="card add-product-card">
-          <div className="add-product-card-header">
-            <div>
-              <h3>{editingProduct ? "Edit Product" : "Add Product"}</h3>
-              <p>
-                {editingProduct
-                  ? `Updating ${editingProduct.name}. Save when your changes are ready.`
-                  : "Fill in the product basics first, then preview the image before saving."}
-              </p>
-            </div>
-            <div className="add-product-status-badges">
-              <span className={formSummary.isNameValid ? "status-badge valid" : "status-badge"}>Name</span>
-              <span className={formSummary.isPriceValid ? "status-badge valid" : "status-badge"}>Price</span>
-              <span className={formSummary.hasPrimaryImage ? "status-badge valid" : "status-badge"}>Image</span>
-            </div>
-          </div>
+        {isFormOpen && (
+          <div
+            className="admin-modal-overlay"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.75)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              zIndex: 99999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "16px",
+              boxSizing: "border-box"
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                resetForm();
+                setIsFormOpen(false);
+              }
+            }}
+          >
+            <div
+              className="admin-modal-card"
+              style={{
+                width: "95vw",
+                maxWidth: "1150px",
+                maxHeight: "90vh",
+                backgroundColor: "var(--site-card-bg, #ffffff)",
+                color: "var(--site-text, #0f172a)",
+                borderRadius: "16px",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.4)",
+                border: "1px solid var(--site-border, #e2e8f0)",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                animation: "modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                boxSizing: "border-box"
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: "16px 20px",
+                  borderBottom: "1px solid var(--site-border, #e2e8f0)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: "var(--site-bg-soft, #f8fafc)",
+                  flexShrink: 0,
+                  gap: "16px",
+                  width: "100%",
+                  minWidth: 0,
+                  boxSizing: "border-box"
+                }}
+              >
+                <div style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden" }}>
+                  <h3
+                    style={{
+                      margin: 0,
+                      fontSize: "17px",
+                      fontWeight: 700,
+                      color: "var(--site-text, #0f172a)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "100%"
+                    }}
+                    title={editingProduct ? `Edit Product: ${editingProduct.name}` : "Add New Product"}
+                  >
+                    {editingProduct ? `Edit Product: ${editingProduct.name}` : "Add New Product"}
+                  </h3>
+                  <p
+                    style={{
+                      margin: "2px 0 0",
+                      fontSize: "12px",
+                      color: "var(--site-text-soft, #64748b)",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "100%"
+                    }}
+                  >
+                    {editingProduct ? "Update product details and save changes." : "Fill in basic product info, media, and pricing overrides."}
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+                  <div className="add-product-status-badges">
+                    <span className={formSummary.isNameValid ? "status-badge valid" : "status-badge"}>Name</span>
+                    <span className={formSummary.isPriceValid ? "status-badge valid" : "status-badge"}>Price</span>
+                    <span className={formSummary.hasPrimaryImage ? "status-badge valid" : "status-badge"}>Image</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetForm();
+                      setIsFormOpen(false);
+                    }}
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      border: "none",
+                      backgroundColor: "rgba(239, 68, 68, 0.12)",
+                      color: "#ef4444",
+                      fontSize: "15px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0
+                    }}
+                    title="Close Pop-up"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Quick Nav Tabs */}
+              <div className="admin-modal-nav-tabs">
+                <button type="button" className="admin-modal-tab-btn" onClick={() => scrollToSection("section-essentials")}>
+                  📌 Essentials
+                </button>
+                <button type="button" className="admin-modal-tab-btn" onClick={() => scrollToSection("section-pricing")}>
+                  💰 Pricing & Markets
+                </button>
+                <button type="button" className="admin-modal-tab-btn" onClick={() => scrollToSection("section-digital")}>
+                  ⚡ Digital Access
+                </button>
+                <button type="button" className="admin-modal-tab-btn" onClick={() => scrollToSection("section-dimensions")}>
+                  📦 Specs & Stock
+                </button>
+                <button type="button" className="admin-modal-tab-btn" onClick={() => scrollToSection("section-media")}>
+                  🖼️ Media & Preview
+                </button>
+              </div>
+
+              {/* Scrollable Modal Body */}
+              <div
+                ref={formSectionRef}
+                style={{
+                  padding: "20px",
+                  overflowY: "auto",
+                  overflowX: "hidden",
+                  flex: 1,
+                  width: "100%",
+                  boxSizing: "border-box"
+                }}
+              >
+                {formMessage && formMessage.includes("successfully") && (
+                  <div className="admin-toast-banner">
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{ fontSize: "18px" }}>✅</span>
+                      <span>{formMessage}</span>
+                    </div>
+                    <span style={{ fontSize: "11.5px", opacity: 0.85, fontWeight: 500 }}>Closing pop-up...</span>
+                    <div className="admin-toast-banner-progress" />
+                  </div>
+                )}
           {editingProduct && (
             <div className="edit-mode-banner">
               <strong>Edit mode</strong>
@@ -1548,7 +1743,7 @@ function AdminAddProducts() {
 
           <div className="product-composer-layout">
             <div className="product-composer-main">
-              <section className="product-composer-panel">
+              <section id="section-essentials" className="product-composer-panel">
                 <div className="product-composer-panel-head">
                   <div>
                     <h4>Essentials</h4>
@@ -1755,7 +1950,7 @@ function AdminAddProducts() {
                 </div>
               </section>
 
-              <section className="product-composer-panel">
+              <section id="section-pricing" className="product-composer-panel">
                 <div className="product-composer-panel-head">
                   <div>
                     <h4>📖 Digital Content & Kindle Settings</h4>
@@ -1839,7 +2034,7 @@ function AdminAddProducts() {
                 </div>
               </section>
 
-              <section className="product-composer-panel">
+              <section id="section-digital" className="product-composer-panel">
                 <div className="product-composer-panel-head">
                   <div>
                     <h4>Pricing</h4>
@@ -1961,7 +2156,7 @@ function AdminAddProducts() {
                 </div>
               </section>
 
-              <section className="product-composer-panel">
+              <section id="section-dimensions" className="product-composer-panel">
                 <div className="product-composer-panel-head">
                   <div>
                     <h4>Relationships</h4>
@@ -2171,7 +2366,7 @@ function AdminAddProducts() {
                 </div>
               </section>
 
-              <section className="product-composer-panel">
+              <section id="section-media" className="product-composer-panel">
                 <div className="product-composer-panel-head">
                   <div>
                     <h4>Media</h4>
@@ -2225,8 +2420,8 @@ function AdminAddProducts() {
             <aside className="product-composer-side">
               <div className="product-composer-side-card">
                 <span className="product-composer-side-kicker">Live Preview</span>
-                <h4>{name.trim() || "New product preview"}</h4>
-                <p>{description.trim() || "Your description, pricing, and image choices will show here as you build the product."}</p>
+                <h4 style={{ wordBreak: "break-word", overflowWrap: "anywhere", fontSize: "14.5px" }}>{name.trim() || "New product preview"}</h4>
+                <p style={{ wordBreak: "break-word", overflowWrap: "anywhere", fontSize: "12px" }}>{description.trim() || "Your description, pricing, and image choices will show here as you build the product."}</p>
                 <div className="product-composer-price-line">
                   <strong>Rs {formSummary.numericPrice || 0}</strong>
                   <small>{productType === "bundle" ? "Bundle pricing" : "Base pricing"}</small>
@@ -2267,49 +2462,121 @@ function AdminAddProducts() {
               ))}
             </div>
           )}
-          {formMessage && (
-            <p className={`admin-form-message ${formMessage.includes("successfully") ? "success" : "error"}`}>
-              {formMessage}
-            </p>
-          )}
-          <div className="actions">
-            <button onClick={saveProduct} disabled={isSavingProduct}>
-              {isSavingProduct ? "Saving..." : editingProduct ? "Update Product" : "Add Product"}
-            </button>
-            {editingProduct && (
-              <button className="danger" onClick={resetForm}>
-                Cancel
-              </button>
-            )}
-          </div>
-        </section>
+              </div>
 
-        <section className="card upload-card">
-          <h3>Bulk Upload Files</h3>
-          <p className="upload-help">
-            Upload a CSV or JSON file with fields: <code>name, price, internationalPrice, internationalCountryPrices, marketPrices, image, description, aboutProduct, category, stock</code>
-          </p>
-          <label className="upload-dropzone">
-            <span className="upload-title">Choose CSV / JSON file</span>
-            <span className="upload-subtitle">
-              {uploading ? "Uploading..." : "Click to browse and upload products"}
-            </span>
-            <input
-              type="file"
-              accept=".csv,.json,application/json,text/csv"
-              onChange={handleFileUpload}
-              disabled={uploading}
-            />
-          </label>
+              {/* Sticky Modal Footer */}
+              <div
+                style={{
+                  padding: "16px 24px",
+                  borderTop: "1px solid var(--site-border, #e2e8f0)",
+                  backgroundColor: "var(--site-bg-soft, #f8fafc)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "16px",
+                  flexShrink: 0
+                }}
+              >
+                <div>
+                  {formMessage && !formMessage.includes("successfully") && (
+                    <p className="admin-form-message error" style={{ margin: 0 }}>
+                      {formMessage}
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => {
+                      resetForm();
+                      setIsFormOpen(false);
+                    }}
+                    style={{
+                      padding: "9px 18px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--site-border, #cbd5e1)",
+                      backgroundColor: "transparent",
+                      color: "var(--site-text, #334155)",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveProduct}
+                    disabled={isSavingProduct}
+                    style={{
+                      padding: "9px 24px",
+                      borderRadius: "8px",
+                      backgroundColor: "var(--site-button-bg, #0284c7)",
+                      color: "#ffffff",
+                      border: "none",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {isSavingProduct ? "Saving..." : editingProduct ? "Update Product" : "Add Product"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <section className="card upload-card-compact" style={{ padding: "12px 18px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: "34px", height: "34px", borderRadius: "8px", backgroundColor: "rgba(2, 132, 199, 0.1)", color: "#0284c7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", flexShrink: 0 }}>
+                📤
+              </div>
+              <div>
+                <h4 style={{ margin: 0, fontSize: "13.5px", fontWeight: 600 }}>Bulk Import Products</h4>
+                <p style={{ margin: "1px 0 0", fontSize: "11.5px", color: "var(--site-text-soft)" }}>
+                  Upload CSV/JSON file (fields: <code>name, price, image, description, category, stock</code>)
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <label
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "7px 14px",
+                  borderRadius: "6px",
+                  backgroundColor: "var(--site-bg-soft, #f1f5f9)",
+                  border: "1px solid var(--site-border, #cbd5e1)",
+                  color: "var(--site-text, #334155)",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                <span>{uploading ? "Uploading..." : "📄 Choose CSV / JSON File"}</span>
+                <input
+                  type="file"
+                  accept=".csv,.json,application/json,text/csv"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  style={{ display: "none" }}
+                />
+              </label>
+            </div>
+          </div>
           {uploadMessage && (
-            <p className={`upload-message ${uploadMessage.includes("failed") ? "error" : "success"}`}>
+            <p className={`upload-message ${uploadMessage.includes("failed") ? "error" : "success"}`} style={{ marginTop: "8px", marginBottom: 0, fontSize: "12px" }}>
               {uploadMessage}
             </p>
           )}
         </section>
 
         <section className="card">
-          <h3>All Products</h3>
+          <h3 style={{ marginBottom: "14px" }}>All Products</h3>
           <div className="products-tools">
             <input
               className="product-search"

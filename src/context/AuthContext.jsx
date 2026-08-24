@@ -235,6 +235,7 @@ export function AuthProvider({ children }) {
     clearStoredAuth();
     try {
       sessionStorage.removeItem("festiveBannerDismissed");
+      localStorage.removeItem("wishlist");
     } catch (e) {}
     window.location.hash = "/login";
     window.location.reload();
