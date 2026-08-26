@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useToast } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
@@ -133,6 +133,18 @@ export function CartProvider({ children }) {
   useEffect(() => {
     loadCart();
   }, [loadCart]);
+
+  const prevTokenRef = useRef(token);
+
+  useEffect(() => {
+    if (prevTokenRef.current && !token) {
+      setCartItems([]);
+      setSavedForLaterItems([]);
+      writeGuestCart([]);
+      writeSavedForLater([]);
+    }
+    prevTokenRef.current = token;
+  }, [token]);
 
   useEffect(() => {
     if (token) return;

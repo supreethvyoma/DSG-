@@ -236,6 +236,8 @@ export function AuthProvider({ children }) {
     try {
       sessionStorage.removeItem("festiveBannerDismissed");
       localStorage.removeItem("wishlist");
+      localStorage.removeItem("guestCartItems");
+      localStorage.removeItem("savedForLaterItems");
     } catch (e) {}
     window.location.hash = "/login";
     window.location.reload();
