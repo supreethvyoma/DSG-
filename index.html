@@ -2,6 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-MRSLKKT9');</script>
+    <!-- End Google Tag Manager -->
+
     <!-- Google Tag Manager and Consent Mode v2 Setup (GDPR & DPDP Act 2023 Compliant) -->
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -56,44 +64,7 @@
         }
       })();
     </script>
-    <!-- Google Tag Manager Container -->
-    <script>
-      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-      })(window,document,'script','dataLayer','GTM-W3V5K29D');
-    </script>
-    <!-- End Google Tag Manager -->
 
-    <!-- Meta Pixel (Facebook SDK) Setup -->
-    <script>
-      !function(f,b,e,v,n,t,s)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window, document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js');
-
-      // Sync initial consent choice with Facebook Pixel
-      if (!window.dsgConsentSettings || !window.dsgConsentSettings.marketing) {
-        fbq('consent', 'revoke');
-      } else {
-        fbq('consent', 'grant');
-      }
-
-      const pixelId = 'YOUR_FACEBOOK_PIXEL_ID';
-      if (pixelId && pixelId !== 'YOUR_FACEBOOK_PIXEL_ID' && /^\d+$/.test(pixelId)) {
-        fbq('init', pixelId);
-        fbq('track', 'PageView');
-        window.fbqInitialized = true;
-      } else {
-        window.fbqInitialized = false;
-      }
-    </script>
-    <!-- End Meta Pixel -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <!-- Google Fonts — Inter (primary) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -119,11 +90,10 @@
     <title>Digital Sanskrit Guru</title>
   </head>
   <body>
-    <!-- Meta Pixel (Facebook SDK) Noscript fallback -->
-    <noscript>
-      <img height="1" width="1" style="display:none" 
-           src="https://www.facebook.com/tr?id=YOUR_FACEBOOK_PIXEL_ID&ev=PageView&noscript=1" />
-    </noscript>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MRSLKKT9"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
