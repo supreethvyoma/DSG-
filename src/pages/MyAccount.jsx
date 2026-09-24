@@ -1713,21 +1713,6 @@ function MyAccount() {
                   <span className="my-account-card-field-label">Password</span>
                   <div className="my-account-card-field-val-wrap">
                     <span className="my-account-password-dots">••••••••••••</span>
-                    <button
-                      type="button"
-                      className="my-account-card-action-btn"
-                      onClick={() => {
-                        setEditingSection("security");
-                        setProfileMessage("");
-                        setProfileError("");
-                        setTimeout(() => {
-                          const el = document.getElementById("profile-password-input");
-                          if (el) el.focus();
-                        }, 80);
-                      }}
-                    >
-                      Change
-                    </button>
                   </div>
                 </div>
 
