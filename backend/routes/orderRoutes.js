@@ -1009,13 +1009,15 @@ router.post("/", protect, orderRateLimiter, honeypotMiddleware, async (req, res)
 
   res.json(order);
 
-  // ── Fire-and-forget: order confirmation push + email ─────────────────────
-  fireNotifications(async () => {
-    const user = await User.findById(req.user).select("name email").lean();
-    if (!user) return;
-    await sendPushToUser(req.user, orderPayload(order, "placed"));
-    await sendOrderConfirmation(order, user);
-  });
+  // ── Fire-and-forget: order confirmation push + email (only for paid orders) ─
+  if (rawPaymentStatus === "Paid") {
+    fireNotifications(async () => {
+      const user = await User.findById(req.user).select("name email").lean();
+      if (!user) return;
+      await sendPushToUser(req.user, orderPayload(order, "placed"));
+      await sendOrderConfirmation(order, user);
+    });
+  }
 
   // ── Fire-and-forget: low-stock alerts after stock decrement ───────────────
   if (rawPaymentStatus !== "Failed") {
@@ -1713,6 +1715,7 @@ router.put("/:id/payment-status", protect, async (req, res) => {
     }
   }
 
+  const previousPaymentStatus = order.paymentStatus;
   order.paymentStatus = rawPaymentStatus;
   if (rawPaymentStatus === "Paid") {
     order.paymentMeta = {
@@ -1742,6 +1745,17 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   const updated = await order.save();
   await ensureGiftPassesForOrder(updated);
   res.json(updated);
+
+  // ── Fire-and-forget: order confirmation push + email if payment just succeeded ─
+  if (rawPaymentStatus === "Paid" && previousPaymentStatus !== "Paid") {
+    fireNotifications(async () => {
+      const user = await User.findById(order.user).select("name email").lean();
+      if (!user) return;
+      await sendPushToUser(order.user, orderPayload(updated, "placed"));
+      await sendOrderConfirmation(updated, user);
+      await fireLowStockAlerts(order.items || []);
+    });
+  }
 });
 
 router.put("/:id/items/:itemId/return-request", protect, async (req, res) => {
@@ -2439,13 +2453,17 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
     const orderSeq = order.orderNumber || order._id;
 
     fireNotifications(async () => {
-      await sendOrderConfirmation(order, targetUser);
+      if (rawPaymentStatus === "Paid") {
+        await sendOrderConfirmation(order, targetUser);
+      }
 
       if (isNewUserCreated && tempPassword) {
         await sendWelcomeCredentialsEmail(targetUser, tempPassword);
       }
 
-      await fireLowStockAlerts(normalizedItems);
+      if (rawPaymentStatus !== "Failed") {
+        await fireLowStockAlerts(normalizedItems);
+      }
     });
 
     res.status(201).json({

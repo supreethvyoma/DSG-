@@ -91,21 +91,41 @@ function PushSubscribeSection({ token }) {
   );
   const [status, setStatus] = useState("");
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const vapidKeyRef = useRef(null);
 
-  // Preload VAPID key on mount to eliminate latency when turning notifications ON
+  // Preload VAPID key on mount & auto-sync subscription to backend for active user
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
       fetch(`${apiBaseUrl || ""}/api/push/vapid-key`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
+        .then(async (data) => {
           if (data?.publicKey) {
             vapidKeyRef.current = data.publicKey;
+          }
+          if (Notification.permission === "granted" && token) {
+            try {
+              const sw = await navigator.serviceWorker.ready;
+              let sub = await sw.pushManager.getSubscription();
+              if (!sub && data?.publicKey) {
+                sub = await sw.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+                });
+              }
+              if (sub) {
+                await axios.post("/api/push/subscribe", sub.toJSON(), {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+              }
+            } catch {
+              // Ignore background auto-sync errors
+            }
           }
         })
         .catch(() => {});
     }
-  }, []);
+  }, [token]);
 
   function urlBase64ToUint8Array(base64String) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -129,26 +149,24 @@ function PushSubscribeSection({ token }) {
         return;
       }
       const sw = await navigator.serviceWorker.ready;
-      const existing = await sw.pushManager.getSubscription();
-      if (existing) {
-        setStatus("✅ You are already subscribed to push notifications.");
-        return;
+      let sub = await sw.pushManager.getSubscription();
+      if (!sub) {
+        let publicKey = vapidKeyRef.current;
+        if (!publicKey) {
+          const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
+          if (!keyRes.ok) throw new Error("Could not get push key.");
+          const keyData = await keyRes.json();
+          publicKey = keyData.publicKey;
+          vapidKeyRef.current = publicKey;
+        }
+
+        sub = await sw.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
       }
 
-      let publicKey = vapidKeyRef.current;
-      if (!publicKey) {
-        const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
-        if (!keyRes.ok) throw new Error("Could not get push key.");
-        const keyData = await keyRes.json();
-        publicKey = keyData.publicKey;
-        vapidKeyRef.current = publicKey;
-      }
-
-      const sub = await sw.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
-      if (token) {
+      if (token && sub) {
         await axios.post("/api/push/subscribe", sub.toJSON(), {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -182,6 +200,27 @@ function PushSubscribeSection({ token }) {
       setStatus("Failed to unsubscribe.");
     } finally {
       setIsSubscribing(false);
+    }
+  };
+
+  const sendTestNotification = async () => {
+    setIsTesting(true);
+    setStatus("");
+    try {
+      const res = await axios.post(
+        "/api/push/test",
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.success) {
+        setStatus("🔔 Test notification sent! Check your device notifications.");
+      } else {
+        setStatus(res.data?.message || "Failed to send test notification.");
+      }
+    } catch (err) {
+      setStatus(err?.response?.data?.message || err?.message || "Failed to send test notification.");
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -242,6 +281,30 @@ function PushSubscribeSection({ token }) {
             </span>
           </button>
         </div>
+
+        {isGranted && (
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={sendTestNotification}
+              disabled={isTesting}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                cursor: isTesting ? "not-allowed" : "pointer"
+              }}
+            >
+              <Bell size={14} />
+              {isTesting ? "Sending test..." : "Send Test Notification"}
+            </button>
+          </div>
+        )}
 
         {status && <p className="my-account-push-msg">{status}</p>}
 
