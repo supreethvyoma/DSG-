@@ -205,6 +205,56 @@ const heroBannerSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true
+    },
+    title: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    subtitle: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    badgeText: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    buttonText: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    secondaryButtonText: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    secondaryButtonLink: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    textPosition: {
+      type: String,
+      default: "middle-left",
+      trim: true
+    },
+    textAlign: {
+      type: String,
+      default: "left",
+      trim: true
+    },
+    textStyle: {
+      type: String,
+      default: "modern",
+      trim: true
+    },
+    overlayType: {
+      type: String,
+      default: "feathered",
+      trim: true
     }
   },
   { _id: false }

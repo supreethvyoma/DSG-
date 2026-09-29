@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { apiBaseUrl } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useWishlist } from "../hooks/useWishlist";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
+import { useToast } from "../hooks/useToast";
 import { reverseGeocodeCoordinates, getCurrentDevicePosition } from "../utils/geoAddress";
 import {
   COUNTRIES,
@@ -91,21 +93,41 @@ function PushSubscribeSection({ token }) {
   );
   const [status, setStatus] = useState("");
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const vapidKeyRef = useRef(null);
 
-  // Preload VAPID key on mount to eliminate latency when turning notifications ON
+  // Preload VAPID key on mount & auto-sync subscription to backend for active user
   useEffect(() => {
     if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
       fetch(`${apiBaseUrl || ""}/api/push/vapid-key`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
+        .then(async (data) => {
           if (data?.publicKey) {
             vapidKeyRef.current = data.publicKey;
+          }
+          if (Notification.permission === "granted" && token) {
+            try {
+              const sw = await navigator.serviceWorker.ready;
+              let sub = await sw.pushManager.getSubscription();
+              if (!sub && data?.publicKey) {
+                sub = await sw.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+                });
+              }
+              if (sub) {
+                await axios.post("/api/push/subscribe", sub.toJSON(), {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+              }
+            } catch {
+              // Ignore background auto-sync errors
+            }
           }
         })
         .catch(() => {});
     }
-  }, []);
+  }, [token]);
 
   function urlBase64ToUint8Array(base64String) {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -129,26 +151,24 @@ function PushSubscribeSection({ token }) {
         return;
       }
       const sw = await navigator.serviceWorker.ready;
-      const existing = await sw.pushManager.getSubscription();
-      if (existing) {
-        setStatus("✅ You are already subscribed to push notifications.");
-        return;
+      let sub = await sw.pushManager.getSubscription();
+      if (!sub) {
+        let publicKey = vapidKeyRef.current;
+        if (!publicKey) {
+          const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
+          if (!keyRes.ok) throw new Error("Could not get push key.");
+          const keyData = await keyRes.json();
+          publicKey = keyData.publicKey;
+          vapidKeyRef.current = publicKey;
+        }
+
+        sub = await sw.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey)
+        });
       }
 
-      let publicKey = vapidKeyRef.current;
-      if (!publicKey) {
-        const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
-        if (!keyRes.ok) throw new Error("Could not get push key.");
-        const keyData = await keyRes.json();
-        publicKey = keyData.publicKey;
-        vapidKeyRef.current = publicKey;
-      }
-
-      const sub = await sw.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
-      });
-      if (token) {
+      if (token && sub) {
         await axios.post("/api/push/subscribe", sub.toJSON(), {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -182,6 +202,27 @@ function PushSubscribeSection({ token }) {
       setStatus("Failed to unsubscribe.");
     } finally {
       setIsSubscribing(false);
+    }
+  };
+
+  const sendTestNotification = async () => {
+    setIsTesting(true);
+    setStatus("");
+    try {
+      const res = await axios.post(
+        "/api/push/test",
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.success) {
+        setStatus("🔔 Test notification sent! Check your device notifications.");
+      } else {
+        setStatus(res.data?.message || "Failed to send test notification.");
+      }
+    } catch (err) {
+      setStatus(err?.response?.data?.message || err?.message || "Failed to send test notification.");
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -242,6 +283,30 @@ function PushSubscribeSection({ token }) {
             </span>
           </button>
         </div>
+
+        {isGranted && (
+          <div style={{ marginTop: "12px", display: "flex", gap: "8px" }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={sendTestNotification}
+              disabled={isTesting}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 14px",
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                cursor: isTesting ? "not-allowed" : "pointer"
+              }}
+            >
+              <Bell size={14} />
+              {isTesting ? "Sending test..." : "Send Test Notification"}
+            </button>
+          </div>
+        )}
 
         {status && <p className="my-account-push-msg">{status}</p>}
 
@@ -308,6 +373,7 @@ async function fetchCoordinatesForAddress(parts = {}) {
 function MyAccount() {
   const { user, token, updateProfileState } = useAuth();
   const { wishlist } = useWishlist();
+  const { showToast } = useToast();
   const {
     addresses,
     isLoadingAddresses,
@@ -317,6 +383,7 @@ function MyAccount() {
     setDefaultAddress
   } = useDeliveryLocation();
   const location = useLocation();
+  const navigate = useNavigate();
   const addressFormRef = useRef(null);
   const nameInputRef = useRef(null);
   const pincodeSeqRef = useRef(0);
@@ -644,6 +711,10 @@ function MyAccount() {
 
     if (editIdx !== null && !Number.isNaN(editIdx) && addresses && addresses[editIdx]) {
       editAddress(editIdx);
+      navigate(location.pathname + (location.hash || "#manage-address"), {
+        replace: true,
+        state: { targetSection: "manage-address" }
+      });
       return;
     }
 
@@ -655,17 +726,26 @@ function MyAccount() {
     if (isUseCurrentLocation) {
       openNewAddressForm();
       handleUseCurrentLocation();
+      navigate(location.pathname + (location.hash || "#manage-address"), {
+        replace: true,
+        state: { targetSection: "manage-address" }
+      });
       return;
     }
 
     const isAddNewAddress =
       params.get("addNewAddress") === "true" ||
       params.get("action") === "add-address" ||
+      params.get("openAddressForm") === "1" ||
       location.state?.action === "add-address" ||
       location.hash === "#add-address";
 
     if (isAddNewAddress) {
       openNewAddressForm();
+      navigate(location.pathname + "#manage-address", {
+        replace: true,
+        state: { targetSection: "manage-address" }
+      });
       return;
     }
 
@@ -700,7 +780,7 @@ function MyAccount() {
         clearTimeout(timer2);
       };
     }
-  }, [location.hash, location.search, location.state, addresses]);
+  }, [location.hash, location.search, location.state, addresses, navigate]);
 
   useEffect(() => {
     const handleCustomEdit = (e) => {
@@ -985,33 +1065,6 @@ function MyAccount() {
     }
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (
-      params.get("editAddress") ||
-      params.get("addNewAddress") === "true" ||
-      params.get("useCurrentLocation") === "true" ||
-      params.get("action") === "add-address" ||
-      params.get("action") === "use-current-location" ||
-      location.state?.action === "add-address" ||
-      location.state?.action === "use-current-location"
-    ) {
-      return;
-    }
-    const shouldOpenAddressForm = params.get("openAddressForm") === "1";
-    const shouldScrollToAddresses = location.hash === "#manage-address" || shouldOpenAddressForm;
-
-    if (!shouldOpenAddressForm && !shouldScrollToAddresses) return;
-
-    if (shouldOpenAddressForm) {
-      setEditingIndex(null);
-      setShowAddressForm(true);
-    }
-
-    window.requestAnimationFrame(() => {
-      document.getElementById("manage-address")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [location.hash, location.search]);
 
   useEffect(() => {
     if (!token) {
@@ -1254,12 +1307,16 @@ function MyAccount() {
   };
 
   const deleteAddress = (index) => {
-    const target = addresses[index];
     removeAddress(index);
     if (editingIndex === index) {
       resetAddressForm();
+      setShowAddressForm(false);
     }
-    showAddressToast(`Address for ${target?.name || "recipient"} removed.`);
+    const message = "Deleted";
+    showAddressToast(message);
+    if (showToast) {
+      showToast(message, "success");
+    }
   };
 
   const handleSetDefaultAddress = (index) => {
@@ -2108,7 +2165,11 @@ function MyAccount() {
                       <button
                         type="button"
                         className="my-account-addr-btn danger"
-                        onClick={() => setAddressToDelete({ index, address: item })}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setAddressToDelete({ index, address: item });
+                        }}
                       >
                         <Trash2 size={13} /> Delete
                       </button>
@@ -2529,58 +2590,66 @@ function MyAccount() {
         ) : null}
 
         {/* Delete Address Confirmation Popup Modal */}
-        {addressToDelete !== null && (
-          <div
-            className="address-delete-modal-backdrop"
-            onClick={() => setAddressToDelete(null)}
-          >
+        {addressToDelete !== null &&
+          typeof document !== "undefined" &&
+          createPortal(
             <div
-              className="address-delete-modal-card"
-              onClick={(e) => e.stopPropagation()}
+              className="address-delete-modal-backdrop"
+              onClick={() => setAddressToDelete(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="address-delete-modal-title"
             >
-              <div className="address-delete-modal-icon-wrap">
-                <span>🗑️</span>
-              </div>
-              <h3 className="address-delete-modal-title">Delete Address?</h3>
-              <p className="address-delete-modal-desc">
-                Are you sure you want to delete this delivery address? This action cannot be undone.
-              </p>
-
-              {addressToDelete.address && (
-                <div className="address-delete-preview-box">
-                  <div style={{ fontWeight: 700, marginBottom: "3px" }}>
-                    {addressToDelete.address.name}{" "}
-                    {addressToDelete.address.phone
-                      ? `(${addressToDelete.address.phone})`
-                      : ""}
-                  </div>
-                  <div>{addressToDelete.address.address}</div>
-                  <div>{formatAddressLocationLine(addressToDelete.address)}</div>
+              <div
+                className="address-delete-modal-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="address-delete-modal-icon-wrap">
+                  <span>🗑️</span>
                 </div>
-              )}
+                <h3 id="address-delete-modal-title" className="address-delete-modal-title">
+                  Delete Address?
+                </h3>
+                <p className="address-delete-modal-desc">
+                  Are you sure you want to delete this delivery address? This action cannot be undone.
+                </p>
 
-              <div className="address-delete-modal-actions">
-                <button
-                  type="button"
-                  className="address-delete-btn-cancel"
-                  onClick={() => setAddressToDelete(null)}
-                >
-                  Keep Address
-                </button>
-                <button
-                  type="button"
-                  className="address-delete-btn-confirm"
-                  onClick={() => {
-                    deleteAddress(addressToDelete.index);
-                    setAddressToDelete(null);
-                  }}
-                >
-                  Yes, Delete
-                </button>
+                {addressToDelete.address && (
+                  <div className="address-delete-preview-box">
+                    <div style={{ fontWeight: 700, marginBottom: "3px" }}>
+                      {addressToDelete.address.name}{" "}
+                      {addressToDelete.address.phone
+                        ? `(${addressToDelete.address.phone})`
+                        : ""}
+                    </div>
+                    <div>{addressToDelete.address.address}</div>
+                    <div>{formatAddressLocationLine(addressToDelete.address)}</div>
+                  </div>
+                )}
+
+                <div className="address-delete-modal-actions">
+                  <button
+                    type="button"
+                    className="address-delete-btn-cancel"
+                    onClick={() => setAddressToDelete(null)}
+                  >
+                    Keep Address
+                  </button>
+                  <button
+                    type="button"
+                    className="address-delete-btn-confirm"
+                    onClick={() => {
+                      deleteAddress(addressToDelete.index);
+                      setAddressToDelete(null);
+                    }}
+                  >
+                    Yes, Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </section>
 
       <PushSubscribeSection token={token} />

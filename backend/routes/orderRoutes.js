@@ -1009,13 +1009,15 @@ router.post("/", protect, orderRateLimiter, honeypotMiddleware, async (req, res)
 
   res.json(order);
 
-  // ── Fire-and-forget: order confirmation push + email ─────────────────────
-  fireNotifications(async () => {
-    const user = await User.findById(req.user).select("name email").lean();
-    if (!user) return;
-    await sendPushToUser(req.user, orderPayload(order, "placed"));
-    await sendOrderConfirmation(order, user);
-  });
+  // ── Fire-and-forget: order confirmation push + email (only for paid orders) ─
+  if (rawPaymentStatus === "Paid") {
+    fireNotifications(async () => {
+      const user = await User.findById(req.user).select("name email").lean();
+      if (!user) return;
+      await sendPushToUser(req.user, orderPayload(order, "placed"));
+      await sendOrderConfirmation(order, user);
+    });
+  }
 
   // ── Fire-and-forget: low-stock alerts after stock decrement ───────────────
   if (rawPaymentStatus !== "Failed") {
@@ -1713,6 +1715,7 @@ router.put("/:id/payment-status", protect, async (req, res) => {
     }
   }
 
+  const previousPaymentStatus = order.paymentStatus;
   order.paymentStatus = rawPaymentStatus;
   if (rawPaymentStatus === "Paid") {
     order.paymentMeta = {
@@ -1742,6 +1745,17 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   const updated = await order.save();
   await ensureGiftPassesForOrder(updated);
   res.json(updated);
+
+  // ── Fire-and-forget: order confirmation push + email if payment just succeeded ─
+  if (rawPaymentStatus === "Paid" && previousPaymentStatus !== "Paid") {
+    fireNotifications(async () => {
+      const user = await User.findById(order.user).select("name email").lean();
+      if (!user) return;
+      await sendPushToUser(order.user, orderPayload(updated, "placed"));
+      await sendOrderConfirmation(updated, user);
+      await fireLowStockAlerts(order.items || []);
+    });
+  }
 });
 
 router.put("/:id/items/:itemId/return-request", protect, async (req, res) => {
@@ -2439,13 +2453,17 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
     const orderSeq = order.orderNumber || order._id;
 
     fireNotifications(async () => {
-      await sendOrderConfirmation(order, targetUser);
+      if (rawPaymentStatus === "Paid") {
+        await sendOrderConfirmation(order, targetUser);
+      }
 
       if (isNewUserCreated && tempPassword) {
         await sendWelcomeCredentialsEmail(targetUser, tempPassword);
       }
 
-      await fireLowStockAlerts(normalizedItems);
+      if (rawPaymentStatus !== "Failed") {
+        await fireLowStockAlerts(normalizedItems);
+      }
     });
 
     res.status(201).json({
@@ -2459,6 +2477,136 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       await restoreStockForOrder({ items: normalizedItems });
     }
     res.status(500).json({ message: "Failed to place order. Please try again." });
+  }
+});
+
+// ── GET /api/orders/digital-stream/:orderId/:itemId ─────────────────────────
+// Authenticated streaming proxy: verifies order ownership & payment status,
+// then securely streams the media from CDN without exposing CDN link to client DOM
+router.get("/digital-stream/:orderId/:itemId", protect, async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const order = await Order.findById(orderId).lean();
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const userDoc = await User.findById(req.user).select("role").lean();
+    const isAdmin = userDoc?.role === "admin";
+    const isOwner = String(order.user) === String(req.user);
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Access denied. You do not own this order." });
+    }
+
+    const isPaid =
+      String(order.paymentStatus || "").toLowerCase() === "paid" ||
+      order.paymentMethod === "cod" ||
+      Boolean(order.isRedeemedGift);
+
+    if (!isPaid && !isAdmin) {
+      return res.status(402).json({ message: "Payment required to access digital content." });
+    }
+
+    // Find the item in order.items or bundleItems
+    let targetLink = "";
+    let itemTitle = "Digital Media";
+    let productId = null;
+
+    if (Array.isArray(order.items)) {
+      for (const item of order.items) {
+        const matchId = String(item._id || item.product || item.id);
+        if (matchId === String(itemId) || String(item.product) === String(itemId)) {
+          targetLink = item.webReaderLink;
+          itemTitle = item.name || itemTitle;
+          productId = item.product;
+          break;
+        }
+        if (Array.isArray(item.bundleItems)) {
+          for (const subItem of item.bundleItems) {
+            const subMatchId = String(subItem._id || subItem.product || subItem.id);
+            if (subMatchId === String(itemId) || String(subItem.product) === String(itemId)) {
+              targetLink = subItem.webReaderLink;
+              itemTitle = subItem.name || itemTitle;
+              productId = subItem.product;
+              break;
+            }
+          }
+          if (targetLink) break;
+        }
+      }
+    }
+
+    // If snapshot didn't have link, fetch latest from Product catalog
+    if (!targetLink && productId) {
+      const prod = await Product.findById(productId).select("webReaderLink name").lean();
+      if (prod?.webReaderLink) {
+        targetLink = prod.webReaderLink;
+        if (prod.name) itemTitle = prod.name;
+      }
+    }
+
+    if (!targetLink) {
+      return res.status(404).json({ message: "Digital reader link not configured for this item." });
+    }
+
+    const cleanUrl = String(targetLink).trim();
+    if (!/^https?:\/\//i.test(cleanUrl)) {
+      return res.status(400).json({ message: "Invalid reader URL format." });
+    }
+
+    // Forward Range header for fast media seeking/buffering
+    const forwardHeaders = {};
+    if (req.headers.range) {
+      forwardHeaders["range"] = req.headers.range;
+    }
+    if (req.headers["accept"]) {
+      forwardHeaders["accept"] = req.headers["accept"];
+    }
+
+    const upstreamRes = await fetch(cleanUrl, {
+      headers: forwardHeaders
+    });
+
+    if (!upstreamRes.ok && upstreamRes.status !== 206) {
+      return res.status(upstreamRes.status).json({
+        message: `Upstream storage responded with status ${upstreamRes.status}`
+      });
+    }
+
+    res.status(upstreamRes.status);
+
+    const contentType = upstreamRes.headers.get("content-type") || "application/octet-stream";
+    const contentLength = upstreamRes.headers.get("content-length");
+    const contentRange = upstreamRes.headers.get("content-range");
+    const acceptRanges = upstreamRes.headers.get("accept-ranges") || "bytes";
+
+    res.setHeader("Content-Type", contentType);
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    if (contentRange) res.setHeader("Content-Range", contentRange);
+    res.setHeader("Accept-Ranges", acceptRanges);
+
+    // Security headers: protect from external frame injection, prevent disk caching of sensitive media
+    res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Content-Disposition", "inline");
+
+    const { Readable } = require("stream");
+    const nodeStream = Readable.fromWeb(upstreamRes.body);
+    nodeStream.on("error", (err) => {
+      console.error("[Digital Stream] Stream pipe error:", err.message);
+      if (!res.headersSent) {
+        res.status(500).end();
+      }
+    });
+    nodeStream.pipe(res);
+  } catch (err) {
+    console.error("[Digital Stream] Error:", err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Failed to stream media content." });
+    }
   }
 });
 

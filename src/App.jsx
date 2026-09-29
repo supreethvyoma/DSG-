@@ -195,7 +195,7 @@ function App() {
     return () => document.documentElement.classList.remove("banner-active");
   }, [isBannerActive]);
 
-  // Register service worker for push notifications
+  // Register service worker for push notifications & sync subscription
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
@@ -206,21 +206,22 @@ function App() {
         if (Notification.permission !== "granted") return;
 
         try {
-          const existing = await registration.pushManager.getSubscription();
-          if (existing) return; // Already subscribed
+          let sub = await registration.pushManager.getSubscription();
 
-          const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
-          if (!keyRes.ok) return;
-          const { publicKey } = await keyRes.json();
-          if (!publicKey) return;
+          if (!sub) {
+            const keyRes = await fetch(`${apiBaseUrl || ""}/api/push/vapid-key`);
+            if (!keyRes.ok) return;
+            const { publicKey } = await keyRes.json();
+            if (!publicKey) return;
 
-          const sub = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-          });
+            sub = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(publicKey)
+            });
+          }
 
           const token = sessionStorage.getItem("token") || localStorage.getItem("token");
-          if (token) {
+          if (token && sub) {
             await fetch(`${apiBaseUrl || ""}/api/push/subscribe`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

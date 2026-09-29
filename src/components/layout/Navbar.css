@@ -99,22 +99,22 @@ html.banner-active .navbar {
   justify-content: center;
   gap: 6px;
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--radius-sm, 6px);
   background: transparent;
   cursor: pointer;
   flex: 0 0 auto;
-  padding: 0 6px;
-  height: 26px;
+  padding: 0 8px;
+  height: 28px;
   color: #ffffff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   box-sizing: border-box;
-  transition: border-color 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .navbar-collection-menu-btn:hover {
-  border-color: #ffffff;
-  background: transparent;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .navbar-collection-menu-btn .hamburger-icon {
@@ -227,9 +227,9 @@ html.banner-active .navbar {
 .navbar-quick-nav-btn {
   display: inline-flex;
   align-items: center;
-  height: 26px;
-  padding: 0 8px;
-  border-radius: 2px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm, 6px);
   border: 1px solid transparent;
   background: transparent;
   color: #ffffff;
@@ -238,20 +238,20 @@ html.banner-active .navbar {
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: all 0.15s ease;
   font-family: inherit;
   box-sizing: border-box;
 }
 
 .navbar-quick-nav-btn:hover {
-  border-color: #ffffff;
-  background: transparent;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.08);
   transform: none;
 }
 
 .navbar-quick-nav-btn:active {
   transform: none;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* ── Side drawer ────────────────────────────────────────────────────────── */
@@ -410,17 +410,20 @@ html.banner-active .navbar {
   min-width: 0;
   display: flex;
   align-items: stretch;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md, 10px);
   overflow: hidden;
-  border: 2px solid var(--site-search-border);
-  background: var(--site-surface);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: var(--glass-blur-sm, blur(10px));
+  -webkit-backdrop-filter: var(--glass-blur-sm, blur(10px));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
 }
 
 .navbar-search-wrap:focus-within {
-  border-color: var(--site-search-focus);
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.18), var(--premium-shadow-md);
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25), 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 .navbar-search {
@@ -1445,15 +1448,15 @@ html.banner-active .navbar {
     left: 0;
     right: 0;
     z-index: 1000;
-    height: calc(68px + env(safe-area-inset-bottom, 0px));
-    background: color-mix(in srgb, var(--site-surface) 96%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    height: calc(58px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--site-surface) 92%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--site-border);
-    box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.09);
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.07);
     justify-content: space-around;
     align-items: center;
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+    padding: 2px 8px calc(2px + env(safe-area-inset-bottom, 0px));
   }
 
   .mobile-bottom-item {
@@ -1465,30 +1468,42 @@ html.banner-active .navbar {
     text-decoration: none;
     color: var(--site-text-soft);
     gap: 3px;
-    padding: 4px 0;
+    padding: 3px 0;
     border: none;
     background: transparent;
     cursor: pointer;
+    position: relative;
     transition: color 0.15s ease, transform 0.15s ease;
-    min-height: 52px !important;
+    min-height: 48px !important;
   }
 
   .mobile-bottom-item:hover,
   .mobile-bottom-item.active {
     color: var(--site-link);
+    font-weight: 700;
+  }
+
+  .mobile-bottom-item.active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 20px;
+    height: 2.5px;
+    background: var(--site-link);
+    border-radius: 9999px;
   }
 
   .mobile-bottom-item:active {
-    transform: scale(0.94);
+    transform: scale(0.92);
   }
 
   .mobile-bottom-icon {
-    font-size: 22px;
+    font-size: 20px;
     line-height: 1;
   }
 
   .mobile-bottom-label {
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 600;
     text-transform: capitalize;
     letter-spacing: -0.1px;

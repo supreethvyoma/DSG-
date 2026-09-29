@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Truck, BookOpen, Zap, ShieldCheck } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import RecentlyViewed from "../components/RecentlyViewed";
 import { formatResolvedPrice } from "../utils/currency";
@@ -369,6 +369,14 @@ function Home() {
     setActiveHeroBannerIndex((current) => (current + 1) % heroBanners.length);
   };
 
+  useEffect(() => {
+    if (heroBanners.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      setActiveHeroBannerIndex((current) => (current + 1) % heroBanners.length);
+    }, 5500);
+    return () => clearInterval(timer);
+  }, [heroBanners.length]);
+
   return (
     <div className="home-page">
       <h1 className="sr-only">Digital Sanskrit Guru - Premium Sanskrit Learning Store</h1>
@@ -378,7 +386,99 @@ function Home() {
         </section>
       ) : activeHeroBanner ? (
         <div className="home-banner-container">
-          {activeHeroBanner.productId ? (
+          {activeHeroBanner.title?.trim() ? (
+            /* ── Cinematic Spotlight Hero Banner Mode ────────────────────────── */
+            <div className={`home-hero-spotlight-card pos-${activeHeroBanner.textPosition || "middle-left"} align-${activeHeroBanner.textAlign || (activeHeroBanner.textPosition?.includes("center") ? "center" : activeHeroBanner.textPosition?.includes("right") ? "right" : "left")} style-${activeHeroBanner.textStyle || "modern"} overlay-${activeHeroBanner.overlayType || "feathered"}`}>
+              {/* Full-bleed background image */}
+              <picture className="home-spotlight-backdrop-picture">
+                <source media="(max-width: 768px)" srcSet={activeHeroBanner.mobileImage || activeHeroBanner.image} />
+                <img
+                  src={activeHeroBanner.image}
+                  alt={activeHeroBanner.title || "Featured banner"}
+                  className="home-spotlight-bg-img"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                />
+              </picture>
+
+              {/* Seamless feathered cinematic overlay */}
+              <div className={`home-spotlight-overlay pos-${activeHeroBanner.textPosition || "middle-left"} overlay-${activeHeroBanner.overlayType || "feathered"}`} aria-hidden="true" />
+
+              {/* Content Layer */}
+              <div className={`home-spotlight-content-layer pos-${activeHeroBanner.textPosition || "middle-left"} align-${activeHeroBanner.textAlign || (activeHeroBanner.textPosition?.includes("center") ? "center" : activeHeroBanner.textPosition?.includes("right") ? "right" : "left")}`}>
+                <div className={`home-spotlight-content align-${activeHeroBanner.textAlign || (activeHeroBanner.textPosition?.includes("center") ? "center" : activeHeroBanner.textPosition?.includes("right") ? "right" : "left")} style-${activeHeroBanner.textStyle || "modern"} overlay-${activeHeroBanner.overlayType || "feathered"}`}>
+                  {activeHeroBanner.badgeText?.trim() ? (
+                    <div className="home-spotlight-badge-wrap">
+                      <span className="home-spotlight-badge">
+                        <span className="home-spotlight-badge-dot" />
+                        {activeHeroBanner.badgeText}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  <h2 className={`home-spotlight-title style-${activeHeroBanner.textStyle || "modern"}`}>{activeHeroBanner.title}</h2>
+
+                  {activeHeroBanner.subtitle?.trim() ? (
+                    <p className="home-spotlight-subtitle">{activeHeroBanner.subtitle}</p>
+                  ) : null}
+
+                  <div className="home-spotlight-actions">
+                    {activeHeroBanner.productId ? (
+                      <Link
+                        to={
+                          activeHeroBanner.productId.startsWith("/")
+                            ? activeHeroBanner.productId
+                            : `/product/${activeHeroBanner.productId}`
+                        }
+                        className="home-spotlight-btn home-spotlight-btn-primary"
+                      >
+                        <span>{activeHeroBanner.buttonText || "Shop now"}</span>
+                        <ChevronRight size={18} strokeWidth={2.5} />
+                      </Link>
+                    ) : (
+                      <button type="button" className="home-spotlight-btn home-spotlight-btn-primary">
+                        <span>{activeHeroBanner.buttonText || "Shop now"}</span>
+                        <ChevronRight size={18} strokeWidth={2.5} />
+                      </button>
+                    )}
+
+                    {activeHeroBanner.secondaryButtonText?.trim() && activeHeroBanner.secondaryButtonLink?.trim() ? (
+                      <Link
+                        to={activeHeroBanner.secondaryButtonLink}
+                        className="home-spotlight-btn home-spotlight-btn-secondary"
+                      >
+                        <span>{activeHeroBanner.secondaryButtonText}</span>
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
+              {/* Slider Navigation Arrows */}
+              {heroBanners.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    className="home-banner-nav prev"
+                    onClick={(e) => { e.preventDefault(); showPreviousHeroBanner(); }}
+                    aria-label="Previous banner"
+                  >
+                    <ChevronLeft size={44} strokeWidth={3} />
+                  </button>
+                  <button
+                    type="button"
+                    className="home-banner-nav next"
+                    onClick={(e) => { e.preventDefault(); showNextHeroBanner(); }}
+                    aria-label="Next banner"
+                  >
+                    <ChevronRight size={44} strokeWidth={3} />
+                  </button>
+                </>
+              ) : null}
+            </div>
+          ) : activeHeroBanner.productId ? (
+            /* ── Full-Bleed Image Mode (Linked) ──────────────────────────────── */
             <Link
               to={
                 activeHeroBanner.productId.startsWith("/")
@@ -414,6 +514,7 @@ function Home() {
               ) : null}
             </Link>
           ) : (
+            /* ── Full-Bleed Image Mode (Static) ──────────────────────────────── */
             <section className="home-banner home-banner-has-media">
               <picture style={{ display: "block", width: "100%" }}>
                 <source media="(max-width: 768px)" srcSet={activeHeroBanner.mobileImage || activeHeroBanner.image} />
@@ -476,6 +577,7 @@ function Home() {
             <span className="home-section-kicker">Most trusted</span>
             <h2>Top Rated Picks</h2>
           </div>
+          <Link to="/collection" className="home-inline-link">See more</Link>
         </div>
 
         <div className="home-slider-wrapper">
@@ -526,14 +628,24 @@ function Home() {
             ) : (
               newArrivals.map((product) => (
                 <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
-                  <img
-                    src={product.image || "https://picsum.photos/220"}
-                    alt={product.name}
-                    width="220"
-                    height="130"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <div className="home-mini-card-image-wrap">
+                    {product.image && (
+                      <div
+                        className="home-mini-card-ambient-bg"
+                        style={{ backgroundImage: `url(${product.image})` }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      className="home-mini-card-main-img"
+                      width="220"
+                      height="130"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
                   <div className="home-mini-card-meta">
                     <span>{getCategoryLabel(product)}</span>
                     <span>{formatPrice(getDisplayPrice(product))}</span>
@@ -572,14 +684,24 @@ function Home() {
             ) : (
               budgetPicks.map((product) => (
                 <Link key={product._id} to={`/product/${product._id}`} className="home-mini-card">
-                  <img
-                    src={product.image || "https://picsum.photos/220"}
-                    alt={product.name}
-                    width="220"
-                    height="130"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <div className="home-mini-card-image-wrap">
+                    {product.image && (
+                      <div
+                        className="home-mini-card-ambient-bg"
+                        style={{ backgroundImage: `url(${product.image})` }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <img
+                      src={product.image || "https://picsum.photos/220"}
+                      alt={product.name}
+                      className="home-mini-card-main-img"
+                      width="220"
+                      height="130"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
                   <div className="home-mini-card-meta">
                     <span>{getCategoryLabel(product)}</span>
                     <span>{formatPrice(getDisplayPrice(product))}</span>
@@ -613,7 +735,7 @@ function Home() {
                 <span className="home-section-kicker">Seasonal picks</span>
                 <h2>Festive Offers</h2>
               </div>
-              <Link to="/collection" className="home-inline-link">View all</Link>
+              <Link to="/collection" className="home-inline-link">See more</Link>
             </div>
 
             <div className="home-slider-wrapper">
@@ -628,12 +750,12 @@ function Home() {
                 </button>
               ) : null}
 
-              <div ref={festiveRef} className="home-catalog-preview-row">
+              <div ref={festiveRef} className="home-spotlight-row">
                 {isLoadingProducts ? (
                   <LoadingSpinner text="Loading festive offers..." minHeight="180px" />
                 ) : festiveOfferProducts.length > 0 ? (
                   festiveOfferProducts.map((product) => (
-                    <div key={product._id} className="home-catalog-preview-item">
+                    <div key={product._id} className="home-spotlight-item">
                       <ProductCard product={product} showDescription={false} variant="home" />
                     </div>
                   ))
@@ -667,7 +789,7 @@ function Home() {
               <span className="home-section-kicker">Bundle deals</span>
               <h2>Bundle Products</h2>
             </div>
-            <Link to="/collection" className="home-inline-link">View all</Link>
+            <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
 
           <div className="home-slider-wrapper">
@@ -682,12 +804,12 @@ function Home() {
               </button>
             ) : null}
 
-            <div ref={bundleRef} className="home-catalog-preview-row">
+            <div ref={bundleRef} className="home-spotlight-row">
               {isLoadingProducts ? (
                 <LoadingSpinner text="Loading bundle deals..." minHeight="180px" />
               ) : bundleProducts.length > 0 ? (
                 bundleProducts.map((product) => (
-                  <div key={product._id} className="home-catalog-preview-item">
+                  <div key={product._id} className="home-spotlight-item">
                     <ProductCard product={product} showDescription={false} variant="home" />
                   </div>
                 ))
@@ -723,7 +845,7 @@ function Home() {
               <span className="home-section-kicker">Catalog</span>
               <h2>Browse the Collection</h2>
             </div>
-            <Link to="/collection" className="home-inline-link">see all products</Link>
+            <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
 
           <div className="home-slider-wrapper">
@@ -738,21 +860,15 @@ function Home() {
               </button>
             ) : null}
 
-            <div ref={catalogPreviewRef} className="home-catalog-preview-row">
+            <div ref={catalogPreviewRef} className="home-spotlight-row">
               {isLoadingProducts ? (
                 <LoadingSpinner text="Loading collection..." minHeight="180px" />
               ) : catalogPreviewProducts.length > 0 ? (
-                <>
-                  {catalogPreviewProducts.map((product) => (
-                    <div key={product._id} className="home-catalog-preview-item">
-                      <ProductCard product={product} showDescription={false} variant="home" />
-                    </div>
-                  ))}
-                  <Link to="/collection" className="home-catalog-see-more-card">
-                    <span>See more</span>
-                    <strong>Open full collection</strong>
-                  </Link>
-                </>
+                catalogPreviewProducts.map((product) => (
+                  <div key={product._id} className="home-spotlight-item">
+                    <ProductCard product={product} showDescription={false} variant="home" />
+                  </div>
+                ))
               ) : (
                 <div className="home-empty-state">
                   <strong>No products found</strong>

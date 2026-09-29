@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import {
   House,
@@ -25,6 +26,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { useCart } from "../../hooks/useCart";
 import { useWishlist } from "../../hooks/useWishlist";
 import { useDeliveryLocation } from "../../hooks/useDeliveryLocation";
+import { useToast } from "../../hooks/useToast";
 import "./Navbar.css";
 
 const DEFAULT_COLLECTION_CATEGORIES = [
@@ -59,6 +61,7 @@ function Navbar({ bannerActive = false }) {
     removeAddress,
     setDefaultAddress
   } = useDeliveryLocation();
+  const { showToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -67,6 +70,7 @@ function Navbar({ bannerActive = false }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState(null);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [isCollectionFilterMenuOpen, setIsCollectionFilterMenuOpen] = useState(false);
   const [collectionCategories, setCollectionCategories] = useState(DEFAULT_COLLECTION_CATEGORIES);
   const [showAttachedBar, setShowAttachedBar] = useState(true);
@@ -99,7 +103,7 @@ function Navbar({ bannerActive = false }) {
             }
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     };
 
     fetchIcons();
@@ -379,9 +383,8 @@ function Navbar({ bannerActive = false }) {
   return (
     <>
       <nav
-        className={`navbar${bannerActive ? " banner-active" : ""}${
-          isAdminRoute ? " admin-navbar-mode" : ""
-        }`}
+        className={`navbar${bannerActive ? " banner-active" : ""}${isAdminRoute ? " admin-navbar-mode" : ""
+          }`}
       >
         {!isAdminRoute && (
           <div className="navbar-top">
@@ -520,9 +523,8 @@ function Navbar({ bannerActive = false }) {
         )}
 
         <div
-          className={`navbar-attached-bar ${
-            !showAttachedBar && !isAdminRoute ? "navbar-attached-bar-hidden" : ""
-          }`}
+          className={`navbar-attached-bar ${!showAttachedBar && !isAdminRoute ? "navbar-attached-bar-hidden" : ""
+            }`}
         >
           <div className="navbar-inner navbar-attached-bar-inner">
             <div className="navbar-attached-bar-start">
@@ -718,9 +720,8 @@ function Navbar({ bannerActive = false }) {
                         <div className="navbar-address-option-top">
                           <div className="navbar-address-radio">
                             <span
-                              className={`navbar-address-custom-radio ${
-                                isSelected ? "checked" : ""
-                              }`}
+                              className={`navbar-address-custom-radio ${isSelected ? "checked" : ""
+                                }`}
                             >
                               {isSelected ? "✓" : ""}
                             </span>
@@ -736,8 +737,8 @@ function Navbar({ bannerActive = false }) {
                               {item.label === "Work"
                                 ? "🏢 Work"
                                 : item.label === "Other"
-                                ? "📌 Other"
-                                : "🏠 Home"}
+                                  ? "📌 Other"
+                                  : "🏠 Home"}
                             </span>
                           </div>
                         </div>
@@ -837,56 +838,128 @@ function Navbar({ bannerActive = false }) {
         )}
 
         {/* Delete Address Confirmation Popup Modal */}
-        {addressToDelete !== null && (
-          <div
-            className="address-delete-modal-backdrop"
-            onClick={() => setAddressToDelete(null)}
-          >
+        {addressToDelete !== null &&
+          typeof document !== "undefined" &&
+          createPortal(
             <div
-              className="address-delete-modal-card"
-              onClick={(e) => e.stopPropagation()}
+              className="address-delete-modal-backdrop"
+              onClick={() => setAddressToDelete(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="navbar-delete-address-modal-title"
             >
-              <div className="address-delete-modal-icon-wrap">
-                <span>🗑️</span>
-              </div>
-              <h3 className="address-delete-modal-title">Delete Address?</h3>
-              <p className="address-delete-modal-desc">
-                Are you sure you want to delete this delivery address? This action cannot be undone.
-              </p>
-
-              {addressToDelete.address && (
-                <div className="address-delete-preview-box">
-                  <div style={{ fontWeight: 700, marginBottom: "3px" }}>
-                    {addressToDelete.address.name}{" "}
-                    {addressToDelete.address.phone ? `(${addressToDelete.address.phone})` : ""}
-                  </div>
-                  <div>{addressToDelete.address.address}</div>
-                  <div>{getAddressLocationText(addressToDelete.address)}</div>
+              <div
+                className="address-delete-modal-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="address-delete-modal-icon-wrap">
+                  <span>🗑️</span>
                 </div>
-              )}
+                <h3 id="navbar-delete-address-modal-title" className="address-delete-modal-title">Delete Address?</h3>
+                <p className="address-delete-modal-desc">
+                  Are you sure you want to delete this delivery address? This action cannot be undone.
+                </p>
 
-              <div className="address-delete-modal-actions">
-                <button
-                  type="button"
-                  className="address-delete-btn-cancel"
-                  onClick={() => setAddressToDelete(null)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="address-delete-btn-confirm"
-                  onClick={() => {
-                    removeAddress(addressToDelete.index);
-                    setAddressToDelete(null);
+                {addressToDelete.address && (
+                  <div className="address-delete-preview-box">
+                    <div style={{ fontWeight: 700, marginBottom: "3px" }}>
+                      {addressToDelete.address.name}{" "}
+                      {addressToDelete.address.phone ? `(${addressToDelete.address.phone})` : ""}
+                    </div>
+                    <div>{addressToDelete.address.address}</div>
+                    <div>{getAddressLocationText(addressToDelete.address)}</div>
+                  </div>
+                )}
+
+                <div className="address-delete-modal-actions">
+                  <button
+                    type="button"
+                    className="address-delete-btn-cancel"
+                    onClick={() => setAddressToDelete(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="address-delete-btn-confirm"
+                    onClick={() => {
+                      removeAddress(addressToDelete.index);
+                      setAddressToDelete(null);
+                      if (showToast) {
+                        showToast("Deleted", "success");
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
+        {/* Sign Out Confirmation Popup Modal */}
+        {showSignOutModal &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="address-delete-modal-backdrop"
+              onClick={() => setShowSignOutModal(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="navbar-signout-modal-title"
+            >
+              <div
+                className="address-delete-modal-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className="address-delete-modal-icon-wrap"
+                  style={{
+                    backgroundColor: "rgba(239, 68, 68, 0.12)",
+                    color: "#ef4444"
                   }}
                 >
-                  Delete
-                </button>
+                  <LogOut size={26} />
+                </div>
+                <h3 id="navbar-signout-modal-title" className="address-delete-modal-title">
+                  Sign Out?
+                </h3>
+                <p className="address-delete-modal-desc">
+                  Are you sure you want to sign out of <strong>{user?.name || "your account"}</strong>?
+                </p>
+
+                <div className="address-delete-modal-actions">
+                  <button
+                    type="button"
+                    className="address-delete-btn-cancel"
+                    onClick={() => setShowSignOutModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="address-delete-btn-confirm"
+                    style={{
+                      backgroundColor: "#ef4444",
+                      borderColor: "#ef4444",
+                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.25)"
+                    }}
+                    onClick={() => {
+                      setShowSignOutModal(false);
+                      logout();
+                      if (showToast) {
+                        showToast("Signed out successfully", "info");
+                      }
+                    }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </nav>
 
       {/* Mobile Bottom Navigation Bar */}
@@ -1023,7 +1096,7 @@ function Navbar({ bannerActive = false }) {
               className="navbar-link navbar-logout navbar-outline"
               onClick={() => {
                 handleNavClick();
-                logout();
+                setShowSignOutModal(true);
               }}
             >
               <LogOut size={18} className="navbar-link-icon" />
