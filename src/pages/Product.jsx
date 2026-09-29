@@ -291,13 +291,6 @@ function Product() {
   const [helpfulVotes, setHelpfulVotes] = useState({});
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  const MAX_REVIEW_WORDS = 800;
-  const reviewWordCount = useMemo(() => {
-    const trimmed = String(comment || "").trim();
-    if (!trimmed) return 0;
-    return trimmed.split(/\s+/).filter(Boolean).length;
-  }, [comment]);
-
   useEffect(() => {
     if (!loading && product && (location.hash === "#write-review" || location.hash === "#reviews-section" || location.state?.scrollToReview)) {
       if (location.hash === "#write-review" || location.state?.scrollToReview) {
@@ -366,6 +359,13 @@ function Product() {
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
   const [reviewError, setReviewError] = useState("");
+
+  const MAX_REVIEW_WORDS = 800;
+  const reviewWordCount = useMemo(() => {
+    const trimmed = String(comment || "").trim();
+    if (!trimmed) return 0;
+    return trimmed.split(/\s+/).filter(Boolean).length;
+  }, [comment]);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [showAllThumbnails, setShowAllThumbnails] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
