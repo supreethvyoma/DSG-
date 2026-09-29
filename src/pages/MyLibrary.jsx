@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../hooks/useAuth";
@@ -25,14 +25,111 @@ function MyLibrary() {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeWebReaderUrl, setActiveWebReaderUrl] = useState("");
+  
+  // Secure Reader State
+  const [activeReaderItem, setActiveReaderItem] = useState(null);
+  const [activeBlobUrl, setActiveBlobUrl] = useState("");
+  const [mediaType, setMediaType] = useState("frame"); // "video" | "audio" | "pdf" | "frame"
+  const [isOpeningReader, setIsOpeningReader] = useState(false);
+  const [readerError, setReaderError] = useState("");
   const [activeGuideItem, setActiveGuideItem] = useState(null);
 
-  useEffect(() => {
-    if (location.state?.autoOpenUrl) {
-      setActiveWebReaderUrl(location.state.autoOpenUrl);
+  const closeSecureReader = useCallback(() => {
+    if (activeBlobUrl && activeBlobUrl.startsWith("blob:")) {
+      try {
+        URL.revokeObjectURL(activeBlobUrl);
+      } catch {
+        // ignore
+      }
     }
-  }, [location.state]);
+    setActiveBlobUrl("");
+    setActiveReaderItem(null);
+    setReaderError("");
+    setIsOpeningReader(false);
+    setMediaType("frame");
+  }, [activeBlobUrl]);
+
+  const openSecureReader = useCallback(async (book) => {
+    const rawUrl = String(book.webReaderLink || book.product?.webReaderLink || "").trim();
+    if (!rawUrl && !book.orderId) {
+      showToast("Digital Reader link is being configured. Please contact support.");
+      return;
+    }
+
+    setActiveReaderItem(book);
+    setIsOpeningReader(true);
+    setReaderError("");
+    setActiveBlobUrl("");
+
+    // Detect external embed viewer sites (e.g. Heyzine, FlipHTML5, Canva, Drive, Vimeo)
+    const isExternalViewer = /^(https?:\/\/)?(online\.fliphtml5\.com|heyzine\.com|canva\.com|drive\.google\.com|youtube\.com|vimeo\.com|player\.vimeo\.com)/i.test(rawUrl);
+
+    if (isExternalViewer) {
+      setMediaType("frame");
+      setActiveBlobUrl(rawUrl);
+      setIsOpeningReader(false);
+      return;
+    }
+
+    try {
+      const orderId = book.orderId || book.orderNumber;
+      const itemId = book._id || book.product || book.id;
+
+      let streamUrl = "";
+      if (orderId && itemId) {
+        streamUrl = `/api/orders/digital-stream/${orderId}/${itemId}`;
+      } else {
+        streamUrl = rawUrl;
+      }
+
+      const response = await fetch(streamUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`);
+      }
+
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      if (contentType.includes("video") || /\.(mp4|webm|mkv|mov|avi)(\?.*)?$/i.test(rawUrl)) {
+        setMediaType("video");
+      } else if (contentType.includes("audio") || /\.(mp3|wav|ogg|m4a)(\?.*)?$/i.test(rawUrl)) {
+        setMediaType("audio");
+      } else if (contentType.includes("pdf") || /\.(pdf)(\?.*)?$/i.test(rawUrl)) {
+        setMediaType("pdf");
+      } else {
+        setMediaType("frame");
+      }
+
+      setActiveBlobUrl(objectUrl);
+    } catch (err) {
+      console.error("[Secure Reader] Stream error:", err);
+      // Fallback if direct URL is usable
+      if (rawUrl) {
+        setActiveBlobUrl(rawUrl);
+        setMediaType("frame");
+      } else {
+        setReaderError("Unable to establish secure stream for this digital item. Please try again.");
+      }
+    } finally {
+      setIsOpeningReader(false);
+    }
+  }, [token, showToast]);
+
+  useEffect(() => {
+    return () => {
+      if (activeBlobUrl && activeBlobUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(activeBlobUrl);
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, [activeBlobUrl]);
 
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
@@ -195,6 +292,27 @@ function MyLibrary() {
     );
   }, [digitalBooks, searchQuery]);
 
+  // Auto-open reader if navigated from MyOrders with autoOpenUrl
+  useEffect(() => {
+    if (location.state?.autoOpenUrl && digitalBooks.length > 0 && !activeReaderItem) {
+      const targetUrl = location.state.autoOpenUrl;
+      const targetSearch = location.state.search;
+      const match = digitalBooks.find(
+        (b) =>
+          (b.webReaderLink && b.webReaderLink === targetUrl) ||
+          (b.name && targetSearch && b.name.toLowerCase().includes(String(targetSearch).toLowerCase()))
+      );
+      if (match) {
+        openSecureReader(match);
+      } else {
+        openSecureReader({
+          name: targetSearch || "Digital Content",
+          webReaderLink: targetUrl
+        });
+      }
+    }
+  }, [location.state, digitalBooks, activeReaderItem, openSecureReader]);
+
   return (
     <div className="my-library-container">
       <div className="my-library-header">
@@ -289,13 +407,7 @@ function MyLibrary() {
                         <button
                           type="button"
                           className="my-library-btn-primary"
-                          onClick={() => {
-                            if (readerUrl) {
-                              setActiveWebReaderUrl(readerUrl);
-                            } else {
-                              showToast("Digital Reader link is being configured. Please contact support.");
-                            }
-                          }}
+                          onClick={() => openSecureReader(book)}
                         >
                           {isFlipbook ? "📖 Read Flipbook" : "📖 Read Web Version"}
                         </button>
@@ -326,12 +438,12 @@ function MyLibrary() {
         </>
       )}
 
-      {/* Embedded Full-Screen Web Reader Modal */}
-      {activeWebReaderUrl && (
+      {/* Embedded Full-Screen Web Reader Modal (Secure In-Memory Blob Stream) */}
+      {(activeReaderItem || isOpeningReader) && (
         <div
           className="review-redirect-modal-backdrop"
-          onClick={() => setActiveWebReaderUrl("")}
-          style={{ backgroundColor: "rgba(0,0,0,0.85)", zIndex: 9999, padding: "12px" }}
+          onClick={closeSecureReader}
+          style={{ backgroundColor: "rgba(0,0,0,0.88)", zIndex: 9999, padding: "12px" }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -344,30 +456,149 @@ function MyLibrary() {
               display: "flex",
               flexDirection: "column",
               overflow: "hidden",
-              boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
+              boxShadow: "0 12px 48px rgba(0,0,0,0.6)",
+              border: "1px solid rgba(255,255,255,0.08)"
             }}
           >
-            <div style={{ padding: "12px 16px", backgroundColor: "#16213e", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #0f3460" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#fff", fontWeight: 600, fontSize: "14px" }}>
-                <span>📖 Digital Sanskrit Reader • Protected Access</span>
+            <div
+              style={{
+                padding: "12px 18px",
+                backgroundColor: "#16213e",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid #0f3460"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#fff", fontWeight: 600, fontSize: "14px" }}>
+                <span style={{ fontSize: "16px" }}>🔒</span>
+                <span>
+                  {activeReaderItem?.name || "Digital Sanskrit Reader"} • <span style={{ color: "#4ade80", fontSize: "12px", fontWeight: 500 }}>Encrypted Protected Session</span>
+                </span>
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   type="button"
-                  onClick={() => setActiveWebReaderUrl("")}
-                  style={{ padding: "6px 14px", borderRadius: "6px", backgroundColor: "#e94560", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600, fontSize: "12px" }}
+                  onClick={closeSecureReader}
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: "6px",
+                    backgroundColor: "#e94560",
+                    color: "#fff",
+                    border: "none",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    fontSize: "12px"
+                  }}
                 >
                   Close Reader
                 </button>
               </div>
             </div>
-            <iframe
-              src={activeWebReaderUrl}
-              title="Digital Web Reader"
-              onContextMenu={(e) => e.preventDefault()}
-              style={{ width: "100%", height: "100%", border: "none", backgroundColor: "#ffffff", userSelect: "none" }}
-              allow="fullscreen"
-            />
+
+            {isOpeningReader ? (
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "16px",
+                  color: "#e2e8f0"
+                }}
+              >
+                <div className="my-library-spinner" />
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: 500 }}>
+                  🔒 Initializing secure session & streaming content...
+                </p>
+              </div>
+            ) : readerError ? (
+              <div
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "14px",
+                  padding: "24px",
+                  textAlign: "center"
+                }}
+              >
+                <div style={{ fontSize: "40px" }}>⚠️</div>
+                <h3 style={{ color: "#ff6b6b", margin: 0 }}>Unable to Load Digital Media</h3>
+                <p style={{ color: "#94a3b8", maxWidth: "450px", margin: 0, fontSize: "13.5px" }}>{readerError}</p>
+                <button
+                  type="button"
+                  onClick={() => activeReaderItem && openSecureReader(activeReaderItem)}
+                  className="review-redirect-btn-primary"
+                  style={{ marginTop: "10px", padding: "8px 20px" }}
+                >
+                  Retry Loading 🔄
+                </button>
+              </div>
+            ) : activeBlobUrl ? (
+              mediaType === "video" ? (
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#000",
+                    overflow: "hidden"
+                  }}
+                >
+                  <video
+                    src={activeBlobUrl}
+                    controls
+                    autoPlay
+                    controlsList="nodownload"
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ width: "100%", maxHeight: "100%", objectFit: "contain" }}
+                  />
+                </div>
+              ) : mediaType === "audio" ? (
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#0d1117",
+                    padding: "40px",
+                    gap: "20px"
+                  }}
+                >
+                  <div style={{ fontSize: "56px" }}>🎧</div>
+                  <h3 style={{ color: "#fff", margin: 0 }}>{activeReaderItem?.name}</h3>
+                  <audio
+                    src={activeBlobUrl}
+                    controls
+                    autoPlay
+                    controlsList="nodownload"
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ width: "100%", maxWidth: "500px" }}
+                  />
+                </div>
+              ) : (
+                <iframe
+                  src={activeBlobUrl}
+                  title="Digital Sanskrit Reader"
+                  onContextMenu={(e) => e.preventDefault()}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                    backgroundColor: "#ffffff",
+                    userSelect: "none"
+                  }}
+                  allow="fullscreen"
+                />
+              )
+            ) : null}
           </div>
         </div>
       )}

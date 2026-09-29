@@ -577,6 +577,7 @@ function Home() {
             <span className="home-section-kicker">Most trusted</span>
             <h2>Top Rated Picks</h2>
           </div>
+          <Link to="/collection" className="home-inline-link">See more</Link>
         </div>
 
         <div className="home-slider-wrapper">
@@ -734,7 +735,7 @@ function Home() {
                 <span className="home-section-kicker">Seasonal picks</span>
                 <h2>Festive Offers</h2>
               </div>
-              <Link to="/collection" className="home-inline-link">View all</Link>
+              <Link to="/collection" className="home-inline-link">See more</Link>
             </div>
 
             <div className="home-slider-wrapper">
@@ -749,12 +750,12 @@ function Home() {
                 </button>
               ) : null}
 
-              <div ref={festiveRef} className="home-catalog-preview-row">
+              <div ref={festiveRef} className="home-spotlight-row">
                 {isLoadingProducts ? (
                   <LoadingSpinner text="Loading festive offers..." minHeight="180px" />
                 ) : festiveOfferProducts.length > 0 ? (
                   festiveOfferProducts.map((product) => (
-                    <div key={product._id} className="home-catalog-preview-item">
+                    <div key={product._id} className="home-spotlight-item">
                       <ProductCard product={product} showDescription={false} variant="home" />
                     </div>
                   ))
@@ -788,7 +789,7 @@ function Home() {
               <span className="home-section-kicker">Bundle deals</span>
               <h2>Bundle Products</h2>
             </div>
-            <Link to="/collection" className="home-inline-link">View all</Link>
+            <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
 
           <div className="home-slider-wrapper">
@@ -803,12 +804,12 @@ function Home() {
               </button>
             ) : null}
 
-            <div ref={bundleRef} className="home-catalog-preview-row">
+            <div ref={bundleRef} className="home-spotlight-row">
               {isLoadingProducts ? (
                 <LoadingSpinner text="Loading bundle deals..." minHeight="180px" />
               ) : bundleProducts.length > 0 ? (
                 bundleProducts.map((product) => (
-                  <div key={product._id} className="home-catalog-preview-item">
+                  <div key={product._id} className="home-spotlight-item">
                     <ProductCard product={product} showDescription={false} variant="home" />
                   </div>
                 ))
@@ -844,7 +845,7 @@ function Home() {
               <span className="home-section-kicker">Catalog</span>
               <h2>Browse the Collection</h2>
             </div>
-            <Link to="/collection" className="home-inline-link">see all products</Link>
+            <Link to="/collection" className="home-inline-link">See more</Link>
           </div>
 
           <div className="home-slider-wrapper">
@@ -859,21 +860,15 @@ function Home() {
               </button>
             ) : null}
 
-            <div ref={catalogPreviewRef} className="home-catalog-preview-row">
+            <div ref={catalogPreviewRef} className="home-spotlight-row">
               {isLoadingProducts ? (
                 <LoadingSpinner text="Loading collection..." minHeight="180px" />
               ) : catalogPreviewProducts.length > 0 ? (
-                <>
-                  {catalogPreviewProducts.map((product) => (
-                    <div key={product._id} className="home-catalog-preview-item">
-                      <ProductCard product={product} showDescription={false} variant="home" />
-                    </div>
-                  ))}
-                  <Link to="/collection" className="home-catalog-see-more-card">
-                    <span>See more</span>
-                    <strong>Open full collection</strong>
-                  </Link>
-                </>
+                catalogPreviewProducts.map((product) => (
+                  <div key={product._id} className="home-spotlight-item">
+                    <ProductCard product={product} showDescription={false} variant="home" />
+                  </div>
+                ))
               ) : (
                 <div className="home-empty-state">
                   <strong>No products found</strong>

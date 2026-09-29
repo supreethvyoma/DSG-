@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { apiBaseUrl } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 import { useWishlist } from "../hooks/useWishlist";
 import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
+import { useToast } from "../hooks/useToast";
 import { reverseGeocodeCoordinates, getCurrentDevicePosition } from "../utils/geoAddress";
 import {
   COUNTRIES,
@@ -371,6 +373,7 @@ async function fetchCoordinatesForAddress(parts = {}) {
 function MyAccount() {
   const { user, token, updateProfileState } = useAuth();
   const { wishlist } = useWishlist();
+  const { showToast } = useToast();
   const {
     addresses,
     isLoadingAddresses,
@@ -380,6 +383,7 @@ function MyAccount() {
     setDefaultAddress
   } = useDeliveryLocation();
   const location = useLocation();
+  const navigate = useNavigate();
   const addressFormRef = useRef(null);
   const nameInputRef = useRef(null);
   const pincodeSeqRef = useRef(0);
@@ -707,6 +711,10 @@ function MyAccount() {
 
     if (editIdx !== null && !Number.isNaN(editIdx) && addresses && addresses[editIdx]) {
       editAddress(editIdx);
+      navigate(location.pathname + (location.hash || "#manage-address"), {
+        replace: true,
+        state: { targetSection: "manage-address" }
+      });
       return;
     }
 
@@ -718,17 +726,26 @@ function MyAccount() {
     if (isUseCurrentLocation) {
       openNewAddressForm();
       handleUseCurrentLocation();
+      navigate(location.pathname + (location.hash || "#manage-address"), {
+        replace: true,
+        state: { targetSection: "manage-address" }
+      });
       return;
     }
 
     const isAddNewAddress =
       params.get("addNewAddress") === "true" ||
       params.get("action") === "add-address" ||
+      params.get("openAddressForm") === "1" ||
       location.state?.action === "add-address" ||
       location.hash === "#add-address";
 
     if (isAddNewAddress) {
       openNewAddressForm();
+      navigate(location.pathname + "#manage-address", {
+        replace: true,
+        state: { targetSection: "manage-address" }
+      });
       return;
     }
 
@@ -763,7 +780,7 @@ function MyAccount() {
         clearTimeout(timer2);
       };
     }
-  }, [location.hash, location.search, location.state, addresses]);
+  }, [location.hash, location.search, location.state, addresses, navigate]);
 
   useEffect(() => {
     const handleCustomEdit = (e) => {
@@ -1048,33 +1065,6 @@ function MyAccount() {
     }
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (
-      params.get("editAddress") ||
-      params.get("addNewAddress") === "true" ||
-      params.get("useCurrentLocation") === "true" ||
-      params.get("action") === "add-address" ||
-      params.get("action") === "use-current-location" ||
-      location.state?.action === "add-address" ||
-      location.state?.action === "use-current-location"
-    ) {
-      return;
-    }
-    const shouldOpenAddressForm = params.get("openAddressForm") === "1";
-    const shouldScrollToAddresses = location.hash === "#manage-address" || shouldOpenAddressForm;
-
-    if (!shouldOpenAddressForm && !shouldScrollToAddresses) return;
-
-    if (shouldOpenAddressForm) {
-      setEditingIndex(null);
-      setShowAddressForm(true);
-    }
-
-    window.requestAnimationFrame(() => {
-      document.getElementById("manage-address")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }, [location.hash, location.search]);
 
   useEffect(() => {
     if (!token) {
@@ -1317,12 +1307,16 @@ function MyAccount() {
   };
 
   const deleteAddress = (index) => {
-    const target = addresses[index];
     removeAddress(index);
     if (editingIndex === index) {
       resetAddressForm();
+      setShowAddressForm(false);
     }
-    showAddressToast(`Address for ${target?.name || "recipient"} removed.`);
+    const message = "Deleted";
+    showAddressToast(message);
+    if (showToast) {
+      showToast(message, "success");
+    }
   };
 
   const handleSetDefaultAddress = (index) => {
@@ -2171,7 +2165,11 @@ function MyAccount() {
                       <button
                         type="button"
                         className="my-account-addr-btn danger"
-                        onClick={() => setAddressToDelete({ index, address: item })}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setAddressToDelete({ index, address: item });
+                        }}
                       >
                         <Trash2 size={13} /> Delete
                       </button>
@@ -2592,58 +2590,66 @@ function MyAccount() {
         ) : null}
 
         {/* Delete Address Confirmation Popup Modal */}
-        {addressToDelete !== null && (
-          <div
-            className="address-delete-modal-backdrop"
-            onClick={() => setAddressToDelete(null)}
-          >
+        {addressToDelete !== null &&
+          typeof document !== "undefined" &&
+          createPortal(
             <div
-              className="address-delete-modal-card"
-              onClick={(e) => e.stopPropagation()}
+              className="address-delete-modal-backdrop"
+              onClick={() => setAddressToDelete(null)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="address-delete-modal-title"
             >
-              <div className="address-delete-modal-icon-wrap">
-                <span>🗑️</span>
-              </div>
-              <h3 className="address-delete-modal-title">Delete Address?</h3>
-              <p className="address-delete-modal-desc">
-                Are you sure you want to delete this delivery address? This action cannot be undone.
-              </p>
-
-              {addressToDelete.address && (
-                <div className="address-delete-preview-box">
-                  <div style={{ fontWeight: 700, marginBottom: "3px" }}>
-                    {addressToDelete.address.name}{" "}
-                    {addressToDelete.address.phone
-                      ? `(${addressToDelete.address.phone})`
-                      : ""}
-                  </div>
-                  <div>{addressToDelete.address.address}</div>
-                  <div>{formatAddressLocationLine(addressToDelete.address)}</div>
+              <div
+                className="address-delete-modal-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="address-delete-modal-icon-wrap">
+                  <span>🗑️</span>
                 </div>
-              )}
+                <h3 id="address-delete-modal-title" className="address-delete-modal-title">
+                  Delete Address?
+                </h3>
+                <p className="address-delete-modal-desc">
+                  Are you sure you want to delete this delivery address? This action cannot be undone.
+                </p>
 
-              <div className="address-delete-modal-actions">
-                <button
-                  type="button"
-                  className="address-delete-btn-cancel"
-                  onClick={() => setAddressToDelete(null)}
-                >
-                  Keep Address
-                </button>
-                <button
-                  type="button"
-                  className="address-delete-btn-confirm"
-                  onClick={() => {
-                    deleteAddress(addressToDelete.index);
-                    setAddressToDelete(null);
-                  }}
-                >
-                  Yes, Delete
-                </button>
+                {addressToDelete.address && (
+                  <div className="address-delete-preview-box">
+                    <div style={{ fontWeight: 700, marginBottom: "3px" }}>
+                      {addressToDelete.address.name}{" "}
+                      {addressToDelete.address.phone
+                        ? `(${addressToDelete.address.phone})`
+                        : ""}
+                    </div>
+                    <div>{addressToDelete.address.address}</div>
+                    <div>{formatAddressLocationLine(addressToDelete.address)}</div>
+                  </div>
+                )}
+
+                <div className="address-delete-modal-actions">
+                  <button
+                    type="button"
+                    className="address-delete-btn-cancel"
+                    onClick={() => setAddressToDelete(null)}
+                  >
+                    Keep Address
+                  </button>
+                  <button
+                    type="button"
+                    className="address-delete-btn-confirm"
+                    onClick={() => {
+                      deleteAddress(addressToDelete.index);
+                      setAddressToDelete(null);
+                    }}
+                  >
+                    Yes, Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </section>
 
       <PushSubscribeSection token={token} />

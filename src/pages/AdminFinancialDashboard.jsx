@@ -12,7 +12,8 @@ import {
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from "chart.js";
 import { Line, Bar } from "react-chartjs-2";
 import "./AdminShared.css";
@@ -28,7 +29,8 @@ ChartJS.register(
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 function AdminFinancialDashboard() {

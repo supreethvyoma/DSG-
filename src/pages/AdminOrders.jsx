@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import {
+  Search,
+  Calendar,
+  CalendarDays,
+  RotateCcw,
+  ArrowUpDown,
+  X
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import { formatDate, formatDateForFileName, formatTime } from "../utils/date";
@@ -54,6 +62,13 @@ function AdminOrders() {
   const [searchText, setSearchText] = useState("");
   const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const [sortOrder, setSortOrder] = useState("newest");
+
+  const hasActiveFilters = useMemo(() => {
+    return Boolean(
+      searchText || fromDateTime || toDateTime || activeQuickFilter || sortOrder !== "newest"
+    );
+  }, [searchText, fromDateTime, toDateTime, activeQuickFilter, sortOrder]);
+
   const [updatingOrderId, setUpdatingOrderId] = useState("");
   const [generatingInvoiceOrderId, setGeneratingInvoiceOrderId] = useState("");
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
@@ -712,86 +727,145 @@ function AdminOrders() {
           ))}
         </section>
 
-        <section className="orders-filter-bar" aria-label="Order filters">
-          <label className="orders-search-field">
-            <span>Search orders</span>
-            <span className="orders-search-input-wrap">
-              <Icon name="search" />
-              <input
-                type="search"
-                placeholder="Order ID, customer, email, item..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-              />
-            </span>
-          </label>
+        <section className="orders-filter-bar" aria-label="Order search and filters">
+          {/* Top Row: Search Input & Quick Range Pills */}
+          <div className="orders-filter-primary-row">
+            <div className="orders-search-field-wrap">
+              <label htmlFor="orders-search-input" className="orders-filter-label">
+                <Search size={14} className="orders-filter-label-icon" />
+                <span>Search Orders</span>
+              </label>
+              <div className="orders-search-input-wrap">
+                <Search size={15} className="orders-search-icon" />
+                <input
+                  id="orders-search-input"
+                  type="text"
+                  placeholder="Search by Order ID, customer name, email, product..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  aria-label="Search orders"
+                />
+                {searchText && (
+                  <button
+                    type="button"
+                    className="orders-search-clear-btn"
+                    onClick={() => setSearchText("")}
+                    title="Clear search text"
+                    aria-label="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
 
-          <div className="quick-filter-buttons" aria-label="Quick date filters">
-            <button
-              className={activeQuickFilter === "24h" ? "quick-filter-btn active" : "quick-filter-btn"}
-              onClick={() => applyQuickFilter("24h")}
-            >
-              Last 24h
-            </button>
-            <button
-              className={activeQuickFilter === "7d" ? "quick-filter-btn active" : "quick-filter-btn"}
-              onClick={() => applyQuickFilter("7d")}
-            >
-              Last 7 Days
-            </button>
-            <button
-              className={activeQuickFilter === "month" ? "quick-filter-btn active" : "quick-filter-btn"}
-              onClick={() => applyQuickFilter("month")}
-            >
-              This Month
-            </button>
+            <div className="orders-quick-filters-wrap">
+              <span className="orders-filter-label">
+                <CalendarDays size={14} className="orders-filter-label-icon" />
+                <span>Quick Date</span>
+              </span>
+              <div className="quick-filter-buttons" aria-label="Quick date filters">
+                <button
+                  type="button"
+                  className={activeQuickFilter === "24h" ? "quick-filter-btn active" : "quick-filter-btn"}
+                  onClick={() => applyQuickFilter("24h")}
+                >
+                  Last 24h
+                </button>
+                <button
+                  type="button"
+                  className={activeQuickFilter === "7d" ? "quick-filter-btn active" : "quick-filter-btn"}
+                  onClick={() => applyQuickFilter("7d")}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  type="button"
+                  className={activeQuickFilter === "month" ? "quick-filter-btn active" : "quick-filter-btn"}
+                  onClick={() => applyQuickFilter("month")}
+                >
+                  This Month
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="orders-date-grid">
-            <label>
-              <span>From</span>
-              <input
-                type="datetime-local"
-                value={fromDateTime}
-                onChange={(e) => {
-                  setFromDateTime(e.target.value);
+          {/* Bottom Row: Date Range (From/To), Sort Dropdown & Reset Action */}
+          <div className="orders-filter-secondary-row">
+            <div className="orders-date-filter-group">
+              <div className="orders-date-field">
+                <label htmlFor="orders-from-date" className="orders-filter-sublabel">
+                  From Date
+                </label>
+                <div className="orders-date-input-wrap">
+                  <Calendar size={14} className="orders-date-icon" />
+                  <input
+                    id="orders-from-date"
+                    type="datetime-local"
+                    value={fromDateTime}
+                    onChange={(e) => {
+                      setFromDateTime(e.target.value);
+                      setActiveQuickFilter("");
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="orders-date-field">
+                <label htmlFor="orders-to-date" className="orders-filter-sublabel">
+                  To Date
+                </label>
+                <div className="orders-date-input-wrap">
+                  <Calendar size={14} className="orders-date-icon" />
+                  <input
+                    id="orders-to-date"
+                    type="datetime-local"
+                    value={toDateTime}
+                    onChange={(e) => {
+                      setToDateTime(e.target.value);
+                      setActiveQuickFilter("");
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="orders-sort-field-wrap">
+              <label htmlFor="orders-sort-select" className="orders-filter-sublabel">
+                Sort By
+              </label>
+              <div className="orders-sort-select-wrap">
+                <ArrowUpDown size={14} className="orders-sort-icon" />
+                <select
+                  id="orders-sort-select"
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="orders-reset-action-wrap">
+              <button
+                type="button"
+                className={`clear-filter-btn ${hasActiveFilters ? "has-active" : ""}`}
+                onClick={() => {
+                  setFromDateTime("");
+                  setToDateTime("");
                   setActiveQuickFilter("");
+                  setSearchText("");
+                  setSortOrder("newest");
                 }}
-              />
-            </label>
-            <label>
-              <span>To</span>
-              <input
-                type="datetime-local"
-                value={toDateTime}
-                onChange={(e) => {
-                  setToDateTime(e.target.value);
-                  setActiveQuickFilter("");
-                }}
-              />
-            </label>
+                title="Reset all search queries and date filters"
+              >
+                <RotateCcw size={13} className="orders-reset-icon" />
+                <span>Reset Filters</span>
+                {hasActiveFilters && <span className="orders-active-filter-indicator" title="Active filters applied" />}
+              </button>
+            </div>
           </div>
-
-          <label className="orders-sort-field">
-            <span>Sort</span>
-            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
-          </label>
-
-          <button
-            className="clear-filter-btn"
-            onClick={() => {
-              setFromDateTime("");
-              setToDateTime("");
-              setActiveQuickFilter("");
-              setSearchText("");
-            }}
-          >
-            <Icon name="reset" />
-            Reset
-          </button>
         </section>
 
         {!isLoadingOrders && orders.length === 0 && (
@@ -806,29 +880,29 @@ function AdminOrders() {
             <table className="admin-orders-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Country</th>
-                  <th>Items</th>
-                  <th>Customer Paid</th>
-                  <th>Store Total</th>
-                  <th>Payment</th>
-                  <th>Fulfillment</th>
-                  <th>Actions</th>
+                  <th className="col-order">Order</th>
+                  <th className="col-customer">Customer</th>
+                  <th className="col-country">Country</th>
+                  <th className="col-items">Items</th>
+                  <th className="col-customer-paid">Customer Paid</th>
+                  <th className="col-store-total">Store Total</th>
+                  <th className="col-payment">Payment</th>
+                  <th className="col-fulfillment">Fulfillment</th>
+                  <th className="col-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 5 }).map((_, idx) => (
                   <tr key={`orders-skeleton-${idx}`}>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
-                    <td><span className="skeleton-block" /></td>
+                    <td className="col-order"><span className="skeleton-block" /></td>
+                    <td className="col-customer"><span className="skeleton-block" /></td>
+                    <td className="col-country"><span className="skeleton-block" /></td>
+                    <td className="col-items"><span className="skeleton-block" /></td>
+                    <td className="col-customer-paid"><span className="skeleton-block" /></td>
+                    <td className="col-store-total"><span className="skeleton-block" /></td>
+                    <td className="col-payment"><span className="skeleton-block" /></td>
+                    <td className="col-fulfillment"><span className="skeleton-block" /></td>
+                    <td className="col-actions"><span className="skeleton-block" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -841,15 +915,15 @@ function AdminOrders() {
             <table className="admin-orders-table">
               <thead>
                 <tr>
-                  <th>Order</th>
-                  <th>Customer</th>
-                  <th>Country</th>
-                  <th>Items</th>
-                  <th>Customer Paid</th>
-                  <th>Store Total</th>
-                  <th>Payment</th>
-                  <th>Fulfillment</th>
-                  <th>Actions</th>
+                  <th className="col-order">Order</th>
+                  <th className="col-customer">Customer</th>
+                  <th className="col-country">Country</th>
+                  <th className="col-items">Items</th>
+                  <th className="col-customer-paid">Customer Paid</th>
+                  <th className="col-store-total">Store Total</th>
+                  <th className="col-payment">Payment</th>
+                  <th className="col-fulfillment">Fulfillment</th>
+                  <th className="col-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -865,19 +939,21 @@ function AdminOrders() {
                     : [];
                   return (
                     <tr key={order._id}>
-                      <td className="order-code">
-                        <Link to={`/admin/orders/${order._id}`} className="order-code-link">
-                          #{order._id.slice(-6).toUpperCase()}
-                        </Link>
-                        <span>{formatOrderDate(order.createdAt)}</span>
-                        {order.lastUpdatedAt ? (
-                          <small style={{ display: "block", marginTop: "6px", color: "var(--admin-muted)" }}>
-                            Last updated by {order.lastUpdatedByName || order.lastUpdatedByEmail || "Admin"} on{" "}
-                            {formatDate(order.lastUpdatedAt)} {formatTime(order.lastUpdatedAt)}
-                          </small>
-                        ) : null}
+                      <td className="col-order">
+                        <div className="order-code-inner">
+                          <Link to={`/admin/orders/${order._id}`} className="order-code-link">
+                            #{order._id.slice(-6).toUpperCase()}
+                          </Link>
+                          <span>{formatOrderDate(order.createdAt)}</span>
+                          {order.lastUpdatedAt ? (
+                            <small style={{ display: "block", marginTop: "6px", color: "var(--admin-muted)" }}>
+                              Last updated by {order.lastUpdatedByName || order.lastUpdatedByEmail || "Admin"} on{" "}
+                              {formatDate(order.lastUpdatedAt)} {formatTime(order.lastUpdatedAt)}
+                            </small>
+                          ) : null}
+                        </div>
                       </td>
-                      <td>
+                      <td className="col-customer">
                         <div className="admin-order-customer">
                           <span className="admin-order-avatar">{getCustomerInitials(order)}</span>
                           <span className="admin-order-customer-text">
@@ -886,23 +962,29 @@ function AdminOrders() {
                           </span>
                         </div>
                       </td>
-                      <td className="admin-order-country-cell">
-                        <strong>{getPaymentCountry(order)}</strong>
-                        <small>{order?.currencyDisplay?.detectedCountry ? "Detected" : "Shipping"}</small>
+                      <td className="col-country">
+                        <div className="admin-order-country-inner">
+                          <strong>{getPaymentCountry(order)}</strong>
+                          <small>{order?.currencyDisplay?.detectedCountry ? "Detected" : "Shipping"}</small>
+                        </div>
                       </td>
-                      <td>
+                      <td className="col-items" style={{ textAlign: "center" }}>
                         <span className="admin-order-items-count">{productCount}</span>
                       </td>
-                      <td className="admin-order-amount-cell">
-                        <strong>{formatCustomerPaid(order)}</strong>
-                        <small>{getCapturedCurrencyLabel(order)}</small>
+                      <td className="col-customer-paid">
+                        <div className="admin-order-amount-inner">
+                          <strong>{formatCustomerPaid(order)}</strong>
+                          <small>{getCapturedCurrencyLabel(order)}</small>
+                        </div>
                       </td>
-                      <td className="admin-order-amount-cell">
-                        <strong>{formatMoney(getOrderBaseTotal(order))}</strong>
-                        <small>INR base</small>
+                      <td className="col-store-total">
+                        <div className="admin-order-amount-inner">
+                          <strong>{formatMoney(getOrderBaseTotal(order))}</strong>
+                          <small>INR base</small>
+                        </div>
                       </td>
-                      <td>
-                        <div className="admin-order-payment-cell">
+                      <td className="col-payment">
+                        <div className="admin-order-payment-inner">
                           <span className={`admin-order-status status-payment-${paymentStatus.toLowerCase()}`}>
                             {paymentStatus === "Refunded"
                               ? "Refunded"
@@ -914,7 +996,7 @@ function AdminOrders() {
                           </span>
                         </div>
                       </td>
-                      <td>
+                      <td className="col-fulfillment">
                         <div className="admin-status-update">
                           <div className="order-status-tracker">
                             {DISPLAY_STATUSES.filter((status) => {
@@ -1145,24 +1227,27 @@ function AdminOrders() {
                           </div>
                         </div>
                       </td>
-                      <td className="admin-order-actions">
-                        <Link
-                          to={`/admin/orders/${order._id}`}
-                          className="admin-order-icon-btn"
-                          title="View order"
-                          aria-label="View order"
-                        >
-                          <Icon name="view" />
-                        </Link>
-                        <button
-                          className="admin-order-icon-btn"
-                          disabled={generatingInvoiceOrderId === order._id}
-                          onClick={() => void generateInvoice(order)}
-                          title={generatingInvoiceOrderId === order._id ? "Generating invoice" : "Generate invoice"}
-                          aria-label={generatingInvoiceOrderId === order._id ? "Generating invoice" : "Generate invoice"}
-                        >
-                          <Icon name="invoice" />
-                        </button>
+                      <td className="admin-order-actions-cell col-actions">
+                        <div className="admin-order-actions">
+                          <Link
+                            to={`/admin/orders/${order._id}`}
+                            className="admin-order-icon-btn"
+                            title="View order details"
+                            aria-label="View order details"
+                          >
+                            <Icon name="view" />
+                          </Link>
+                          <button
+                            type="button"
+                            className="admin-order-icon-btn"
+                            disabled={generatingInvoiceOrderId === order._id}
+                            onClick={() => void generateInvoice(order)}
+                            title={generatingInvoiceOrderId === order._id ? "Generating invoice" : "Generate invoice"}
+                            aria-label={generatingInvoiceOrderId === order._id ? "Generating invoice" : "Generate invoice"}
+                          >
+                            <Icon name="invoice" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -23,8 +23,15 @@ import {
   ShieldCheck,
   Sparkles,
   ChevronDown,
+  MessageCircle,
   X
 } from "lucide-react";
+import { validatePhoneNumber } from "../utils/phoneValidation";
+import {
+  COUNTRY_PHONE_CODES,
+  getCountryPhoneData
+} from "../utils/countryPhoneCodes";
+import WhatsAppOtpModal from "../components/common/WhatsAppOtpModal";
 import { formatDate } from "../utils/date";
 
 const AVATAR_PALETTES = [
@@ -383,6 +390,11 @@ function Product() {
   const [bulkName, setBulkName] = useState("");
   const [bulkEmail, setBulkEmail] = useState("");
   const [bulkPhone, setBulkPhone] = useState("");
+  const [bulkPhoneCountry, setBulkPhoneCountry] = useState("India");
+  const [bulkPhoneError, setBulkPhoneError] = useState("");
+  const [isBulkPhoneVerified, setIsBulkPhoneVerified] = useState(false);
+  const [bulkPhoneVerificationToken, setBulkPhoneVerificationToken] = useState("");
+  const [isBulkOtpModalOpen, setIsBulkOtpModalOpen] = useState(false);
   const [bulkQty, setBulkQty] = useState(20);
   const [bulkInst, setBulkInst] = useState("");
   const [bulkMsg, setBulkMsg] = useState("");
@@ -391,6 +403,42 @@ function Product() {
   const [bulkError, setBulkError] = useState("");
   const [honeyValue, setHoneyValue] = useState("");
   const [showReviewSuccessModal, setShowReviewSuccessModal] = useState(false);
+
+  const currentBulkPhoneData = useMemo(() => getCountryPhoneData(bulkPhoneCountry), [bulkPhoneCountry]);
+
+  const whatsappSettings = storeSettings?.whatsappSettings;
+  const isBulkOtpRequired = Boolean(
+    whatsappSettings?.mode === "api" && whatsappSettings?.enableOtpVerification !== false
+  );
+
+  const getFullBulkPhoneNumber = () => {
+    const clean = String(bulkPhone || "").trim();
+    if (!clean) return "";
+    if (clean.startsWith("+")) return clean;
+    return `${currentBulkPhoneData.code} ${clean}`.trim();
+  };
+
+  const handleOpenBulkOtpModal = () => {
+    const fullPhone = getFullBulkPhoneNumber();
+    if (!fullPhone) {
+      setBulkPhoneError("Please enter a phone number to verify.");
+      return;
+    }
+    const phoneValidation = validatePhoneNumber(fullPhone, bulkPhoneCountry);
+    if (!phoneValidation.isValid) {
+      setBulkPhoneError(phoneValidation.message);
+      return;
+    }
+    setBulkPhoneError("");
+    setIsBulkOtpModalOpen(true);
+  };
+
+  const handleBulkOtpVerified = ({ phone: verifiedPhone, phoneVerificationToken: token }) => {
+    setIsBulkPhoneVerified(true);
+    setBulkPhoneVerificationToken(token);
+    setBulkPhone(verifiedPhone);
+    setBulkPhoneError("");
+  };
 
   useEffect(() => {
     if (token) {
@@ -715,15 +763,22 @@ function Product() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && showBulkModal) {
       setBulkName(user.name || "");
       setBulkEmail(user.email || "");
+      if (user.phone) {
+        setBulkPhone(user.phone || "");
+        if (user.isPhoneVerified) {
+          setIsBulkPhoneVerified(true);
+        }
+      }
     }
   }, [user, showBulkModal]);
 
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
     setBulkError("");
+    setBulkPhoneError("");
     setBulkSuccess(false);
 
     if (!bulkName || !bulkEmail || !bulkQty) {
@@ -731,12 +786,28 @@ function Product() {
       return;
     }
 
+    const fullPhone = getFullBulkPhoneNumber();
+    if (fullPhone) {
+      const phoneValidation = validatePhoneNumber(fullPhone, bulkPhoneCountry);
+      if (!phoneValidation.isValid) {
+        setBulkPhoneError(phoneValidation.message);
+        return;
+      }
+
+      if (isBulkOtpRequired && !isBulkPhoneVerified) {
+        setIsBulkOtpModalOpen(true);
+        return;
+      }
+    }
+
     try {
       setBulkSubmitting(true);
       await axios.post(`/api/products/${product._id}/bulk-enquiry`, {
         name: bulkName,
         email: bulkEmail,
-        phone: bulkPhone,
+        phone: fullPhone,
+        isPhoneVerified: isBulkPhoneVerified,
+        phoneVerificationToken: bulkPhoneVerificationToken,
         quantity: Number(bulkQty),
         institution: bulkInst,
         message: bulkMsg,
@@ -747,6 +818,8 @@ function Product() {
       setBulkInst("");
       setBulkMsg("");
       setHoneyValue("");
+      setIsBulkPhoneVerified(false);
+      setBulkPhoneVerificationToken("");
       setTimeout(() => {
         setShowBulkModal(false);
         setBulkSuccess(false);
@@ -1925,14 +1998,76 @@ function Product() {
 
                   <div className="product-bulk-modal-row">
                     <div className="product-bulk-modal-col">
-                      <label className="product-bulk-modal-label">Phone</label>
-                      <input
-                        type="tel"
-                        value={bulkPhone}
-                        onChange={(e) => setBulkPhone(e.target.value)}
-                        placeholder="Phone number"
-                        className="product-bulk-modal-input"
-                      />
+                      <div className="product-bulk-modal-label-row">
+                        <label className="product-bulk-modal-label">Phone</label>
+                        {isBulkPhoneVerified ? (
+                          <span className="product-bulk-verified-badge">
+                            <CheckCircle2 size={13} /> Verified on WhatsApp
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="product-bulk-phone-field-row">
+                        <div className={`product-bulk-phone-input-group ${bulkPhoneError ? "invalid-input" : ""}`}>
+                          <div
+                            className="product-bulk-phone-prefix-wrap"
+                            title="Click to change country calling code"
+                          >
+                            <span className="product-bulk-phone-prefix-display">
+                              <span>{currentBulkPhoneData.flag}</span>
+                              <span>{currentBulkPhoneData.code}</span>
+                              <ChevronDown size={13} className="product-bulk-phone-chevron" />
+                            </span>
+                            <select
+                              className="product-bulk-phone-select-overlay"
+                              value={bulkPhoneCountry}
+                              onChange={(e) => {
+                                setBulkPhoneCountry(e.target.value);
+                                if (isBulkPhoneVerified) {
+                                  setIsBulkPhoneVerified(false);
+                                  setBulkPhoneVerificationToken("");
+                                }
+                              }}
+                              aria-label="Select Country Phone Code"
+                            >
+                              {COUNTRY_PHONE_CODES.map((item) => (
+                                <option key={`${item.country}-${item.code}`} value={item.country}>
+                                  {item.flag} {item.code} - {item.country}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <input
+                            type="tel"
+                            maxLength={16}
+                            placeholder={currentBulkPhoneData.placeholder || "Phone number"}
+                            value={bulkPhone}
+                            onChange={(e) => {
+                              setBulkPhone(e.target.value.replace(/[^\d+\s-]/g, ""));
+                              if (bulkPhoneError) setBulkPhoneError("");
+                              if (isBulkPhoneVerified) {
+                                setIsBulkPhoneVerified(false);
+                                setBulkPhoneVerificationToken("");
+                              }
+                            }}
+                            className="product-bulk-modal-phone-input"
+                          />
+                        </div>
+                        {Boolean(bulkPhone && !isBulkPhoneVerified) && (
+                          <button
+                            type="button"
+                            onClick={handleOpenBulkOtpModal}
+                            className="product-bulk-verify-wa-btn"
+                            title="Verify phone number via WhatsApp OTP"
+                          >
+                            <MessageCircle size={14} /> Verify via WhatsApp
+                          </button>
+                        )}
+                      </div>
+                      {bulkPhoneError && (
+                        <span className="product-bulk-field-error">
+                          {bulkPhoneError}
+                        </span>
+                      )}
                     </div>
                     <div className="product-bulk-modal-col">
                       <label className="product-bulk-modal-label">Quantity Needed <span className="product-bulk-modal-req">*</span></label>
@@ -2020,6 +2155,15 @@ function Product() {
             </form>
           </div>
         </div>
+      )}
+
+      {isBulkOtpModalOpen && (
+        <WhatsAppOtpModal
+          phone={getFullBulkPhoneNumber()}
+          isOpen={isBulkOtpModalOpen}
+          onClose={() => setIsBulkOtpModalOpen(false)}
+          onVerified={handleBulkOtpVerified}
+        />
       )}
 
       {showLightbox && activeMedia?.kind === "image" && (

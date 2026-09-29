@@ -1123,6 +1123,54 @@ router.delete("/:id/purge", protect, admin, async (req, res) => {
 
 const { sendBulkEnquiryEmail } = require("../utils/email");
 
+const validateBulkPhoneNumber = (rawPhone) => {
+  const trimmed = String(rawPhone || "").trim();
+  if (!trimmed) return { isValid: true, cleanPhone: "" };
+
+  const cleaned = trimmed.replace(/[\s\-()]/g, "");
+  const digitsOnly = cleaned.replace(/\D/g, "");
+
+  if (cleaned.startsWith("+")) {
+    if (cleaned.startsWith("+91")) {
+      const indianDigits = cleaned.slice(3).replace(/\D/g, "");
+      if (!/^[6-9]\d{9}$/.test(indianDigits)) {
+        return {
+          isValid: false,
+          message: "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9."
+        };
+      }
+      return { isValid: true, cleanPhone: `+91 ${indianDigits}` };
+    }
+
+    if (!/^\+[1-9]\d{6,14}$/.test(cleaned)) {
+      return {
+        isValid: false,
+        message: "Please enter a valid international phone number with country code (e.g. +1 2025550143)."
+      };
+    }
+    return { isValid: true, cleanPhone: cleaned };
+  }
+
+  if (digitsOnly.length === 10) {
+    if (!/^[6-9]\d{9}$/.test(digitsOnly)) {
+      return {
+        isValid: false,
+        message: "Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9."
+      };
+    }
+    return { isValid: true, cleanPhone: `+91 ${digitsOnly}` };
+  }
+
+  if (digitsOnly.length >= 7 && digitsOnly.length <= 15) {
+    return { isValid: true, cleanPhone: digitsOnly };
+  }
+
+  return {
+    isValid: false,
+    message: "Please enter a valid phone number (10 digits for India or include country code for international)."
+  };
+};
+
 // POST /api/products/:id/bulk-enquiry (PUBLIC)
 router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
   try {
@@ -1131,15 +1179,26 @@ router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    const { name, email, phone, quantity, institution, message } = req.body;
+    const { name, email, phone, isPhoneVerified, quantity, institution, message } = req.body;
     if (!name || !email || !quantity) {
       return res.status(400).json({ message: "Name, email, and quantity are required." });
     }
 
+    if (phone) {
+      const phoneValidation = validateBulkPhoneNumber(phone);
+      if (!phoneValidation.isValid) {
+        return res.status(400).json({ message: phoneValidation.message });
+      }
+    }
+
+    const formattedPhone = phone
+      ? (isPhoneVerified ? `${phone} (Verified via WhatsApp)` : phone)
+      : "Not provided";
+
     await sendBulkEnquiryEmail({
       name,
       email,
-      phone,
+      phone: formattedPhone,
       quantity: Number(quantity),
       productName: product.name,
       institution,
