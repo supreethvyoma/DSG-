@@ -70,6 +70,7 @@ function Navbar({ bannerActive = false }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [addressToDelete, setAddressToDelete] = useState(null);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const [isCollectionFilterMenuOpen, setIsCollectionFilterMenuOpen] = useState(false);
   const [collectionCategories, setCollectionCategories] = useState(DEFAULT_COLLECTION_CATEGORIES);
   const [showAttachedBar, setShowAttachedBar] = useState(true);
@@ -896,6 +897,69 @@ function Navbar({ bannerActive = false }) {
             </div>,
             document.body
           )}
+
+        {/* Sign Out Confirmation Popup Modal */}
+        {showSignOutModal &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              className="address-delete-modal-backdrop"
+              onClick={() => setShowSignOutModal(false)}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="navbar-signout-modal-title"
+            >
+              <div
+                className="address-delete-modal-card"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div
+                  className="address-delete-modal-icon-wrap"
+                  style={{
+                    backgroundColor: "rgba(239, 68, 68, 0.12)",
+                    color: "#ef4444"
+                  }}
+                >
+                  <LogOut size={26} />
+                </div>
+                <h3 id="navbar-signout-modal-title" className="address-delete-modal-title">
+                  Sign Out?
+                </h3>
+                <p className="address-delete-modal-desc">
+                  Are you sure you want to sign out of <strong>{user?.name || "your account"}</strong>?
+                </p>
+
+                <div className="address-delete-modal-actions">
+                  <button
+                    type="button"
+                    className="address-delete-btn-cancel"
+                    onClick={() => setShowSignOutModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="address-delete-btn-confirm"
+                    style={{
+                      backgroundColor: "#ef4444",
+                      borderColor: "#ef4444",
+                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.25)"
+                    }}
+                    onClick={() => {
+                      setShowSignOutModal(false);
+                      logout();
+                      if (showToast) {
+                        showToast("Signed out successfully", "info");
+                      }
+                    }}
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
       </nav>
 
       {/* Mobile Bottom Navigation Bar */}
@@ -1032,7 +1096,7 @@ function Navbar({ bannerActive = false }) {
               className="navbar-link navbar-logout navbar-outline"
               onClick={() => {
                 handleNavClick();
-                logout();
+                setShowSignOutModal(true);
               }}
             >
               <LogOut size={18} className="navbar-link-icon" />
