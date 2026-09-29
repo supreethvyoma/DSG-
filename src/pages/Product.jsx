@@ -291,6 +291,13 @@ function Product() {
   const [helpfulVotes, setHelpfulVotes] = useState({});
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const MAX_REVIEW_WORDS = 800;
+  const reviewWordCount = useMemo(() => {
+    const trimmed = String(comment || "").trim();
+    if (!trimmed) return 0;
+    return trimmed.split(/\s+/).filter(Boolean).length;
+  }, [comment]);
+
   useEffect(() => {
     if (!loading && product && (location.hash === "#write-review" || location.hash === "#reviews-section" || location.state?.scrollToReview)) {
       if (location.hash === "#write-review" || location.state?.scrollToReview) {
@@ -713,6 +720,10 @@ function Product() {
     }
     if (!comment.trim()) {
       setReviewError("Please write a review comment.");
+      return;
+    }
+    if (reviewWordCount > MAX_REVIEW_WORDS) {
+      setReviewError(`Review comment cannot exceed ${MAX_REVIEW_WORDS} words (currently ${reviewWordCount} words).`);
       return;
     }
 
@@ -1655,8 +1666,14 @@ function Product() {
                     <label className="reviews-form-label">
                       Your Review <span className="req-star">*</span>
                     </label>
-                    <span className="reviews-char-hint">
-                      {comment.length} characters
+                    <span
+                      className="reviews-char-hint"
+                      style={{
+                        color: reviewWordCount > MAX_REVIEW_WORDS ? "#ef4444" : undefined,
+                        fontWeight: reviewWordCount > MAX_REVIEW_WORDS ? 700 : 500
+                      }}
+                    >
+                      {reviewWordCount} / {MAX_REVIEW_WORDS} words
                     </span>
                   </div>
                   <textarea
@@ -1666,9 +1683,19 @@ function Product() {
                       setReviewError("");
                     }}
                     rows={4}
-                    placeholder="What did you like or dislike? How was the content, print quality, or language clarity?"
+                    placeholder="What did you like or dislike? How was the content, print quality, or language clarity? (Maximum 800 words)"
                     className="reviews-form-textarea"
+                    style={
+                      reviewWordCount > MAX_REVIEW_WORDS
+                        ? { borderColor: "#ef4444", boxShadow: "0 0 0 2px rgba(239, 68, 68, 0.2)" }
+                        : undefined
+                    }
                   />
+                  {reviewWordCount > MAX_REVIEW_WORDS && (
+                    <p className="review-form-error-msg" style={{ marginTop: "6px" }}>
+                      ⚠️ Word limit exceeded: Your review has {reviewWordCount} words. Please shorten it to at most {MAX_REVIEW_WORDS} words to submit.
+                    </p>
+                  )}
                   {reviewError && (
                     <p className="review-form-error-msg">⚠️ {reviewError}</p>
                   )}
@@ -1685,7 +1712,7 @@ function Product() {
                   <button
                     type="button"
                     className="reviews-form-submit-btn"
-                    disabled={submittingReview}
+                    disabled={submittingReview || reviewWordCount > MAX_REVIEW_WORDS}
                     onClick={submitReview}
                   >
                     {submittingReview ? "Submitting Review..." : "Submit Review"}
