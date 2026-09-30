@@ -240,8 +240,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 46px;
-  padding: 4px 8px;
+  min-height: 44px;
+  padding: 0;
   box-sizing: border-box;
   overflow: visible;
 }
