@@ -2335,6 +2335,7 @@
   justify-content: center;
   z-index: 9999;
   padding: 20px;
+  overscroll-behavior: contain;
 }
 
 .product-bulk-modal-card {
@@ -2608,6 +2609,7 @@
   z-index: 1000;
   padding: var(--space-4, 16px);
   animation: modal-fade-in 0.25s ease-out;
+  overscroll-behavior: contain;
 }
 
 .review-redirect-modal {

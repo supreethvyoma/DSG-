@@ -2326,13 +2326,34 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
   const appliedCouponCode = "";
   const total = roundMoney(grossTotal - discount);
 
+  if (req.body.total !== undefined && Math.abs(total - Number(req.body.total)) > 0.05) {
+    if (rawPaymentStatusEarly !== "Failed") await restoreStockForOrder({ items: normalizedItems });
+    return res.status(400).json({
+      message: `Order total mismatch. Server calculated: ${total}, Client provided: ${req.body.total}`
+    });
+  }
+
   const rawPaymentStatus = String(req.body?.paymentStatus || "Pending").trim();
   const razorpayOrderId = String(req.body?.razorpayOrderId || "").trim();
   const razorpayPaymentId = String(req.body?.razorpayPaymentId || "").trim();
+  const razorpaySignature = String(req.body?.razorpaySignature || req.body?.razorpay_signature || "").trim();
   
-  if (rawPaymentStatus === "Paid" && (!razorpayOrderId || !razorpayPaymentId)) {
-    await restoreStockForOrder({ items: normalizedItems });
-    return res.status(400).json({ message: "Payment reference is required to place paid order." });
+  if (rawPaymentStatus === "Paid") {
+    if (!razorpayOrderId || !razorpayPaymentId) {
+      await restoreStockForOrder({ items: normalizedItems });
+      return res.status(400).json({ message: "Payment reference is required to place paid order." });
+    }
+
+    const isValid = verifyRazorpayPaymentSignature({
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature
+    });
+
+    if (!isValid) {
+      await restoreStockForOrder({ items: normalizedItems });
+      return res.status(400).json({ message: "Payment verification signature is invalid." });
+    }
   }
 
   const requestedCurrency = String(req.body?.currencyDisplay?.currency || "").trim().toUpperCase();

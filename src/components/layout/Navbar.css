@@ -681,6 +681,7 @@ html.banner-active .navbar {
   padding: 60px 16px 24px;
   z-index: 1200;
   animation: modal-fade-in 0.2s ease-out;
+  overscroll-behavior: contain;
 }
 
 .navbar-address-modal {
@@ -1026,6 +1027,7 @@ html.banner-active .navbar {
   z-index: 100000;
   padding: 16px;
   animation: fadeInDeleteModal 0.2s ease-out;
+  overscroll-behavior: contain;
 }
 
 @keyframes fadeInDeleteModal {

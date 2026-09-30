@@ -392,6 +392,29 @@ function MyOrders() {
     setVisibleCount(INITIAL_VISIBLE_ORDERS);
   }, [selectedView, orders.length]);
 
+  // Prevent background page scrolling when modal is open
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(orderToCancel || returnTarget || activeKindleGuideItem);
+    if (!isAnyModalOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        if (!isCancellingOrder) setOrderToCancel(null);
+        if (!isSubmittingReturn) setReturnTarget(null);
+        setActiveKindleGuideItem(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [orderToCancel, returnTarget, activeKindleGuideItem, isCancellingOrder, isSubmittingReturn]);
+
   const updateOrderPaymentStatus = async (orderId, payload) => {
     await axios.put(`/api/orders/${orderId}/payment-status`, payload, getAuthHeaders());
   };

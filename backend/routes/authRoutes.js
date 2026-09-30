@@ -1101,8 +1101,8 @@ router.post("/google", async (req, res) => {
     let email = "";
     let name = "";
 
-    // Check for dev/testing simulation token
-    if (idToken.startsWith("mock-google-token-")) {
+    // Check for dev/testing simulation token (only in non-production)
+    if (process.env.NODE_ENV !== "production" && idToken.startsWith("mock-google-token-")) {
       email = "mock.google.user@example.com";
       name = "Demo Google User";
     } else {
@@ -1112,6 +1112,15 @@ router.post("/google", async (req, res) => {
       const payload = googleRes.data;
       if (!payload || !payload.email) {
         return res.status(400).json({ message: "Invalid Google token payload." });
+      }
+
+      const expectedClientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+      if (expectedClientId && payload.aud !== expectedClientId) {
+        return res.status(401).json({ message: "Google token audience mismatch." });
+      }
+
+      if (payload.email_verified === false || payload.email_verified === "false") {
+        return res.status(401).json({ message: "Google account email is not verified." });
       }
 
       email = String(payload.email).trim().toLowerCase();

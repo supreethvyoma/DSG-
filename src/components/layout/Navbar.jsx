@@ -199,6 +199,30 @@ function Navbar({ bannerActive = false }) {
     setShowAttachedBar(window.scrollY < 140);
   }, [location.pathname, location.search]);
 
+  // Prevent background page scrolling when modal or mobile drawer is open
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(isAddressModalOpen || addressToDelete !== null || showSignOutModal || isMenuOpen);
+    if (!isAnyModalOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setIsAddressModalOpen(false);
+        setAddressToDelete(null);
+        setShowSignOutModal(false);
+        setIsMenuOpen(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isAddressModalOpen, addressToDelete, showSignOutModal, isMenuOpen]);
+
   // Fetch product categories once for collection dropdown
   useEffect(() => {
     if (isAdminRoute || hasLoadedCollectionCategories.current) {
