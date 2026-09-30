@@ -240,13 +240,15 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 44px;
+  min-height: 46px;
+  padding: 4px 8px;
+  box-sizing: border-box;
   overflow: visible;
 }
 
+#google-signin-btn > div,
 #google-signin-btn iframe {
   margin: 0 auto !important;
-  max-width: 100% !important;
 }
 
 .simulated-google-btn {
