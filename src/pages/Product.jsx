@@ -1565,7 +1565,7 @@ function Product() {
                 <CheckCircle2 size={16} />
                 <span>Reviewed by you</span>
               </div>
-            ) : (
+            ) : reviews.length > 0 ? (
               <button
                 type="button"
                 className="reviews-write-cta-btn"
@@ -1584,7 +1584,7 @@ function Product() {
                 <PenLine size={16} />
                 <span>Write a Review</span>
               </button>
-            )
+            ) : null
           )}
         </div>
 

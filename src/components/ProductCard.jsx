@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Share2, Heart } from "lucide-react";
 import { useWishlist } from "../hooks/useWishlist";
+import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails } from "../utils/productPricing";
 import "./ProductCard.css";
 
 function ProductCard({ product, showDescription = true, variant = "default" }) {
   const { wishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { selectedAddress } = useDeliveryLocation();
 
   const reviews = Array.isArray(product?.reviews) ? product.reviews : [];
   const reviewCount = product?.reviewsCount !== undefined ? product.reviewsCount : reviews.length;
@@ -19,7 +21,7 @@ function ProductCard({ product, showDescription = true, variant = "default" }) {
   const roundedStars = Math.max(0, Math.min(5, Math.round(displayRating)));
 
   const isWishlisted = wishlist.some((p) => p._id === product._id);
-  const pricing = getProductPriceDetails(product);
+  const pricing = getProductPriceDetails(product, selectedAddress?.country);
   const displayPrice = Number(pricing.price || 0);
   const displayCurrency = pricing.currency || "INR";
   const isFestiveOffer = product?.festiveOffer === true;
@@ -30,7 +32,7 @@ function ProductCard({ product, showDescription = true, variant = "default" }) {
   const bundleItems = Array.isArray(product?.bundleItems) ? product.bundleItems : [];
   const bundleOriginalTotal = bundleItems.reduce((sum, item) => {
     const bundledProduct = item?.product;
-    return sum + Number(getProductPriceDetails(bundledProduct).price || 0) * Math.max(1, Number(item?.quantity || 1));
+    return sum + Number(getProductPriceDetails(bundledProduct, selectedAddress?.country).price || 0) * Math.max(1, Number(item?.quantity || 1));
   }, 0);
   const bundleSavings = Math.max(0, bundleOriginalTotal - displayPrice);
   const marketRegularPrice = Number(pricing.marketRegularPrice || 0);

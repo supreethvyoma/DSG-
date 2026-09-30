@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Trash2, ShoppingCart, ArrowLeft } from "lucide-react";
 import { useWishlist } from "../hooks/useWishlist";
+import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import { useCart } from "../hooks/useCart";
 import { useToast } from "../hooks/useToast";
 import { formatCurrencyExact, formatResolvedPrice } from "../utils/currency";
@@ -10,6 +11,7 @@ import "./Wishlist.css";
 
 function Wishlist() {
   const { wishlist, isLoadingWishlist, removeFromWishlist } = useWishlist();
+  const { selectedAddress } = useDeliveryLocation();
   const { addToCart } = useCart();
   const { showToast } = useToast();
 
@@ -59,7 +61,7 @@ function Wishlist() {
             {/* List items */}
             <div className="wishlist-list-items">
               {wishlist.map((product) => {
-                const pricing = getProductPriceDetails(product);
+                const pricing = getProductPriceDetails(product, selectedAddress?.country);
                 const displayPrice = Number(pricing.price || 0);
                 const displayCurrency = pricing.currency || "INR";
                 const isBundle =

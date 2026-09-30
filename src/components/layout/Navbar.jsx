@@ -739,6 +739,7 @@ function Navbar({ bannerActive = false }) {
                         className={`navbar-address-option ${isSelected ? "active" : ""}`}
                         onClick={() => {
                           selectAddress(index);
+                          setIsAddressModalOpen(false);
                         }}
                       >
                         <div className="navbar-address-option-top">
