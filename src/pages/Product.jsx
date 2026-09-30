@@ -750,6 +750,14 @@ function Product() {
     }
   };
 
+  const handleCancelReview = () => {
+    setIsReviewFormOpen(false);
+    setComment("");
+    setRating("5");
+    setHoverRating(0);
+    setReviewError("");
+  };
+
   const handleLoadMoreReviews = async () => {
     if (isLoadingMoreReviews) return;
     setIsLoadingMoreReviews(true);
@@ -1572,35 +1580,6 @@ function Product() {
               })}
             </div>
           </div>
-
-          {/* 3. Community Prompt CTA Card */}
-          <div className="reviews-prompt-card">
-            <div className="reviews-prompt-icon">
-              <Sparkles size={22} />
-            </div>
-            <h4 className="reviews-prompt-title">Review this product</h4>
-            <p className="reviews-prompt-desc">
-              Have you read or used this book? Share your valuable thoughts to help fellow readers and students!
-            </p>
-            <button
-              type="button"
-              className="reviews-prompt-btn"
-              onClick={() => {
-                setIsReviewFormOpen(true);
-                setTimeout(() => {
-                  const targetEl = document.getElementById("write-review");
-                  if (targetEl) {
-                    targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                    const textarea = targetEl.querySelector("textarea");
-                    if (textarea) textarea.focus();
-                  }
-                }, 100);
-              }}
-            >
-              <PenLine size={15} />
-              Write a Review
-            </button>
-          </div>
         </div>
 
         {/* ── Review Form (Expandable / Anchorable) ── */}
@@ -1614,7 +1593,7 @@ function Product() {
               <button
                 type="button"
                 className="reviews-form-close-btn"
-                onClick={() => setIsReviewFormOpen(false)}
+                onClick={handleCancelReview}
                 aria-label="Close review form"
               >
                 <X size={18} />
@@ -1705,7 +1684,7 @@ function Product() {
                   <button
                     type="button"
                     className="reviews-form-cancel-btn"
-                    onClick={() => setIsReviewFormOpen(false)}
+                    onClick={handleCancelReview}
                   >
                     Cancel
                   </button>
