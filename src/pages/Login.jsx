@@ -70,8 +70,8 @@ function Login() {
         const container = document.getElementById("google-signin-btn");
         if (container) {
           container.innerHTML = "";
-          const availableWidth = container.offsetWidth || container.clientWidth || 340;
-          const validWidth = Math.max(200, Math.min(400, Math.floor(availableWidth - 12)));
+          const availableWidth = container.offsetWidth || container.clientWidth || 380;
+          const validWidth = Math.max(280, Math.min(400, Math.floor(availableWidth)));
           window.google.accounts.id.renderButton(container, {
             theme: "outline",
             size: "large",
