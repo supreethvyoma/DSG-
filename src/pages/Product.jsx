@@ -366,6 +366,18 @@ function Product() {
     if (!trimmed) return 0;
     return trimmed.split(/\s+/).filter(Boolean).length;
   }, [comment]);
+
+  const hasUserReviewed = useMemo(() => {
+    if (!user || !Array.isArray(reviews)) return false;
+    const currentUserId = String(user._id || user.id || "").trim();
+    const currentUserName = String(user.name || "").trim().toLowerCase();
+    return reviews.some((r) => {
+      if (r.userId && String(r.userId).trim() === currentUserId) return true;
+      if (r.user && String(r.user).trim() === currentUserId) return true;
+      if (r.userName && currentUserName && String(r.userName).trim().toLowerCase() === currentUserName) return true;
+      return false;
+    });
+  }, [reviews, user]);
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [showAllThumbnails, setShowAllThumbnails] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -716,6 +728,10 @@ function Product() {
     // ── Fix #8: gate review submission for logged-out users ──────────────────
     if (!token) {
       showToast("Please login to submit a review.");
+      return;
+    }
+    if (hasUserReviewed) {
+      setReviewError("You have already submitted a review for this product.");
       return;
     }
     if (!comment.trim()) {
@@ -1508,24 +1524,44 @@ function Product() {
           </div>
 
           {!isReviewFormOpen && (
-            <button
-              type="button"
-              className="reviews-write-cta-btn"
-              onClick={() => {
-                setIsReviewFormOpen(true);
-                setTimeout(() => {
-                  const targetEl = document.getElementById("write-review");
-                  if (targetEl) {
-                    targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                    const textarea = targetEl.querySelector("textarea");
-                    if (textarea) textarea.focus();
-                  }
-                }, 100);
-              }}
-            >
-              <PenLine size={16} />
-              <span>Write a Review</span>
-            </button>
+            hasUserReviewed ? (
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "8px 14px",
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(16, 185, 129, 0.1)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
+                  color: "#059669",
+                  fontSize: "13px",
+                  fontWeight: 600
+                }}
+              >
+                <CheckCircle2 size={16} />
+                <span>Reviewed by you</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="reviews-write-cta-btn"
+                onClick={() => {
+                  setIsReviewFormOpen(true);
+                  setTimeout(() => {
+                    const targetEl = document.getElementById("write-review");
+                    if (targetEl) {
+                      targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                      const textarea = targetEl.querySelector("textarea");
+                      if (textarea) textarea.focus();
+                    }
+                  }, 100);
+                }}
+              >
+                <PenLine size={16} />
+                <span>Write a Review</span>
+              </button>
+            )
           )}
         </div>
 
@@ -1600,7 +1636,27 @@ function Product() {
               </button>
             </div>
 
-            {user ? (
+            {hasUserReviewed ? (
+              <div className="reviews-login-gate" style={{ padding: "30px 20px", textAlign: "center" }}>
+                <div className="reviews-login-gate-icon" style={{ background: "rgba(16, 185, 129, 0.12)", color: "#10b981", margin: "0 auto 12px" }}>
+                  <CheckCircle2 size={32} />
+                </div>
+                <h5 style={{ margin: "0 0 8px", fontSize: "16px", color: "var(--site-text)", fontWeight: 700 }}>
+                  You've Already Reviewed This Product
+                </h5>
+                <p style={{ margin: "0 auto 18px", maxWidth: "440px", fontSize: "13.5px", color: "var(--site-text-soft)", lineHeight: 1.5 }}>
+                  Thank you for your valuable feedback! To maintain authentic community ratings, each registered customer can submit one review per product.
+                </p>
+                <button
+                  type="button"
+                  className="reviews-form-cancel-btn"
+                  onClick={handleCancelReview}
+                  style={{ display: "inline-block", padding: "8px 22px" }}
+                >
+                  Close
+                </button>
+              </div>
+            ) : user ? (
               <div className="reviews-form-body">
                 <div className="reviews-form-group">
                   <label className="reviews-form-label">

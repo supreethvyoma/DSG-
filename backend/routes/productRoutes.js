@@ -863,6 +863,7 @@ router.get("/:id/reviews", async (req, res) => {
     if (reviews.length > 0) {
       const formattedReviews = reviews.map((r) => ({
         ...r,
+        userId: r.user ? String(r.user) : null,
         user: r.userName
       }));
       return res.json(formattedReviews);
@@ -925,6 +926,7 @@ router.get("/:id", async (req, res) => {
     if (latestReviews.length > 0) {
       product.reviews = latestReviews.map((r) => ({
         ...r,
+        userId: r.user ? String(r.user) : null,
         user: r.userName
       }));
       product.reviewsCount = reviewsCount;
@@ -948,6 +950,18 @@ router.post("/:id/reviews", protect, reviewRateLimiter, async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Restrict user to 1 review per product
+    const existingReview = await Review.findOne({
+      product: req.params.id,
+      user: req.user
+    });
+
+    if (existingReview) {
+      return res.status(400).json({
+        message: "You have already submitted a review for this product."
+      });
     }
 
     const rating = Number(req.body.rating);
