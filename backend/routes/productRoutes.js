@@ -957,6 +957,17 @@ router.post("/:id/reviews", protect, reviewRateLimiter, async (req, res) => {
       return res.status(400).json({ message: "Rating must be between 1 and 5" });
     }
 
+    if (!comment) {
+      return res.status(400).json({ message: "Please write a review comment" });
+    }
+
+    const wordCount = comment.split(/\s+/).filter(Boolean).length;
+    if (wordCount > 800) {
+      return res.status(400).json({
+        message: `Review comment exceeds the limit of 800 words (currently ${wordCount} words).`
+      });
+    }
+
     const user = await User.findById(req.user).select("name");
     const userName = user?.name || "User";
 
