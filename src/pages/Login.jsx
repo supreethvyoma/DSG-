@@ -69,10 +69,14 @@ function Login() {
         });
         const container = document.getElementById("google-signin-btn");
         if (container) {
+          const btnWidth = Math.min(380, Math.max(280, container.clientWidth || 340));
           window.google.accounts.id.renderButton(container, {
             theme: "outline",
             size: "large",
-            width: 300
+            type: "standard",
+            shape: "rectangular",
+            logo_alignment: "left",
+            width: btnWidth
           });
         }
       }
