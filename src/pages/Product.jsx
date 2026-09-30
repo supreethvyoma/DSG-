@@ -750,6 +750,14 @@ function Product() {
     }
   };
 
+  const handleCancelReview = () => {
+    setIsReviewFormOpen(false);
+    setComment("");
+    setRating("5");
+    setHoverRating(0);
+    setReviewError("");
+  };
+
   const handleLoadMoreReviews = async () => {
     if (isLoadingMoreReviews) return;
     setIsLoadingMoreReviews(true);
@@ -1614,7 +1622,7 @@ function Product() {
               <button
                 type="button"
                 className="reviews-form-close-btn"
-                onClick={() => setIsReviewFormOpen(false)}
+                onClick={handleCancelReview}
                 aria-label="Close review form"
               >
                 <X size={18} />
@@ -1705,7 +1713,7 @@ function Product() {
                   <button
                     type="button"
                     className="reviews-form-cancel-btn"
-                    onClick={() => setIsReviewFormOpen(false)}
+                    onClick={handleCancelReview}
                   >
                     Cancel
                   </button>
