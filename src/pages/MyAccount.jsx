@@ -569,6 +569,26 @@ function MyAccount() {
       .catch(() => {});
   }, []);
 
+  // Prevent background page scrolling when modal is open
+  useEffect(() => {
+    if (addressToDelete === null) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setAddressToDelete(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [addressToDelete]);
+
   const resetAddressForm = () => {
     setAddressLabel("Home");
     setName(user?.name || "");

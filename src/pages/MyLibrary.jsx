@@ -157,6 +157,28 @@ function MyLibrary() {
     fetchOrders();
   }, [token]);
 
+  // Prevent background page scrolling when digital reader or guide modal is open
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(activeReaderItem || activeGuideItem);
+    if (!isAnyModalOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeSecureReader();
+        setActiveGuideItem(null);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [activeReaderItem, activeGuideItem, closeSecureReader]);
+
   const handleRedeemGift = async (e) => {
     e.preventDefault();
     const cleanCode = redeemCode.trim().toUpperCase();

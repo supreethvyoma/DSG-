@@ -188,7 +188,9 @@ function AdminDashboard() {
   useEffect(() => {
     let active = true;
     axios
-      .get("/api/settings")
+      .get("/api/settings", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       .then((res) => {
         if (!active) return;
         storePricingConfig({

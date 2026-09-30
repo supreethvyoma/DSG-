@@ -71,6 +71,26 @@ export default function WhatsAppOtpModal({
     return () => clearInterval(interval);
   }, [isOpen, timer, canResend]);
 
+  // Prevent background page scrolling when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape" && onClose) {
+        onClose();
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen, onClose]);
+
   const handleOtpChange = (index, value) => {
     const digit = value.replace(/\D/g, "").slice(-1);
     const newOtp = [...otpValues];

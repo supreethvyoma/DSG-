@@ -425,6 +425,29 @@ function Product() {
 
   const currentBulkPhoneData = useMemo(() => getCountryPhoneData(bulkPhoneCountry), [bulkPhoneCountry]);
 
+  // Prevent background page scrolling when modal or lightbox is open
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(showBulkModal || showReviewSuccessModal || showLightbox);
+    if (!isAnyModalOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setShowBulkModal(false);
+        setShowReviewSuccessModal(false);
+        setShowLightbox(false);
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [showBulkModal, showReviewSuccessModal, showLightbox]);
+
   const whatsappSettings = storeSettings?.whatsappSettings;
   const isBulkOtpRequired = Boolean(
     whatsappSettings?.mode === "api" && whatsappSettings?.enableOtpVerification !== false

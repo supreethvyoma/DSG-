@@ -30,12 +30,12 @@ router.post("/redeem", protect, giftRedeemLimiter, async (req, res) => {
       return res.status(400).json({ message: "Please enter a Gift Pass Code." });
     }
 
-    const giftPass = await GiftPass.findOne({ code: rawCode });
-    if (!giftPass) {
+    const existingPass = await GiftPass.findOne({ code: rawCode });
+    if (!existingPass) {
       return res.status(404).json({ message: "Invalid Gift Pass Code. Please double check the code." });
     }
 
-    if (giftPass.isRedeemed) {
+    if (existingPass.isRedeemed) {
       return res.status(400).json({ message: "This Gift Pass has already been redeemed." });
     }
 
@@ -43,12 +43,12 @@ router.post("/redeem", protect, giftRedeemLimiter, async (req, res) => {
     const alreadyPurchased = await Order.findOne({
       user: req.user,
       paymentStatus: "Paid",
-      "items.product": giftPass.product
+      "items.product": existingPass.product
     });
 
     const alreadyRedeemed = await GiftPass.findOne({
       redeemedBy: req.user,
-      product: giftPass.product,
+      product: existingPass.product,
       isRedeemed: true
     });
 
@@ -58,10 +58,22 @@ router.post("/redeem", protect, giftRedeemLimiter, async (req, res) => {
       });
     }
 
-    giftPass.isRedeemed = true;
-    giftPass.redeemedBy = req.user;
-    giftPass.redeemedAt = new Date();
-    await giftPass.save();
+    // Atomically claim the gift pass
+    const giftPass = await GiftPass.findOneAndUpdate(
+      { code: rawCode, isRedeemed: false },
+      {
+        $set: {
+          isRedeemed: true,
+          redeemedBy: req.user,
+          redeemedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
+    if (!giftPass) {
+      return res.status(400).json({ message: "This Gift Pass has already been redeemed." });
+    }
 
     const product = await Product.findById(giftPass.product).lean();
 

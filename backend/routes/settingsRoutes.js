@@ -460,8 +460,8 @@ async function getOrCreateSettings() {
   return settings;
 }
 
-// Full settings (no cache for admin panel to prevent config lag)
-router.get("/", async (req, res) => {
+// Full settings (requires admin authentication)
+router.get("/", protect, admin, async (req, res) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   const settings = await getOrCreateSettings();
   res.json(normalizeSettings(settings));

@@ -198,6 +198,26 @@ function AdminOrders() {
     void loadOrders();
   }, [token, currentPage, debouncedSearchText, selectedStatus, sortOrder, fromDateTime, toDateTime]);
 
+  // Prevent background page scrolling when modal is open
+  useEffect(() => {
+    if (!actionModal?.isOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setActionModal((prev) => ({ ...prev, isOpen: false }));
+      }
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [actionModal?.isOpen]);
+
   const updateStatus = async (orderId, status) => {
     const safeStatus = DISPLAY_STATUSES.includes(status) ? status : "On Hold";
     const targetOrder = orders.find((item) => item?._id === orderId);
