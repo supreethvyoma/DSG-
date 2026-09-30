@@ -1922,21 +1922,27 @@ function Product() {
                 <Sparkles size={36} />
               </div>
               <h4>No Customer Reviews Yet</h4>
-              <p>Be the first person to share your experience and thoughts about this book!</p>
-              <button
-                type="button"
-                className="reviews-empty-cta-btn"
-                onClick={() => {
-                  setIsReviewFormOpen(true);
-                  setTimeout(() => {
-                    const targetEl = document.getElementById("write-review");
-                    if (targetEl) targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }, 100);
-                }}
-              >
-                <PenLine size={16} />
-                Write the First Review
-              </button>
+              <p>
+                {isReviewFormOpen
+                  ? "Writing your review in the form above..."
+                  : "Be the first person to share your experience and thoughts about this book!"}
+              </p>
+              {!isReviewFormOpen && !hasUserReviewed && (
+                <button
+                  type="button"
+                  className="reviews-empty-cta-btn"
+                  onClick={() => {
+                    setIsReviewFormOpen(true);
+                    setTimeout(() => {
+                      const targetEl = document.getElementById("write-review");
+                      if (targetEl) targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 100);
+                  }}
+                >
+                  <PenLine size={16} />
+                  Write the First Review
+                </button>
+              )}
             </div>
           ) : (
             <div className="reviews-no-filter-results">
