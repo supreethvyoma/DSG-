@@ -6,6 +6,7 @@ import ProductCard from "../components/ProductCard";
 import RecentlyViewed from "../components/RecentlyViewed";
 import { formatResolvedPrice } from "../utils/currency";
 import { getProductPriceDetails, storePricingConfig } from "../utils/productPricing";
+import { useDeliveryLocation } from "../hooks/useDeliveryLocation";
 import "./Home.css";
 import { useDocumentMetadata } from "../hooks/useDocumentMetadata";
 import LoadingSpinner from "../components/common/LoadingSpinner";
@@ -55,8 +56,8 @@ function formatPrice(pricing) {
   return formatResolvedPrice(pricing, { maximumFractionDigits: 0 });
 }
 
-function getDisplayPrice(product) {
-  return getProductPriceDetails(product);
+function getDisplayPrice(product, country) {
+  return getProductPriceDetails(product, country);
 }
 
 const SPONSORS = [
@@ -130,6 +131,7 @@ const SPONSORS = [
 
 function Home() {
   useDocumentMetadata("Home", "Explore premium Sanskrit scriptures, linguistic studies, grammar learning books, and traditional educational kits.");
+  const { selectedAddress } = useDeliveryLocation();
 
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isRetryingHomeData, setIsRetryingHomeData] = useState(false);
@@ -648,7 +650,7 @@ function Home() {
                   </div>
                   <div className="home-mini-card-meta">
                     <span>{getCategoryLabel(product)}</span>
-                    <span>{formatPrice(getDisplayPrice(product))}</span>
+                    <span>{formatPrice(getDisplayPrice(product, selectedAddress?.country))}</span>
                   </div>
                   <strong>{product.name}</strong>
                   <span>{getAverageRating(product).toFixed(1)} rated by readers</span>
@@ -704,7 +706,7 @@ function Home() {
                   </div>
                   <div className="home-mini-card-meta">
                     <span>{getCategoryLabel(product)}</span>
-                    <span>{formatPrice(getDisplayPrice(product))}</span>
+                    <span>{formatPrice(getDisplayPrice(product, selectedAddress?.country))}</span>
                   </div>
                   <strong>{product.name}</strong>
                   <span>{Number(product?.stock || 0) > 0 ? "In stock now" : "Currently unavailable"}</span>
