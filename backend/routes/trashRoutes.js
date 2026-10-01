@@ -68,8 +68,8 @@ router.get("/", protect, admin, async (req, res) => {
   }
 });
 
-// POST /api/trash/restore-all - Restore all soft-deleted items (ADMIN)
-router.post("/restore-all", protect, admin, async (req, res) => {
+// POST /api/trash/restore-all - Restore all soft-deleted items (SUPER ADMIN)
+router.post("/restore-all", protect, admin, admin.requireSuperAdmin, async (req, res) => {
   try {
     const [pRes, cRes, uRes] = await Promise.all([
       Product.updateMany({ isDeleted: true }, { isDeleted: false, deletedAt: null, deletedBy: { name: "", email: "" } }),
@@ -93,8 +93,8 @@ router.post("/restore-all", protect, admin, async (req, res) => {
   }
 });
 
-// DELETE /api/trash/empty - Permanently delete all soft-deleted items (ADMIN)
-router.delete("/empty", protect, admin, async (req, res) => {
+// DELETE /api/trash/empty - Permanently delete all soft-deleted items (SUPER ADMIN)
+router.delete("/empty", protect, admin, admin.requireSuperAdmin, async (req, res) => {
   try {
     const [pRes, cRes, uRes] = await Promise.all([
       Product.deleteMany({ isDeleted: true }),

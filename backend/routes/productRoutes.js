@@ -1236,8 +1236,6 @@ router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // POST /api/products/:id/view (PUBLIC - Anonymous Aggregate View Counter)
 router.post("/:id/view", async (req, res) => {
   try {
