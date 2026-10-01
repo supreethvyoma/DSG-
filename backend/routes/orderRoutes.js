@@ -1699,6 +1699,10 @@ router.put("/:id/payment-status", protect, async (req, res) => {
     return res.status(403).json({ message: "You can only update your own orders." });
   }
 
+  if (!isAdmin && (order.paymentStatus === "Paid" || order.paymentStatus === "Refunded")) {
+    return res.status(400).json({ message: "Paid orders cannot have their payment status modified." });
+  }
+
   if (rawPaymentStatus === "Paid" && !isAdmin) {
     const razorpayOrderId = String(req.body?.razorpayOrderId || "").trim();
     const razorpayPaymentId = String(req.body?.razorpayPaymentId || "").trim();
@@ -2513,8 +2517,8 @@ router.get("/digital-stream/:orderId/:itemId", protect, async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    const userDoc = await User.findById(req.user).select("role").lean();
-    const isAdmin = userDoc?.role === "admin";
+    const userDoc = await User.findById(req.user).select("isAdmin").lean();
+    const isAdmin = Boolean(userDoc?.isAdmin);
     const isOwner = String(order.user) === String(req.user);
 
     if (!isOwner && !isAdmin) {
@@ -2573,8 +2577,31 @@ router.get("/digital-stream/:orderId/:itemId", protect, async (req, res) => {
     }
 
     const cleanUrl = String(targetLink).trim();
-    if (!/^https?:\/\//i.test(cleanUrl)) {
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(cleanUrl);
+    } catch {
       return res.status(400).json({ message: "Invalid reader URL format." });
+    }
+
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      return res.status(400).json({ message: "Invalid reader URL protocol." });
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const isPrivateHost =
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("169.254.") ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal");
+
+    if (isPrivateHost) {
+      return res.status(400).json({ message: "Invalid reader URL destination." });
     }
 
     // Forward Range header for fast media seeking/buffering

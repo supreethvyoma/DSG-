@@ -92,9 +92,13 @@ async function sendWhatsAppOtp(phone, otp) {
     const settings = await StoreSettings.findOne().lean();
     const ws = settings?.whatsappSettings || {};
 
-    console.log(`\n========================================`);
-    console.log(`📲 [WhatsApp OTP] Code for +${recipientPhone}: ${otp}`);
-    console.log(`========================================\n`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n========================================`);
+      console.log(`📲 [WhatsApp OTP - DEV MODE] Code for +${recipientPhone}: ${otp}`);
+      console.log(`========================================\n`);
+    } else {
+      console.log(`📲 [WhatsApp OTP] Dispatching verification code to +${recipientPhone}`);
+    }
 
     if (ws.mode === "api" && ws.metaPhoneNumberId && ws.metaAccessToken) {
       const payload = {
@@ -157,12 +161,17 @@ async function sendWhatsAppOtp(phone, otp) {
           return { success: true, data: fallbackRes.data };
         } catch (fallbackErr) {
           console.error("❌ Failed to send WhatsApp message via Meta Cloud API:", fallbackErr?.response?.data || fallbackErr?.message);
-          // Return success in dev mode so developer can test with console OTP
+          if (process.env.NODE_ENV === "production") {
+            return { success: false, error: "Failed to deliver WhatsApp OTP. Please verify credentials." };
+          }
           return { success: true, devMode: true, note: "Logged to console" };
         }
       }
     }
 
+    if (process.env.NODE_ENV === "production") {
+      return { success: false, error: "WhatsApp API mode is not configured." };
+    }
     return { success: true, devMode: true, note: "Logged to server console" };
   } catch (error) {
     console.error("❌ WhatsApp OTP Error:", error?.message || error);

@@ -454,6 +454,10 @@ router.post("/login", authLimiter, honeypotMiddleware, turnstileMiddleware, asyn
       return res.status(401).json({ message: "This account has been deleted or deactivated." });
     }
 
+    if (user && user.isBlocked) {
+      return res.status(401).json({ message: "This account is blocked. Please contact support." });
+    }
+
     if (user && await bcrypt.compare(password, user.password)) {
       const token = jwt.sign(
         { id: user._id },
@@ -593,6 +597,10 @@ router.put("/update-admin-role", protect, admin, admin.requireSuperAdmin, async 
     const actor = await User.findById(req.user).select("name email").lean();
 
     if (actionType === "revokeAdmin") {
+      if (String(targetUser._id) === String(req.user)) {
+        return res.status(400).json({ message: "You cannot revoke your own Super Admin access." });
+      }
+
       targetUser.isAdmin = false;
       await targetUser.save();
 
@@ -1047,15 +1055,8 @@ router.put("/profile", protect, async (req, res) => {
       }
     }
 
-    if (email) {
-      if (!isValidEmail(email)) {
-        return res.status(400).json({ message: "Please provide a valid email address." });
-      }
-      const existingUser = await User.findOne({ email });
-      if (existingUser && String(existingUser._id) !== String(user._id)) {
-        return res.status(400).json({ message: "This email address is already in use by another account." });
-      }
-      user.email = email;
+    if (email && email !== String(user.email).toLowerCase()) {
+      return res.status(400).json({ message: "Email address cannot be changed." });
     }
 
     if (password) {
