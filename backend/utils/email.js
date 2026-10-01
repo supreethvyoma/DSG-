@@ -7,6 +7,7 @@
 
 const nodemailer = require("nodemailer");
 const EmailLog = require("../models/EmailLog");
+const { generateInvoicePdfBuffer } = require("./invoicePdfGenerator");
 
 const EMAIL_ENABLED = String(process.env.EMAIL_ENABLED || "false").toLowerCase() === "true";
 const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || "").trim();
@@ -53,12 +54,12 @@ async function getTransporter() {
 
 // ── Core send function ────────────────────────────────────────────────────────
 
-async function sendEmail({ to, subject, html, type = "campaign", orderId = "", productId = "" }) {
+async function sendEmail({ to, subject, html, type = "campaign", orderId = "", productId = "", attachments = [] }) {
   const logEntry = { to, subject, type, orderId, productId, status: "sent", error: "" };
 
   try {
     if (!EMAIL_ENABLED) {
-      console.log(`[Email DISABLED] Would send "${subject}" to ${to}`);
+      console.log(`[Email DISABLED] Would send "${subject}" to ${to} (with ${attachments.length} attachment(s))`);
       await EmailLog.create({ ...logEntry, status: "sent" });
       return { skipped: true };
     }
@@ -71,12 +72,18 @@ async function sendEmail({ to, subject, html, type = "campaign", orderId = "", p
 
     const senderAddress = process.env.SENDER_EMAIL || process.env.SMTP_USER;
     const transporterInstance = await getTransporter();
-    const info = await transporterInstance.sendMail({
+    const mailOptions = {
       from: `"${SITE_NAME}" <${senderAddress}>`,
       to,
       subject,
       html
-    });
+    };
+
+    if (Array.isArray(attachments) && attachments.length > 0) {
+      mailOptions.attachments = attachments;
+    }
+
+    const info = await transporterInstance.sendMail(mailOptions);
 
     await EmailLog.create({ ...logEntry, status: "sent" });
     return { messageId: info.messageId };
@@ -374,6 +381,110 @@ function getCourierTrackingUrl(courierName, trackingId) {
   return `https://www.google.com/search?q=track+${encodeURIComponent(courierName + " " + trId)}`;
 }
 
+function buildShippedInvoiceHtml(order, user) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const orderCode = String(order._id || "").slice(-8).toUpperCase();
+  const currency = String(
+    order.currencyDisplay?.currency || order.displayCurrency || order.currency || "INR"
+  ).trim().toUpperCase();
+  const symbol = currency === "INR" ? "₹" : (currency + " ");
+
+  const subtotal = Number(order.subtotal || order.total || 0);
+  const delivery = Number(order.deliveryCharge || 0);
+  const discount = Number(order.discount || 0);
+  const gst = Number(order.gstAmount || 0);
+  const total = Number(order.currencyDisplay?.amount || order.total || 0);
+
+  const shipping = order.shippingAddress || order.shipping || {};
+  const customerState = String(shipping.state || "").trim();
+  const isIntrastate =
+    customerState.toLowerCase() === "karnataka" || customerState.toLowerCase() === "ka";
+
+  const rows = items
+    .map((item) => {
+      const qty = Number(item.quantity || 1);
+      const price = Number(item.price || 0);
+      const lineTotal = qty * price;
+      return `<tr>
+        <td style="padding: 8px 10px; border: 1px solid #e2e8f0; font-size: 13px;"><strong>${String(item.name || "Item")}</strong></td>
+        <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; font-size: 13px;">${qty}</td>
+        <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right; font-size: 13px;">${symbol}${price.toFixed(2)}</td>
+        <td style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right; font-size: 13px;"><strong>${symbol}${lineTotal.toFixed(2)}</strong></td>
+      </tr>`;
+    })
+    .join("");
+
+  let gstRow = "";
+  if (gst > 0) {
+    if (isIntrastate) {
+      gstRow = `
+        <tr>
+          <td colspan="3" style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px; color: #64748b;">CGST (9%) + SGST (9%):</td>
+          <td style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px;">${symbol}${gst.toFixed(2)}</td>
+        </tr>
+      `;
+    } else {
+      gstRow = `
+        <tr>
+          <td colspan="3" style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px; color: #64748b;">IGST (18%):</td>
+          <td style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px;">${symbol}${gst.toFixed(2)}</td>
+        </tr>
+      `;
+    }
+  }
+
+  return `
+    <div style="margin-top: 24px; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; font-family: sans-serif;">
+      <div style="background-color: #1e293b; color: #ffffff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 14px; font-weight: bold; letter-spacing: 0.5px;">🧾 OFFICIAL TAX INVOICE COPY</span>
+        <span style="font-size: 12px; opacity: 0.85;">Invoice #${orderCode}</span>
+      </div>
+      
+      <div style="padding: 14px 16px; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569; line-height: 1.5;">
+        <div style="margin-bottom: 4px;"><strong>Seller:</strong> Vyoma Linguistic Labs Foundation &nbsp;|&nbsp; <strong>GSTIN:</strong> 29AABTV0911M1ZE</div>
+        <div><strong>Place of Supply:</strong> ${customerState || "Karnataka"} &nbsp;|&nbsp; <strong>Payment Status:</strong> ${order.paymentStatus || "Paid"} (${order.paymentMethod || "Online"})</div>
+      </div>
+
+      <div style="padding: 12px 16px;">
+        <table style="width: 100%; border-collapse: collapse; margin: 0 0 12px 0;">
+          <thead>
+            <tr style="background-color: #f1f5f9; color: #334155; font-size: 12px;">
+              <th style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: left;">Item Description</th>
+              <th style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; width: 40px;">Qty</th>
+              <th style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right; width: 85px;">Unit Price</th>
+              <th style="padding: 8px 10px; border: 1px solid #e2e8f0; text-align: right; width: 95px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+            <tr>
+              <td colspan="3" style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px; color: #64748b;">Subtotal:</td>
+              <td style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px;">${symbol}${subtotal.toFixed(2)}</td>
+            </tr>
+            ${discount > 0 ? `<tr>
+              <td colspan="3" style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px; color: #166534;">Discount:</td>
+              <td style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px; color: #166534;">-${symbol}${discount.toFixed(2)}</td>
+            </tr>` : ''}
+            <tr>
+              <td colspan="3" style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px; color: #64748b;">Delivery Fee:</td>
+              <td style="text-align: right; padding: 6px 10px; border: 1px solid #e2e8f0; font-size: 12.5px;">${delivery > 0 ? `${symbol}${delivery.toFixed(2)}` : "FREE"}</td>
+            </tr>
+            ${gstRow}
+            <tr style="background-color: #f8fafc; font-weight: bold;">
+              <td colspan="3" style="text-align: right; padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 13.5px; color: #0f172a;">Total Amount Paid:</td>
+              <td style="text-align: right; padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 13.5px; color: #0f172a;">${symbol}${total.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="background-color: #eff6ff; border: 1px dashed #93c5fd; border-radius: 6px; padding: 10px 12px; font-size: 12.5px; color: #1e40af;">
+          📎 <strong>PDF Invoice Attached:</strong> A formal GST Tax Invoice PDF has been generated and attached to this email for your records.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 async function sendOrderStatusUpdate(order, user, newStatus) {
   const to = String(user?.email || "").trim().toLowerCase();
   if (!to) return;
@@ -388,22 +499,41 @@ async function sendOrderStatusUpdate(order, user, newStatus) {
   const badgeClass = `badge-${newStatus.toLowerCase()}`;
 
   let emailBody = info.body;
-  if (newStatus === "Shipped" && order.trackingId) {
+  const attachments = [];
+
+  if (newStatus === "Shipped") {
     const courier = order.courierPartner || "Delhivery";
-    const trackingUrl = getCourierTrackingUrl(courier, order.trackingId);
-    emailBody = `
-      Your order is on its way and will reach you soon.<br/><br/>
+    const trackingInfo = order.trackingId ? `
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0; font-family: sans-serif;">
-        <h4 style="margin: 0 0 8px; color: #1e293b; font-size: 14px;">📦 Shipping Details</h4>
+        <h4 style="margin: 0 0 8px; color: #1e293b; font-size: 14px;">📦 Shipping & Tracking Details</h4>
         <p style="margin: 0 0 6px; font-size: 13px; color: #475569;">
           <strong>Courier Partner:</strong> ${courier}
         </p>
         <p style="margin: 0 0 12px; font-size: 13px; color: #475569;">
           <strong>Tracking ID:</strong> <code>${order.trackingId}</code>
         </p>
-        <a href="${trackingUrl}" style="display: inline-block; padding: 8px 16px; background-color: #1e293b; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12.5px; margin-top: 4px;" target="_blank">🔗 Track Consignment ↗</a>
+        <a href="${getCourierTrackingUrl(courier, order.trackingId)}" style="display: inline-block; padding: 8px 16px; background-color: #1e293b; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12.5px; margin-top: 4px;" target="_blank">🔗 Track Consignment ↗</a>
       </div>
+    ` : '';
+
+    const invoiceHtml = buildShippedInvoiceHtml(order, user);
+    emailBody = `
+      Your order is on its way and will reach you soon.<br/>
+      ${trackingInfo}
+      ${invoiceHtml}
     `;
+
+    try {
+      const pdfBuffer = await generateInvoicePdfBuffer(order, user);
+      const orderCode = String(order._id || "").slice(-8).toUpperCase();
+      attachments.push({
+        filename: `Tax-Invoice-${orderCode}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf"
+      });
+    } catch (pdfErr) {
+      console.error("[Email] Failed to generate invoice PDF attachment:", pdfErr.message);
+    }
   }
 
   const html = htmlWrapper(info.title, `
@@ -414,7 +544,7 @@ async function sendOrderStatusUpdate(order, user, newStatus) {
       <strong>Order ID:</strong> ${String(order._id || "").slice(-8).toUpperCase()}&nbsp;&nbsp;
       <span class="badge ${badgeClass}">${newStatus}</span>
     </p>
-    ${buildOrderItemsTable(order.items || [])}
+    ${newStatus !== "Shipped" ? buildOrderItemsTable(order.items || []) : ""}
     <a class="cta" href="${process.env.SITE_URL || "http://localhost:5173"}/#/my-orders">View My Orders</a>
   `);
 
@@ -423,7 +553,8 @@ async function sendOrderStatusUpdate(order, user, newStatus) {
     subject: `${info.emoji} Order ${newStatus} — ${SITE_NAME}`,
     html,
     type: "status-update",
-    orderId: String(order._id || "")
+    orderId: String(order._id || ""),
+    attachments
   });
 }
 
