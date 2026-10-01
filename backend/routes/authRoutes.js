@@ -12,23 +12,24 @@ const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
 const { logAdminAction } = require("../utils/adminAudit");
 const { sendEmail } = require("../utils/email");
+const { sendPasswordResetEmail } = require("../utils/passwordReset");
 const { sendWhatsAppOtp } = require("../utils/whatsapp");
 const { honeypotMiddleware, turnstileMiddleware } = require("../utils/spamFilter");
 
 const router = express.Router();
 
 const isWhatsAppOtpRequired = async () => {
-  try {
-    const settings = await StoreSettings.findOne();
-    if (!settings || !settings.whatsappSettings) return false;
-    const mode = settings.whatsappSettings.mode;
-    const enableOtp = settings.whatsappSettings.enableOtpVerification !== false;
-    return mode === "api" && enableOtp;
-  } catch (err) {
-    console.error("[Auth] Error checking WhatsApp OTP setting:", err.message);
-    return false;
-  }
+  const ws = (await StoreSettings.findOne().select("whatsappSettings").lean())?.whatsappSettings;
+  return !!ws && ws.mode === "api" && ws.enableOtpVerification !== false;
 };
+
+const consumePhoneVerification = (phone, token) =>
+  typeof token === "string" && token
+    ? PhoneOtp.findOneAndDelete({ phone, verificationToken: token, verified: true, expiresAt: { $gt: new Date() } })
+    : Promise.resolve(null);
+
+const isPhoneTakenByAnotherUser = async (phone, excludeId = null) =>
+  Boolean(await User.exists({ phone, isDeleted: { $ne: true }, ...(excludeId ? { _id: { $ne: excludeId } } : {}) }));
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
@@ -378,18 +379,17 @@ router.post("/register", registerLimiter, honeypotMiddleware, turnstileMiddlewar
       }
       cleanPhone = phoneValidation.cleanPhone;
 
+      if (await isPhoneTakenByAnotherUser(cleanPhone)) {
+        return res.status(400).json({ message: "This phone number is already linked to another account." });
+      }
+
       const otpRequired = await isWhatsAppOtpRequired();
       if (otpRequired) {
         if (!req.body?.phoneVerificationToken) {
           return res.status(400).json({ message: "Please verify your phone number via WhatsApp OTP before registering." });
         }
-        const otpRecord = await PhoneOtp.findOne({
-          phone: cleanPhone,
-          verificationToken: req.body.phoneVerificationToken,
-          verified: true,
-          expiresAt: { $gt: new Date() }
-        });
-        if (!otpRecord) {
+        const consumed = await consumePhoneVerification(cleanPhone, req.body.phoneVerificationToken);
+        if (!consumed) {
           return res.status(400).json({ message: "WhatsApp verification token expired or invalid. Please verify phone number again." });
         }
       }
@@ -932,41 +932,11 @@ router.post("/forgot-password", passwordResetLimiter, honeypotMiddleware, turnst
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
-      // Standard security: do not leak existence of user, just say it's sent
-      return res.json({ message: "If that email is registered, a password reset link has been sent." });
+    if (user) {
+      await sendPasswordResetEmail(user);
     }
 
-    const token = crypto.randomBytes(20).toString("hex");
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-    await user.save();
-
-    // Construct reset link using HashRouter structure
-    const resetUrl = `${req.protocol}://${req.get("host")}/#/reset-password?token=${token}`;
-
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-        <h2 style="color: #1a1a2e;">Password Reset Request</h2>
-        <p>Hello ${user.name || "User"},</p>
-        <p>You requested a password reset for your account. Please click the button below to set a new password:</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #e94560; color: white; padding: 12px 24px; text-decoration: none; border-radius: 10px; display: inline-block; font-weight: bold;">Reset Password</a>
-        </p>
-        <p>Or copy and paste this URL into your browser:</p>
-        <p style="word-break: break-all; color: #666;"><a href="${resetUrl}">${resetUrl}</a></p>
-        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-        <p style="font-size: 0.85em; color: #999;">This link will expire in 1 hour. If you did not request this, you can safely ignore this email.</p>
-      </div>
-    `;
-
-    await sendEmail({
-      to: user.email,
-      subject: "Password Reset Link",
-      html: htmlContent,
-      type: "password-reset"
-    });
-
+    // Always return success to prevent account enumeration
     res.json({ message: "If that email is registered, a password reset link has been sent." });
   } catch (err) {
     console.error("[Auth] Forgot password error:", err.message);
@@ -985,9 +955,12 @@ router.post("/reset-password", passwordResetLimiter, honeypotMiddleware, turnsti
       return res.status(400).json({ message: passwordValidation.message });
     }
 
+    const hashedToken = crypto.createHash("sha256").update(String(token)).digest("hex");
     const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() }
+      $or: [
+        { resetPasswordToken: hashedToken, resetPasswordExpires: { $gt: Date.now() } },
+        { resetPasswordToken: token, resetPasswordExpires: { $gt: Date.now() } }
+      ]
     });
 
     if (!user) {
@@ -998,6 +971,7 @@ router.post("/reset-password", passwordResetLimiter, honeypotMiddleware, turnsti
     user.password = hashedPassword;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
+    user.tokenVersion = Number(user.tokenVersion || 0) + 1; // Invalidate previous active sessions
     await user.save();
 
     res.json({ message: "Your password has been successfully updated. You can now log in." });

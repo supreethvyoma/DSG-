@@ -11,6 +11,7 @@ const { getProductPriceDetails } = require("../utils/productPricing");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 const { appCache, TTL, invalidateProductCache, cacheAside } = require("../utils/cache");
 const { honeypotMiddleware, reviewRateLimiter } = require("../utils/spamFilter");
+const { PUBLIC_PRODUCT_EXCLUDE, toPublicProduct } = require("../utils/productProjection");
 
 const router = express.Router();
 
@@ -154,6 +155,18 @@ const normalizeProductPrice = (value, fallback = 0) => {
 
 const hasNumericInput = (value) =>
   value !== null && value !== undefined && String(value).trim() !== "";
+
+const normalizeNonNegativeNumber = (v, fb = 0) =>
+  !hasNumericInput(v) ? fb : (Number.isFinite(Number(v)) ? Math.max(0, Number(v)) : fb);
+
+const normalizeRelatedProductIds = async (raw, currentId = "") => {
+  const ids = normalizeRelatedProducts(raw, currentId).filter((id) => mongoose.Types.ObjectId.isValid(id));
+  if (!ids.length) return [];
+  const found = new Set(
+    (await Product.find({ _id: { $in: ids }, isDeleted: { $ne: true } }).select("_id").lean()).map((p) => String(p._id))
+  );
+  return ids.filter((id) => found.has(id));
+};
 
 const normalizeInternationalPrice = (value, fallback = null) => {
   if (value === null || value === undefined || String(value).trim() === "") {
@@ -359,38 +372,64 @@ const summarizeProductChanges = (before = {}, after = {}) => {
 // Create product (ADMIN) — 25mb for image URLs
 router.post("/", protect, admin, largeJson, async (req, res) => {
   try {
+    const b = req.body || {};
+    const name = String(b.name || "").trim();
+    if (!name) return res.status(400).json({ message: "Product name is required." });
+    if (!hasNumericInput(b.price) || !Number.isFinite(Number(b.price)) || Number(b.price) < 0) {
+      return res.status(400).json({ message: "A valid, non-negative price is required." });
+    }
+
     const actor = await getAdminActorSnapshot(req.user);
-    const images = normalizeImages(req.body.images, req.body.image);
-    const rawBundleItems = normalizeBundleItems(req.body.bundleItems);
-    const typeCandidate = String(req.body?.productType || "single").trim().toLowerCase();
+    const images = normalizeImages(b.images, b.image);
+    const rawBundleItems = normalizeBundleItems(b.bundleItems);
+    const typeCandidate = String(b.productType || "single").trim().toLowerCase();
     const productType = typeCandidate === "bundle" ? "bundle" : (["single", "bulk"].includes(typeCandidate) ? typeCandidate : "single");
     const bundleItems = productType === "bundle" ? rawBundleItems : [];
-    const rawDiscountType = normalizeDiscountType(req.body?.discountType, req.body?.festiveOffer);
-    const festiveOffer = rawDiscountType !== "none" || req.body?.festiveOffer === true;
-    const discountType = festiveOffer ? rawDiscountType : "none";
-    const price = normalizeProductPrice(req.body?.price);
-    const internationalPrice = normalizeInternationalPrice(req.body?.internationalPrice, null);
-    const internationalCountryPrices = normalizeInternationalCountryPrices(req.body?.internationalCountryPrices);
-    const marketPrices = normalizeMarketPrices(req.body?.marketPrices);
     if (productType === "bundle" && bundleItems.length === 0) {
       return res.status(400).json({ message: "Select at least one product for the bundle." });
     }
+
+    const rawDiscountType = normalizeDiscountType(b.discountType, b.festiveOffer);
+    const festiveOffer = rawDiscountType !== "none" || b.festiveOffer === true;
+    const discountType = festiveOffer ? rawDiscountType : "none";
+    const price = normalizeProductPrice(b.price);
+    const internationalPrice = normalizeInternationalPrice(b.internationalPrice, null);
+    const internationalCountryPrices = normalizeInternationalCountryPrices(b.internationalCountryPrices);
+    const marketPrices = normalizeMarketPrices(b.marketPrices);
+    const relatedProducts = await normalizeRelatedProductIds(b.relatedProducts);
+
+    const opt = (k) => (b[k] !== undefined ? { [k]: String(b[k] || "").trim() } : {});
+
     const product = await Product.create({
-      ...req.body,
+      name,
       price,
       internationalPrice,
       internationalCountryPrices,
       marketPrices,
-      aboutProduct: normalizeAboutProduct(req.body.aboutProduct),
-      image: images[0] || String(req.body.image || "").trim(),
-      images,
-      trailerVideoUrl: normalizeTrailerVideoUrl(req.body?.trailerVideoUrl),
+      description: String(b.description || "").trim(),
+      aboutProduct: normalizeAboutProduct(b.aboutProduct),
+      trailerVideoUrl: normalizeTrailerVideoUrl(b.trailerVideoUrl),
+      stock: normalizeNonNegativeNumber(b.stock, 1),
+      category: String(b.category || "General").trim() || "General",
+      weight: normalizeNonNegativeNumber(b.weight, 0),
+      height: normalizeNonNegativeNumber(b.height, 0),
+      width: normalizeNonNegativeNumber(b.width, 0),
+      length: normalizeNonNegativeNumber(b.length, 0),
       discountType,
       festiveOffer,
-      festiveDiscountPercent: festiveOffer ? normalizeFestiveDiscountPercent(req.body?.festiveDiscountPercent) : 0,
+      festiveDiscountPercent: festiveOffer ? normalizeFestiveDiscountPercent(b.festiveDiscountPercent) : 0,
       productType,
       bundleItems,
       relatedProducts,
+      isDigital: b.isDigital === true,
+      ...opt("digitalType"),
+      ...opt("webReaderLink"),
+      ...opt("kindleLink"),
+      ...opt("kindleAsin"),
+      ...opt("digitalInstructions"),
+      ...opt("courseLink"),
+      image: images[0] || String(b.image || "").trim(),
+      images,
       lastUpdatedByName: actor.name,
       lastUpdatedByEmail: actor.email,
       lastUpdatedAt: new Date()
@@ -414,7 +453,8 @@ router.post("/", protect, admin, largeJson, async (req, res) => {
     // Invalidate cache so next request gets fresh product list
     invalidateProductCache();
   } catch (error) {
-    res.status(500).json({ message: "Failed to create product", error: error.message });
+    const client = ["ValidationError", "CastError"].includes(error?.name);
+    res.status(client ? 400 : 500).json({ message: "Failed to create product", ...(client ? { error: error.message } : {}) });
   }
 });
 
@@ -545,17 +585,32 @@ router.get("/home", async (req, res) => {
     const data = await cacheAside("home:payload", TTL.PRODUCTS_HOME, async () => {
       const [products, settings] = await Promise.all([
         Product.find({ isDeleted: { $ne: true } })
-          .select(HOME_PRODUCT_SELECT)
+          .select(PUBLIC_PRODUCT_EXCLUDE)
           .populate("bundleItems.product", HOME_BUNDLE_PRODUCT_SELECT)
           .lean(),
         StoreSettings.findOne().lean()
       ]);
-      return buildHomePayload(Array.isArray(products) ? products : [], settings || {});
+      const publicProducts = (Array.isArray(products) ? products : []).map(toPublicProduct);
+      return buildHomePayload(publicProducts, settings || {});
     });
 
     return res.json(data);
   } catch (error) {
     res.status(500).json({ message: "Failed to load home products", error: error.message });
+  }
+});
+
+// Full product list for Admin panel (ADMIN only)
+router.get("/admin/all", protect, admin, async (req, res) => {
+  try {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    const products = await Product.find({ isDeleted: { $ne: true } })
+      .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+      .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
+      .lean();
+    return res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load admin products", error: error.message });
   }
 });
 
@@ -570,12 +625,13 @@ router.get("/", async (req, res) => {
       req.query.category !== undefined;
 
     if (!hasPaginationQuery) {
-      // Full product list (admin panel, etc.) — always fetch fresh from DB
+      // Full product list for public — sanitized
       const products = await Product.find({ isDeleted: { $ne: true } })
+        .select(PUBLIC_PRODUCT_EXCLUDE)
         .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
         .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
         .lean();
-      return res.json(products);
+      return res.json(products.map(toPublicProduct));
     }
 
     // Build a deterministic cache key from all query params
@@ -589,10 +645,11 @@ router.get("/", async (req, res) => {
     const selectedCategory = String(req.query.category || "All").trim();
 
     const products = await Product.find({ isDeleted: { $ne: true } })
+      .select(PUBLIC_PRODUCT_EXCLUDE)
       .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category")
       .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
       .lean();
-    const baseProducts = products;
+    const baseProducts = products.map(toPublicProduct);
     const settings = await StoreSettings.findOne().lean();
     const pricingConfig = {
       pricingMarkets: settings?.pricingMarkets || [],
@@ -835,7 +892,7 @@ router.get("/recommend/:productId", async (req, res) => {
     }
 
     const ranked = products.map((product) => ({
-      ...(product.toObject ? product.toObject() : product),
+      ...toPublicProduct(product),
       boughtTogetherCount: counts[String(product._id)] || 0
     }));
 
@@ -897,6 +954,7 @@ router.get("/:id", async (req, res) => {
 
     if (mongoose.Types.ObjectId.isValid(targetId)) {
       product = await Product.findById(targetId)
+        .select(PUBLIC_PRODUCT_EXCLUDE)
         .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
         .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
         .lean();
@@ -906,6 +964,7 @@ router.get("/:id", async (req, res) => {
       const numId = Number(targetId);
       if (!isNaN(numId)) {
         product = await Product.findOne({ wpProductId: numId, isDeleted: { $ne: true } })
+          .select(PUBLIC_PRODUCT_EXCLUDE)
           .populate("bundleItems.product", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
           .populate("relatedProducts", "name image price internationalPrice internationalCountryPrices marketPrices category stock")
           .lean();
@@ -937,8 +996,9 @@ router.get("/:id", async (req, res) => {
       product.reviewsCount = product.reviewsCount !== undefined ? product.reviewsCount : embeddedReviews.length;
     }
 
-    appCache.set(cacheKey, product, TTL.PRODUCT_SINGLE);
-    res.json(product);
+    const publicProduct = toPublicProduct(product);
+    appCache.set(cacheKey, publicProduct, TTL.PRODUCT_SINGLE);
+    res.json(publicProduct);
   } catch {
     res.status(404).json({ message: "Product not found" });
   }
@@ -1205,20 +1265,16 @@ router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
     }
 
     const { name, email, phone, isPhoneVerified, quantity, institution, message } = req.body;
-    if (!name || !email || !quantity) {
-      return res.status(400).json({ message: "Name, email, and quantity are required." });
+    if (!name || !email || !quantity || !phone) {
+      return res.status(400).json({ message: "Name, email, mobile phone number, and quantity are required." });
     }
 
-    if (phone) {
-      const phoneValidation = validateBulkPhoneNumber(phone);
-      if (!phoneValidation.isValid) {
-        return res.status(400).json({ message: phoneValidation.message });
-      }
+    const phoneValidation = validateBulkPhoneNumber(phone);
+    if (!phoneValidation.isValid) {
+      return res.status(400).json({ message: phoneValidation.message });
     }
 
-    const formattedPhone = phone
-      ? (isPhoneVerified ? `${phone} (Verified via WhatsApp)` : phone)
-      : "Not provided";
+    const formattedPhone = isPhoneVerified ? `${phone} (Verified via WhatsApp)` : phone;
 
     await sendBulkEnquiryEmail({
       name,
