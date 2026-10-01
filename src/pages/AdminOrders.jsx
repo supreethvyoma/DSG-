@@ -1232,18 +1232,6 @@ function AdminOrders() {
                                 })}
                               </div>
                             ) : null}
-                            <select
-                              id={`status-${order._id}`}
-                              value={displayStatus}
-                              disabled={!canUpdateOrders || updatingOrderId === order._id || !canProgressStatus}
-                              onChange={(e) => updateStatus(order._id, e.target.value)}
-                            >
-                              {displayStatus === "On Hold" ? <option value="On Hold">On Hold</option> : null}
-                              <option value="Pending">Pending</option>
-                              <option value="Shipped">Shipped</option>
-                              <option value="Delivered">Delivered</option>
-                              <option value="Cancelled">Cancelled</option>
-                            </select>
                           </div>
                         </div>
                       </td>
