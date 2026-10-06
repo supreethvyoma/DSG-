@@ -500,6 +500,7 @@ const ALL_ADMIN_PAGES = [
   "coupons",
   "marketing",
   "theme",
+  "settings",
   "security-logs"
 ];
 

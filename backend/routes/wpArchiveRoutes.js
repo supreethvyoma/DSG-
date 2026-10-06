@@ -2,11 +2,12 @@ const express = require("express");
 const WpOrder = require("../models/WpOrder");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { requireAdminPage } = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
 // GET /api/admin/wp-archive/stats — Summary statistics for WordPress era
-router.get("/stats", protect, admin, async (req, res) => {
+router.get("/stats", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const [totalOrders, totalRevenueResult, deliveredCount, customerCount] = await Promise.all([
       WpOrder.countDocuments(),
@@ -37,7 +38,7 @@ router.get("/stats", protect, admin, async (req, res) => {
 });
 
 // GET /api/admin/wp-archive/orders — Search and paginated list of WP Archive Orders
-router.get("/orders", protect, admin, async (req, res) => {
+router.get("/orders", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
@@ -102,7 +103,7 @@ router.get("/orders", protect, admin, async (req, res) => {
 });
 
 // GET /api/admin/wp-archive/orders/:wpOrderId — Get detailed view of single WP order
-router.get("/orders/:wpOrderId", protect, admin, async (req, res) => {
+router.get("/orders/:wpOrderId", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const numId = Number(req.params.wpOrderId);
     const order = await WpOrder.findOne({ wpOrderId: numId }).lean();

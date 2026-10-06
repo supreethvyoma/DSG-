@@ -1754,6 +1754,8 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       discount: calc.discount,
       deliveryCharge: calc.deliveryCharge,
       total: calc.total,
+      fxRateToInr: calc.fxRateToInr || 1,
+      totalInInr: calc.totalInInr || calc.total,
       status: initialOrderStatus,
       paymentStatus: rawPaymentStatus,
       paymentMethod: "Razorpay",

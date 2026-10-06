@@ -4,13 +4,14 @@ const Coupon = require("../models/Coupon");
 const User = require("../models/User");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { requireAdminPage } = require("../middleware/adminMiddleware");
 const { logAdminAction } = require("../utils/adminAudit");
 const { invalidateProductCache } = require("../utils/cache");
 
 const router = express.Router();
 
 // GET /api/trash - Fetch all soft-deleted items (ADMIN)
-router.get("/", protect, admin, async (req, res) => {
+router.get("/", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
 
