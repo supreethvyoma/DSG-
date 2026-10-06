@@ -10,7 +10,7 @@ const admin = require("../middleware/adminMiddleware");
 const { getProductPriceDetails } = require("../utils/productPricing");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 const { appCache, TTL, invalidateProductCache, cacheAside } = require("../utils/cache");
-const { honeypotMiddleware, reviewRateLimiter } = require("../utils/spamFilter");
+const { honeypotMiddleware, reviewRateLimiter, bulkEnquiryLimiter } = require("../utils/spamFilter");
 const { PUBLIC_PRODUCT_EXCLUDE, toPublicProduct } = require("../utils/productProjection");
 
 const router = express.Router();
@@ -1257,7 +1257,7 @@ const validateBulkPhoneNumber = (rawPhone) => {
 };
 
 // POST /api/products/:id/bulk-enquiry (PUBLIC)
-router.post("/:id/bulk-enquiry", honeypotMiddleware, async (req, res) => {
+router.post("/:id/bulk-enquiry", bulkEnquiryLimiter, honeypotMiddleware, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) {

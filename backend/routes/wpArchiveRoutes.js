@@ -50,24 +50,27 @@ router.get("/orders", protect, admin, async (req, res) => {
       query.status = statusFilter;
     }
 
+    const escapeRegex = (str) => String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     if (search) {
       const cleanSearch = search.replace(/^#/g, "").trim();
+      const safeSearch = escapeRegex(cleanSearch);
       const numId = Number(cleanSearch);
 
       if (!isNaN(numId) && cleanSearch.length < 10) {
         query.$or = [
           { wpOrderId: numId },
-          { billingEmail: { $regex: cleanSearch, $options: "i" } },
-          { billingName: { $regex: cleanSearch, $options: "i" } },
-          { billingPhone: { $regex: cleanSearch, $options: "i" } }
+          { billingEmail: { $regex: safeSearch, $options: "i" } },
+          { billingName: { $regex: safeSearch, $options: "i" } },
+          { billingPhone: { $regex: safeSearch, $options: "i" } }
         ];
       } else {
         query.$or = [
-          { billingEmail: { $regex: cleanSearch, $options: "i" } },
-          { billingName: { $regex: cleanSearch, $options: "i" } },
-          { billingPhone: { $regex: cleanSearch, $options: "i" } },
-          { couponCode: { $regex: cleanSearch, $options: "i" } },
-          { transactionId: { $regex: cleanSearch, $options: "i" } }
+          { billingEmail: { $regex: safeSearch, $options: "i" } },
+          { billingName: { $regex: safeSearch, $options: "i" } },
+          { billingPhone: { $regex: safeSearch, $options: "i" } },
+          { couponCode: { $regex: safeSearch, $options: "i" } },
+          { transactionId: { $regex: safeSearch, $options: "i" } }
         ];
       }
     }
