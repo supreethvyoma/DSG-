@@ -35,7 +35,8 @@ async function decrementStock(items, { session } = {}) {
   return [];
 }
 
-async function reserveStockForOrder(orderId, { session } = {}) {
+async function reserveStockForOrder(target, { session } = {}) {
+  const orderId = target?._id || target;
   const o = await Order.findOneAndUpdate(
     { _id: orderId, stockReserved: false, status: { $ne: "Cancelled" } },
     { $set: { stockReserved: true } },
@@ -53,7 +54,8 @@ async function reserveStockForOrder(orderId, { session } = {}) {
   return { ok: true };
 }
 
-async function releaseStockForOrder(orderId, { session } = {}) {
+async function releaseStockForOrder(target, { session } = {}) {
+  const orderId = target?._id || target;
   const prev = await Order.findOneAndUpdate(
     { _id: orderId, stockReserved: true },
     { $set: { stockReserved: false } },

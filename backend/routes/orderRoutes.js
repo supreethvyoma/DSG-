@@ -445,16 +445,18 @@ router.post("/", protect, orderRateLimiter, honeypotMiddleware, async (req, res)
       }
     });
 
-    if (rawPaymentStatus !== "Failed") {
+    if (rawPaymentStatus === "Paid") {
       await reserveStockForOrder(order._id);
-    }
-    if (rawPaymentStatus === "Paid" && totals.appliedCouponCode) {
-      await claimCoupon({ code: totals.appliedCouponCode, userId: req.user });
-      order.couponClaimed = true;
-      await Order.updateOne({ _id: order._id }, { $set: { couponClaimed: true } });
-    }
-    if (order.isGift && rawPaymentStatus === "Paid") {
-      await issueGiftPassesForOrder(order._id);
+      if (totals.appliedCouponCode) {
+        const claimed = await claimCoupon({ code: totals.appliedCouponCode, userId: req.user });
+        if (claimed) {
+          order.couponClaimed = true;
+          await Order.updateOne({ _id: order._id }, { $set: { couponClaimed: true } });
+        }
+      }
+      if (order.isGift) {
+        await issueGiftPassesForOrder(order._id);
+      }
     }
 
     fireNotifications(async () => {
@@ -1137,14 +1139,27 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   }
 
   const isOwner = String(order.user) === String(req.user);
-  const userDoc = await User.findById(req.user).select("isAdmin").lean();
-  const isAdmin = Boolean(userDoc?.isAdmin);
+  let isAdmin = false;
+  let isSuperAdmin = false;
 
-  if (!isOwner && !isAdmin) {
-    return res.status(403).json({ message: "You can only update your own orders." });
+  if (!isOwner) {
+    const userDoc = await User.findById(req.user).select("isAdmin adminLevel adminRole allowedPages").lean();
+    isAdmin = Boolean(userDoc?.isAdmin);
+    isSuperAdmin = isAdmin && Number(userDoc?.adminLevel) === 1;
+
+    if (!isAdmin) {
+      return res.status(403).json({ message: "You can only update your own orders." });
+    }
+
+    // Changing payment status directly without payment verification is restricted to Level 1 Super Admins
+    if (!isSuperAdmin) {
+      return res.status(403).json({
+        message: "Access denied. Only 1st Level Super Admins can manually override order payment status."
+      });
+    }
   }
 
-  if (!isAdmin && (order.paymentStatus === "Paid" || order.paymentStatus === "Refunded")) {
+  if (isOwner && (order.paymentStatus === "Paid" || order.paymentStatus === "Refunded")) {
     return res.status(400).json({ message: "Paid orders cannot have their payment status modified." });
   }
 
@@ -1154,7 +1169,8 @@ router.put("/:id/payment-status", protect, async (req, res) => {
 
   let verifiedPayment = null;
   if (rawPaymentStatus === "Paid") {
-    if (!isAdmin) {
+    // If the customer (owner) is paying, Razorpay payment verification is strictly required
+    if (isOwner) {
       if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
         return res.status(400).json({ message: "Payment reference is required." });
       }
@@ -1216,8 +1232,10 @@ router.put("/:id/payment-status", protect, async (req, res) => {
 
     if (order.couponCode && !order.couponClaimed) {
       try {
-        await claimCoupon({ code: order.couponCode, userId: order.user });
-        order.couponClaimed = true;
+        const claimed = await claimCoupon({ code: order.couponCode, userId: order.user });
+        if (claimed) {
+          order.couponClaimed = true;
+        }
       } catch (couponErr) {
         console.warn("[Order] Coupon claim warning on retry:", couponErr.message);
       }
@@ -1235,8 +1253,23 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   }
 
   if (rawPaymentStatus === "Paid") {
-    await reserveStockForOrder(updated);
-    await issueGiftPassesForOrder(updated);
+    await reserveStockForOrder(updated._id);
+    await issueGiftPassesForOrder(updated._id);
+  }
+
+  if (!isOwner && isAdmin) {
+    await logAdminAction({
+      req,
+      action: "order-payment-status-override",
+      entityType: "order",
+      entityId: String(order._id),
+      entityLabel: String(order._id),
+      summary: `Manual payment status override for order ${String(order._id).slice(-6)}: ${previousPaymentStatus} -> ${rawPaymentStatus}`,
+      details: {
+        previousPaymentStatus,
+        nextPaymentStatus: rawPaymentStatus
+      }
+    });
   }
 
   res.json(serializeOrderForOwner(updated, req.user));
@@ -1793,9 +1826,11 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       await reserveStockForOrder(order._id);
       if (calc.appliedCouponCode) {
         try {
-          await claimCoupon({ code: calc.appliedCouponCode, userId: targetUser._id });
-          order.couponClaimed = true;
-          await Order.updateOne({ _id: order._id }, { $set: { couponClaimed: true } });
+          const claimed = await claimCoupon({ code: calc.appliedCouponCode, userId: targetUser._id });
+          if (claimed) {
+            order.couponClaimed = true;
+            await Order.updateOne({ _id: order._id }, { $set: { couponClaimed: true } });
+          }
         } catch (couponErr) {
           console.warn("[Order] Coupon claim warning on direct-buy:", couponErr.message);
         }
@@ -1845,7 +1880,16 @@ const ALLOWED_STREAM_HOSTS = String(process.env.DIGITAL_MEDIA_ALLOWED_HOSTS || "
   .filter(Boolean);
 
 const STREAM_TIMEOUT_MS = Math.max(1000, Number(process.env.DIGITAL_STREAM_TIMEOUT_MS) || 15000);
-const STREAM_OK_TYPES = [/^application\/pdf\b/, /^video\//, /^audio\//, /^image\//, /^application\/octet-stream\b/];
+const STREAM_OK_TYPES = [
+  /^application\/pdf\b/,
+  /^video\//,
+  /^audio\//,
+  /^image\//,
+  /^text\/html\b/,
+  /^application\/xhtml\+xml\b/,
+  /^application\/epub\+zip\b/,
+  /^application\/octet-stream\b/
+];
 
 const ticketSecret = () =>
   process.env.STREAM_TICKET_SECRET ||

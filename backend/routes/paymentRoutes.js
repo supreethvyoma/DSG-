@@ -6,6 +6,7 @@ const StoreSettings = require("../models/StoreSettings");
 const getRazorpayClient = require("../utils/razorpay");
 const { toMinorUnits, resolveItemsCurrency, normalizeCurrencyCode } = require("../utils/currency");
 const { SETTLEMENT_CURRENCY, getSettlementCharge, verifyRazorpaySignature } = require("../utils/paymentVerification");
+const { computeOrderTotals } = require("../utils/orderTotals");
 const { paymentRateLimiter, honeypotMiddleware } = require("../utils/spamFilter");
 
 const router = express.Router();
@@ -50,6 +51,18 @@ router.post("/create-order", paymentRateLimiter, honeypotMiddleware, protectIfOr
       currency = settlement.currency;
       receipt = `ord_${id}`;
       notes.orderId = id;
+    } else if (Array.isArray(req.body?.items) && req.body.items.length > 0) {
+      // Compute authoritative order totals from database products, delivery settings & coupons
+      const settings = (await StoreSettings.findOne().lean()) || {};
+      const totals = await computeOrderTotals({
+        items: req.body.items,
+        shipping: req.body.shipping || {},
+        couponCode: req.body.couponCode,
+        userId: req.user || null,
+        settings
+      });
+      amount = totals.chargeAmount || totals.totalInInr || totals.total;
+      currency = totals.chargeCurrency || SETTLEMENT_CURRENCY;
     } else {
       amount = Number(req.body?.amount);
       currency = String(req.body?.currency || SETTLEMENT_CURRENCY).toUpperCase();

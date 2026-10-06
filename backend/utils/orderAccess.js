@@ -23,16 +23,41 @@ function stripDigitalFields(item) {
   return out;
 }
 
-function serializeOrderForOwner(order) {
+function serializeOrderForOwner(order, viewerUserId) {
   if (!order) return null;
   const plain = typeof order?.toObject === "function" ? order.toObject() : { ...order };
-  plain.digitalAccess = hasDigitalAccess(plain);
-  plain.items = (plain.items || []).map((it) => {
-    const allowed = !(plain.isGift || it?.giftCode) && hasItemDigitalAccess(plain, it);
-    return allowed
-      ? { ...it, digitalAccess: true }
-      : { ...stripDigitalFields(it), digitalAccess: false };
-  });
+  const isPaid = hasDigitalAccess(plain);
+  plain.digitalAccess = isPaid;
+
+  const isGiftOrder = Boolean(plain.isGift);
+  const isViewerBuyer = viewerUserId && String(plain.user?._id || plain.user) === String(viewerUserId);
+  const isRedeemedRecipient = Boolean(plain.isRedeemedGift) || Boolean(viewerUserId && !isViewerBuyer);
+
+  if (isRedeemedRecipient) {
+    // Recipient should ONLY see the items they redeemed or digital access info, NOT buyer's sensitive billing/shipping info
+    delete plain.billing;
+    delete plain.shipping;
+    delete plain.paymentMeta;
+    delete plain.currencyDisplay;
+    delete plain.totalInInr;
+    delete plain.fxRateToInr;
+
+    plain.items = (plain.items || []).map((it) => {
+      const allowed = hasItemDigitalAccess(plain, it);
+      return allowed
+        ? { ...it, digitalAccess: true }
+        : { ...stripDigitalFields(it), digitalAccess: false };
+    });
+  } else {
+    plain.items = (plain.items || []).map((it) => {
+      // For the buyer, if an item is a gift, digital links are stripped because the gift pass is for the recipient
+      const allowed = !(isGiftOrder || it?.giftCode) && hasItemDigitalAccess(plain, it);
+      return allowed
+        ? { ...it, digitalAccess: true }
+        : { ...stripDigitalFields(it), digitalAccess: false };
+    });
+  }
+
   return plain;
 }
 
