@@ -7,6 +7,7 @@ const User = require("../models/User");
 const Review = require("../models/Review");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { requireAdminPage } = require("../middleware/adminMiddleware");
 const { getProductPriceDetails } = require("../utils/productPricing");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 const { appCache, TTL, invalidateProductCache, cacheAside } = require("../utils/cache");
@@ -370,7 +371,13 @@ const summarizeProductChanges = (before = {}, after = {}) => {
 };
 
 // Create product (ADMIN) — 25mb for image URLs
-router.post("/", protect, admin, largeJson, async (req, res) => {
+router.post("/", protect, admin, (req, res, next) => {
+  const pages = Array.isArray(req.allowedPages) ? req.allowedPages : [];
+  if (req.adminLevel === 1 || pages.includes("add-products") || pages.includes("products")) {
+    return next();
+  }
+  return res.status(403).json({ message: "Access denied. Product creation permission required." });
+}, largeJson, async (req, res) => {
   try {
     const b = req.body || {};
     const name = String(b.name || "").trim();
@@ -459,7 +466,7 @@ router.post("/", protect, admin, largeJson, async (req, res) => {
 });
 
 // UPDATE product (ADMIN) — 25mb for image URLs
-router.put("/:id", protect, admin, largeJson, async (req, res) => {
+router.put("/:id", protect, admin, requireAdminPage("products"), largeJson, async (req, res) => {
   try {
     const actor = await getAdminActorSnapshot(req.user);
     const product = await Product.findById(req.params.id);
@@ -601,7 +608,7 @@ router.get("/home", async (req, res) => {
 });
 
 // Full product list for Admin panel (ADMIN only)
-router.get("/admin/all", protect, admin, async (req, res) => {
+router.get("/admin/all", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
     const products = await Product.find({ isDeleted: { $ne: true } })
@@ -743,7 +750,7 @@ router.get("/", async (req, res) => {
 });
 
 // Quick DB diagnostic for products (Admin only)
-router.get("/debug/summary", protect, admin, async (req, res) => {
+router.get("/debug/summary", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     const count = await Product.countDocuments();
     const sample = await Product.findOne().select("_id name category").lean();
@@ -753,7 +760,7 @@ router.get("/debug/summary", protect, admin, async (req, res) => {
   }
 });
 // GET /api/products/cleanup-imported-data (Admin only)
-router.get("/cleanup-imported-data", protect, admin, async (req, res) => {
+router.get("/cleanup-imported-data", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     const products = await Product.find({});
     let updatedCount = 0;
@@ -1110,7 +1117,7 @@ router.post("/:id/reviews", protect, reviewRateLimiter, async (req, res) => {
 });
 
 // DELETE product (ADMIN) — Soft delete
-router.delete("/:id", protect, admin, async (req, res) => {
+router.delete("/:id", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     const actor = await getAdminActorSnapshot(req.user);
     const product = await Product.findById(req.params.id);
@@ -1145,7 +1152,7 @@ router.delete("/:id", protect, admin, async (req, res) => {
 });
 
 // RESTORE product (ADMIN)
-router.post("/:id/restore", protect, admin, async (req, res) => {
+router.post("/:id/restore", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
 
@@ -1176,7 +1183,7 @@ router.post("/:id/restore", protect, admin, async (req, res) => {
 });
 
 // PURGE product (ADMIN) — Permanent deletion
-router.delete("/:id/purge", protect, admin, async (req, res) => {
+router.delete("/:id/purge", protect, admin, requireAdminPage("products"), async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
 

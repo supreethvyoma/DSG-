@@ -13,6 +13,7 @@ const { convertCurrencyAmount, normalizeCurrencyCode } = require("../utils/curre
 const { getProductPriceDetails, isInternationalCountry } = require("../utils/productPricing");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { requireAdminPage, requireSuperAdmin } = require("../middleware/adminMiddleware");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
@@ -81,7 +82,7 @@ function verifyRazorpayPaymentSignature({ razorpayOrderId, razorpayPaymentId, ra
 }
 
 // GET /api/orders/audit-migration (Admin only)
-router.get("/audit-migration", protect, admin, async (req, res) => {
+router.get("/audit-migration", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const total = await Order.countDocuments();
     const emptyItemsCount = await Order.countDocuments({ items: { $size: 0 } });
@@ -520,7 +521,7 @@ const autoCompletePaidDigitalOrders = async (orders) => {
 };
 
 // Get all orders (admin only)
-router.get("/", protect, admin, async (req, res) => {
+router.get("/", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const settings = await StoreSettings.findOne().select("currencyConversionRates").lean();
     const rates = settings?.currencyConversionRates || {};
@@ -744,7 +745,7 @@ router.get("/", protect, admin, async (req, res) => {
 });
 
 // Sales Analytics (Admin only)
-router.get("/analytics/sales", protect, admin, async (req, res) => {
+router.get("/analytics/sales", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const orders = await Order.find({ paymentStatus: "Paid" }).lean();
     
@@ -844,7 +845,7 @@ router.get("/analytics/sales", protect, admin, async (req, res) => {
 });
 
 // Financial Analytics (Admin only)
-router.get("/analytics/finance", protect, admin, async (req, res) => {
+router.get("/analytics/finance", protect, admin, requireAdminPage("orders"), async (req, res) => {
   try {
     const settings = await StoreSettings.findOne().select("warehouseLocation").lean();
     const warehouseState = String(settings?.warehouseLocation?.state || "Karnataka").trim().toLowerCase();
@@ -975,7 +976,7 @@ router.get("/analytics/finance", protect, admin, async (req, res) => {
 });
 
 // UPDATE order status (ADMIN)
-router.put("/:id/status", protect, admin, async (req, res) => {
+router.put("/:id/status", protect, admin, requireAdminPage("orders"), async (req, res) => {
   const actor = await getAdminActorSnapshot(req.user);
   const statusMap = {
     pending: "Pending",
@@ -1210,7 +1211,16 @@ router.put("/:id/payment-status", protect, async (req, res) => {
     );
 
     if (isDigitalOnly) {
-      order.orderStatus = "Completed";
+      order.status = "Completed";
+    }
+
+    if (order.couponCode && !order.couponClaimed) {
+      try {
+        await claimCoupon({ code: order.couponCode, userId: order.user });
+        order.couponClaimed = true;
+      } catch (couponErr) {
+        console.warn("[Order] Coupon claim warning on retry:", couponErr.message);
+      }
     }
   }
 
@@ -1277,7 +1287,7 @@ router.put("/:id/items/:itemId/return-request", protect, async (req, res) => {
   res.json(serializeOrderForOwner(updated, req.user));
 });
 
-router.put("/:id/refund-status", protect, admin, async (req, res) => {
+router.put("/:id/refund-status", protect, admin, requireAdminPage("orders"), async (req, res) => {
   const actor = await getAdminActorSnapshot(req.user);
   const refundStatus = String(req.body?.refundStatus || "").trim();
   if (!allowedRefundStatuses.has(refundStatus)) {
@@ -1372,7 +1382,7 @@ router.put("/:id/refund-status", protect, admin, async (req, res) => {
   }
 });
 
-router.put("/:id/items/:itemId/return-status", protect, admin, async (req, res) => {
+router.put("/:id/items/:itemId/return-status", protect, admin, requireAdminPage("orders"), async (req, res) => {
   const actor = await getAdminActorSnapshot(req.user);
   const returnStatus = String(req.body?.returnStatus || "").trim();
   const adminReason = String(req.body?.adminReason || "").trim();
@@ -1590,7 +1600,8 @@ router.get("/my", protect, async (req, res) => {
       });
     }
 
-    res.json(orders);
+    const serializedOrders = orders.map((o) => serializeOrderForOwner(o, req.user));
+    res.json(serializedOrders);
   } catch (err) {
     console.error("Failed to load user orders:", err);
     res.status(500).json({ message: "Failed to load orders" });
@@ -1598,7 +1609,7 @@ router.get("/my", protect, async (req, res) => {
 });
 
 // Get single order (admin only)
-router.get("/:id", protect, admin, async (req, res) => {
+router.get("/:id", protect, admin, requireAdminPage("orders"), async (req, res) => {
   const order = await Order.findById(req.params.id).populate("user", "name email").lean();
 
   if (!order) {
@@ -1667,19 +1678,20 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       isNewUserCreated = true;
     }
 
+    const settings = await StoreSettings.findOne().lean();
+
     let calc;
     try {
       calc = await computeOrderTotals({
         items: req.body?.items,
-        shippingAddress: shipping,
-        billingAddress: requestedBilling,
+        shipping,
         couponCode: req.body?.couponCode,
-        requestedCurrency: req.body?.currencyDisplay?.currency,
-        userId: targetUser._id
+        userId: targetUser ? targetUser._id : null,
+        settings
       });
     } catch (err) {
       if (err instanceof OrderTotalsError) {
-        return res.status(err.statusCode).json({ message: err.message });
+        return res.status(err.statusCode || err.status || 400).json({ message: err.message });
       }
       throw err;
     }
@@ -1713,7 +1725,9 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       verifiedPayment = v.payment;
     }
 
-    const isDigitalOnlyOrder = calc.items.length > 0 && calc.items.every((item) =>
+    const normalizedItems = Array.isArray(calc.normalizedItems) ? calc.normalizedItems : [];
+
+    const isDigitalOnlyOrder = normalizedItems.length > 0 && normalizedItems.every((item) =>
       Boolean(
         item.isDigital ||
         item.webReaderLink ||
@@ -1728,43 +1742,35 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
 
     const initialOrderStatus = rawPaymentStatus === "Paid" && isDigitalOnlyOrder
       ? "Completed"
-      : rawPaymentStatus === "Paid"
-      ? "Pending"
-      : "On Hold";
+      : "Pending";
 
     const orderData = {
       user: targetUser._id,
-      items: calc.items,
+      items: normalizedItems,
       subtotal: calc.subtotal,
       gstPercent: calc.gstPercent,
       gstAmount: calc.gstAmount,
-      couponCode: calc.couponCode,
+      couponCode: calc.appliedCouponCode || "",
       discount: calc.discount,
       deliveryCharge: calc.deliveryCharge,
       total: calc.total,
-      fxRateToInr: calc.fxRateToInr,
-      totalInInr: calc.totalInInr,
-      sellerDetails: calc.sellerDetails,
-      orderStatus: initialOrderStatus,
+      status: initialOrderStatus,
       paymentStatus: rawPaymentStatus,
-      razorpayOrderId,
-      razorpayPaymentId,
+      paymentMethod: "Razorpay",
       shipping,
       billing: requestedBilling,
-      cgstPercent: calc.cgstPercent,
-      sgstPercent: calc.sgstPercent,
-      igstPercent: calc.igstPercent,
-      cgstAmount: calc.cgstAmount,
-      sgstAmount: calc.sgstAmount,
-      igstAmount: calc.igstAmount,
-      currencyDisplay: calc.currencyDisplay,
+      currencyDisplay: {
+        currency: calc.orderCurrency || "INR",
+        amount: calc.total,
+        detectedCountry: String(shipping?.country || "").trim()
+      },
+      taxDetails: calc.taxDetails,
       paymentMeta: {
         razorpayOrderId: verifiedPayment ? razorpayOrderId : "",
         razorpayPaymentId: verifiedPayment ? razorpayPaymentId : "",
         razorpaySignature: verifiedPayment ? razorpaySignature : "",
-        expectedAmountMinor: calc.expectedAmountMinor,
-        settlementAmountMinor: calc.settlementAmountMinor,
-        settlementCurrency: "INR",
+        settlementAmountMinor: Math.round((calc.chargeAmount || calc.totalInInr || calc.total) * 100),
+        settlementCurrency: calc.chargeCurrency || "INR",
         paidAmountMinor: verifiedPayment ? Number(verifiedPayment.amount) : null,
         paidCurrency: verifiedPayment ? String(verifiedPayment.currency).toUpperCase() : "",
         paidAt: rawPaymentStatus === "Paid" ? new Date() : null
@@ -1782,8 +1788,19 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
     }
 
     if (rawPaymentStatus === "Paid") {
-      await reserveStockForOrder(order);
-      await issueGiftPassesForOrder(order);
+      await reserveStockForOrder(order._id);
+      if (calc.appliedCouponCode) {
+        try {
+          await claimCoupon({ code: calc.appliedCouponCode, userId: targetUser._id });
+          order.couponClaimed = true;
+          await Order.updateOne({ _id: order._id }, { $set: { couponClaimed: true } });
+        } catch (couponErr) {
+          console.warn("[Order] Coupon claim warning on direct-buy:", couponErr.message);
+        }
+      }
+      if (order.isGift) {
+        await issueGiftPassesForOrder(order._id);
+      }
     }
 
     fireNotifications(async () => {
@@ -1796,7 +1813,7 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       }
 
       if (rawPaymentStatus === "Paid") {
-        await fireLowStockAlerts(calc.items);
+        await fireLowStockAlerts(normalizedItems);
       }
     });
 

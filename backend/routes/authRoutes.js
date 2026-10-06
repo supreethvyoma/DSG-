@@ -10,6 +10,7 @@ const StoreSettings = require("../models/StoreSettings");
 const AdminAuditLog = require("../models/AdminAuditLog");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { requireAdminPage, requireSuperAdmin } = require("../middleware/adminMiddleware");
 const { logAdminAction } = require("../utils/adminAudit");
 const { sendEmail } = require("../utils/email");
 const { sendPasswordResetEmail } = require("../utils/passwordReset");
@@ -670,7 +671,7 @@ router.post("/activity", protect, async (req, res) => {
   }
 });
 
-router.get("/admin/audit-logs", protect, admin, async (req, res) => {
+router.get("/admin/audit-logs", protect, admin, requireAdminPage("users"), async (req, res) => {
   try {
     const page = Math.max(1, Number(req.query.page || 1));
     const limit = Math.max(1, Math.min(100, Number(req.query.limit || 10)));
@@ -708,7 +709,7 @@ router.get("/admin/audit-logs", protect, admin, async (req, res) => {
   }
 });
 
-router.get("/admin/security-logs", protect, admin, async (req, res) => {
+router.get("/admin/security-logs", protect, admin, requireSuperAdmin, async (req, res) => {
   try {
     const fs = require("fs");
     const path = require("path");
@@ -754,7 +755,7 @@ router.get("/admin/security-logs", protect, admin, async (req, res) => {
   }
 });
 
-router.get("/admin/users-metrics", protect, admin, async (req, res) => {
+router.get("/admin/users-metrics", protect, admin, requireAdminPage("users"), async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limitQuery = req.query.limit;

@@ -80,16 +80,16 @@ const userSchema = mongoose.Schema({
   },
   adminRole: {
     type: String,
-    default: "Super Admin"
+    default: "Staff"
   },
   adminLevel: {
     type: Number,
     enum: [1, 2],
-    default: 1
+    default: 2
   },
   allowedPages: {
     type: [String],
-    default: ["dashboard", "orders", "products", "add-products", "coupons", "marketing", "users", "theme"]
+    default: []
   },
   adminGrantedAt: {
     type: Date,

@@ -2,6 +2,7 @@ const express = require("express");
 const StoreSettings = require("../models/StoreSettings");
 const protect = require("../middleware/authMiddleware");
 const admin = require("../middleware/adminMiddleware");
+const { requireAdminPage } = require("../middleware/adminMiddleware");
 const { DEFAULT_CURRENCY_EXCHANGE_RATES, normalizeCurrencyRates } = require("../utils/currency");
 const { getAdminActorSnapshot, logAdminAction } = require("../utils/adminAudit");
 const { cacheAside, invalidateProductCache, TTL } = require("../utils/cache");
@@ -460,8 +461,14 @@ async function getOrCreateSettings() {
   return settings;
 }
 
-// Full settings (requires admin authentication)
-router.get("/", protect, admin, async (req, res) => {
+// Full settings (requires admin authentication with settings or theme permission)
+router.get("/", protect, admin, (req, res, next) => {
+  const pages = Array.isArray(req.allowedPages) ? req.allowedPages : [];
+  if (req.adminLevel === 1 || pages.includes("settings") || pages.includes("theme")) {
+    return next();
+  }
+  return res.status(403).json({ message: "Access denied. Settings permission required." });
+}, async (req, res) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   const settings = await getOrCreateSettings();
   res.json(normalizeSettings(settings));
@@ -485,7 +492,10 @@ router.get(["/detect-country", "/detect_country"], (req, res) => {
   res.json({ country: String(country).toUpperCase() });
 });
 
-router.put("/", protect, admin, async (req, res) => {
+router.put("/", protect, admin, (req, res, next) => {
+  const isOnlyTheme = req.body && Object.keys(req.body).length > 0 && Object.keys(req.body).every(k => k === "siteTheme" || k === "customThemes");
+  return requireAdminPage(isOnlyTheme ? "theme" : "settings")(req, res, next);
+}, async (req, res) => {
   const actor = await getAdminActorSnapshot(req.user);
   const hasEnableCurrentLocation = req.body?.enableCurrentLocation !== undefined;
   const rawGst = Number(req.body?.gstPercent);
