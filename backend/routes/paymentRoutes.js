@@ -12,7 +12,13 @@ const { paymentRateLimiter, honeypotMiddleware } = require("../utils/spamFilter"
 const router = express.Router();
 const MAX_CHARGE = Number(process.env.PAYMENT_MAX_CHARGE_AMOUNT || 500000); // 5 Lakhs max
 
-const protectIfOrderId = (req, res, next) => (req.body?.orderId ? protect(req, res, next) : next());
+const protectIfOrderId = (req, res, next) => {
+  const authHeader = req.headers?.authorization;
+  if (req.body?.orderId || (authHeader && authHeader.startsWith("Bearer "))) {
+    return protect(req, res, next);
+  }
+  return next();
+};
 
 router.post("/create-order", paymentRateLimiter, honeypotMiddleware, protectIfOrderId, async (req, res) => {
   try {

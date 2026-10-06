@@ -212,8 +212,9 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
   app.use((error, req, res, next) => {
     console.error("Unhandled request error:", error?.stack || error?.message || error);
     if (res.headersSent) return next(error);
-    return res.status(error?.status || 500).json({
-      message: error?.message || "Internal server error"
+    const status = Number(error?.status || error?.statusCode || 500);
+    return res.status(status >= 100 && status < 600 ? status : 500).json({
+      message: status >= 500 ? "Internal server error" : (error?.message || "An error occurred")
     });
   });
 

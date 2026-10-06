@@ -265,12 +265,11 @@ function GuestBuy() {
             product: product._id,
             price: unitPrice,
             quantity: buyQuantity,
-            currency: displayCurrency,
-            selectedMarketCode
+            currency: displayCurrency
           }
         ],
         shipping: shippingInfo,
-        couponCode: appliedCoupon?.code || "",
+        couponCode: "",
         honey_pot_field: honeyPot
       });
 

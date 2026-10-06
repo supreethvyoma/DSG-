@@ -610,7 +610,6 @@ function MyLibrary() {
                   src={activeBlobUrl}
                   title="Digital Sanskrit Reader"
                   onContextMenu={(e) => e.preventDefault()}
-                  sandbox="allow-scripts allow-popups allow-forms"
                   style={{
                     width: "100%",
                     height: "100%",

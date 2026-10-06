@@ -246,6 +246,14 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    stockIssue: {
+      type: Boolean,
+      default: false
+    },
+    stockIssueDetails: {
+      type: [String],
+      default: []
+    },
     fxRateToInr: {
       type: Number,
       default: null

@@ -1908,7 +1908,7 @@ const STREAM_OK_TYPES = [
   /^application\/pdf\b/,
   /^video\//,
   /^audio\//,
-  /^image\//,
+  /^image\/(png|jpe?g|gif|webp|avif)\b/,
   /^application\/epub\+zip\b/,
   /^application\/octet-stream\b/
 ];

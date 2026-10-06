@@ -748,7 +748,7 @@ function Checkout() {
       const { data } = await axios.post(
         "/api/payment/create-order",
         {
-          items: items.map((item) => ({
+          items: cartItems.map((item) => ({
             product: item.product || item._id,
             price: item.price,
             quantity: item.quantity,
@@ -756,7 +756,7 @@ function Checkout() {
             selectedMarketCode: item.selectedMarketCode
           })),
           shipping: selected,
-          couponCode: appliedCoupon?.code || "",
+          couponCode: couponCode || "",
           honey_pot_field: honeyPot
         },
         token ? { headers: { Authorization: `Bearer ${token}` } } : {}
