@@ -64,8 +64,7 @@ router.post("/create-order", paymentRateLimiter, honeypotMiddleware, protectIfOr
       amount = totals.chargeAmount || totals.totalInInr || totals.total;
       currency = totals.chargeCurrency || SETTLEMENT_CURRENCY;
     } else {
-      amount = Number(req.body?.amount);
-      currency = String(req.body?.currency || SETTLEMENT_CURRENCY).toUpperCase();
+      return res.status(400).json({ message: "Order items or order reference required to initiate payment." });
     }
 
     if (currency !== SETTLEMENT_CURRENCY) {

@@ -446,7 +446,11 @@ router.post("/", protect, orderRateLimiter, honeypotMiddleware, async (req, res)
     });
 
     if (rawPaymentStatus === "Paid") {
-      await reserveStockForOrder(order._id);
+      const stockRes = await reserveStockForOrder(order._id);
+      if (stockRes && !stockRes.ok) {
+        console.warn(`[Order] Oversold warning for order ${order._id}:`, stockRes.outOfStock);
+        await Order.updateOne({ _id: order._id }, { $set: { stockIssue: true, stockIssueDetails: stockRes.outOfStock } });
+      }
       if (totals.appliedCouponCode) {
         const claimed = await claimCoupon({ code: totals.appliedCouponCode, userId: req.user });
         if (claimed) {
@@ -1253,7 +1257,11 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   }
 
   if (rawPaymentStatus === "Paid") {
-    await reserveStockForOrder(updated._id);
+    const stockRes = await reserveStockForOrder(updated._id);
+    if (stockRes && !stockRes.ok) {
+      console.warn(`[Order] Oversold warning for order ${updated._id}:`, stockRes.outOfStock);
+      await Order.updateOne({ _id: updated._id }, { $set: { stockIssue: true, stockIssueDetails: stockRes.outOfStock } });
+    }
     await issueGiftPassesForOrder(updated._id);
   }
 
@@ -1541,7 +1549,15 @@ router.get("/my", protect, async (req, res) => {
       .populate("product")
       .lean();
 
+    const redeemedProductMapByOrder = new Map();
     if (redeemedPasses.length > 0) {
+      redeemedPasses.forEach((gp) => {
+        const oId = String(gp.order);
+        if (!redeemedProductMapByOrder.has(oId)) {
+          redeemedProductMapByOrder.set(oId, new Set());
+        }
+        redeemedProductMapByOrder.get(oId).add(String(gp.product?._id || gp.product));
+      });
       const redeemedOrderIds = redeemedPasses.map((gp) => String(gp.order));
       const existingOrderIds = new Set(orders.map((o) => String(o._id)));
       const missingOrderIds = redeemedOrderIds.filter((id) => !existingOrderIds.has(id));
@@ -1633,7 +1649,11 @@ router.get("/my", protect, async (req, res) => {
       });
     }
 
-    const serializedOrders = orders.map((o) => serializeOrderForOwner(o, req.user));
+    const serializedOrders = orders.map((o) => {
+      const oId = String(o._id);
+      const redeemedProductIds = redeemedProductMapByOrder.get(oId) || null;
+      return serializeOrderForOwner(o, req.user, { redeemedProductIds });
+    });
     res.json(serializedOrders);
   } catch (err) {
     console.error("Failed to load user orders:", err);
@@ -1823,7 +1843,11 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
     }
 
     if (rawPaymentStatus === "Paid") {
-      await reserveStockForOrder(order._id);
+      const stockRes = await reserveStockForOrder(order._id);
+      if (stockRes && !stockRes.ok) {
+        console.warn(`[Order] Direct-buy oversold warning for order ${order._id}:`, stockRes.outOfStock);
+        await Order.updateOne({ _id: order._id }, { $set: { stockIssue: true, stockIssueDetails: stockRes.outOfStock } });
+      }
       if (calc.appliedCouponCode) {
         try {
           const claimed = await claimCoupon({ code: calc.appliedCouponCode, userId: targetUser._id });
@@ -1885,8 +1909,6 @@ const STREAM_OK_TYPES = [
   /^video\//,
   /^audio\//,
   /^image\//,
-  /^text\/html\b/,
-  /^application\/xhtml\+xml\b/,
   /^application\/epub\+zip\b/,
   /^application\/octet-stream\b/
 ];
@@ -2068,6 +2090,7 @@ router.get("/digital-stream/:orderId/:itemId", authStream, async (req, res) => {
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
+      "Content-Security-Policy": "sandbox",
       "Content-Disposition": "inline"
     });
 

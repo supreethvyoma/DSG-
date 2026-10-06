@@ -23,7 +23,7 @@ function stripDigitalFields(item) {
   return out;
 }
 
-function serializeOrderForOwner(order, viewerUserId) {
+function serializeOrderForOwner(order, viewerUserId, options = {}) {
   if (!order) return null;
   const plain = typeof order?.toObject === "function" ? order.toObject() : { ...order };
   const isPaid = hasDigitalAccess(plain);
@@ -42,8 +42,14 @@ function serializeOrderForOwner(order, viewerUserId) {
     delete plain.totalInInr;
     delete plain.fxRateToInr;
 
+    const redeemedSet = options.redeemedProductIds
+      ? new Set(Array.from(options.redeemedProductIds).map(String))
+      : null;
+
     plain.items = (plain.items || []).map((it) => {
-      const allowed = hasItemDigitalAccess(plain, it);
+      const pId = String(it.product || it._id || it.id || "");
+      const isRedeemedByViewer = redeemedSet ? redeemedSet.has(pId) : Boolean(plain.isRedeemedGift);
+      const allowed = isRedeemedByViewer && hasItemDigitalAccess(plain, it);
       return allowed
         ? { ...it, digitalAccess: true }
         : { ...stripDigitalFields(it), digitalAccess: false };
