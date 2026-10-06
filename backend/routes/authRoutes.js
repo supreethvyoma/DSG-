@@ -408,7 +408,7 @@ router.post("/register", registerLimiter, honeypotMiddleware, turnstileMiddlewar
     const user = await User.create({ name, email, password: hashedPassword, phone: cleanPhone || phone });
 
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, tokenVersion: Number(user.tokenVersion || 0) },
       process.env.JWT_SECRET,
       { expiresIn: getTokenExpiry(rememberMe === true) }
     );
@@ -460,7 +460,7 @@ router.post("/login", authLimiter, honeypotMiddleware, turnstileMiddleware, asyn
 
     if (user && await bcrypt.compare(password, user.password)) {
       const token = jwt.sign(
-        { id: user._id },
+        { id: user._id, tokenVersion: Number(user.tokenVersion || 0) },
         process.env.JWT_SECRET,
         { expiresIn: getTokenExpiry(rememberMe === true) }
       );
@@ -780,12 +780,13 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
     const totalTimeSpentSec = timeAgg.length > 0 ? (timeAgg[0].totalSec || 0) : 0;
 
     // 2. Build filter query for user listing
-    const query = { isDeleted: { $ne: true } };
+    const escapeRegex = (str) => String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     if (search) {
+      const safeSearch = escapeRegex(search);
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } }
+        { name: { $regex: safeSearch, $options: "i" } },
+        { email: { $regex: safeSearch, $options: "i" } }
       ];
     }
 
@@ -1034,17 +1035,26 @@ router.put("/profile", protect, async (req, res) => {
     }
 
     if (password) {
+      const currentPassword = req.body.currentPassword;
+      if (!currentPassword) {
+        return res.status(400).json({ message: "Current password is required to set a new password." });
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Current password is incorrect." });
+      }
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         return res.status(400).json({ message: passwordValidation.message });
       }
       user.password = await bcrypt.hash(password, 12);
+      user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     }
 
     await user.save();
 
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, tokenVersion: Number(user.tokenVersion || 0) },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
@@ -1075,23 +1085,37 @@ router.post("/google", async (req, res) => {
 
     let email = "";
     let name = "";
+    let googleSub = "";
 
     // Check for dev/testing simulation token (only in non-production)
     if (process.env.NODE_ENV !== "production" && idToken.startsWith("mock-google-token-")) {
       email = "mock.google.user@example.com";
       name = "Demo Google User";
+      googleSub = "mock-google-sub";
     } else {
+      const expectedClientId = String(process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || "").trim();
+      if (process.env.NODE_ENV === "production" && !expectedClientId) {
+        return res.status(503).json({ message: "Google sign-in is not configured." });
+      }
+
       const tokenInfoUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`;
-      const googleRes = await axios.get(tokenInfoUrl);
+      const googleRes = await axios.get(tokenInfoUrl, { timeout: 5000 });
       
       const payload = googleRes.data;
       if (!payload || !payload.email) {
         return res.status(400).json({ message: "Invalid Google token payload." });
       }
 
-      const expectedClientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
       if (expectedClientId && payload.aud !== expectedClientId) {
         return res.status(401).json({ message: "Google token audience mismatch." });
+      }
+
+      if (payload.iss && !["accounts.google.com", "https://accounts.google.com"].includes(payload.iss)) {
+        return res.status(401).json({ message: "Google token issuer mismatch." });
+      }
+
+      if (payload.exp && Number(payload.exp) * 1000 <= Date.now()) {
+        return res.status(401).json({ message: "Google token expired." });
       }
 
       if (payload.email_verified === false || payload.email_verified === "false") {
@@ -1100,6 +1124,7 @@ router.post("/google", async (req, res) => {
 
       email = String(payload.email).trim().toLowerCase();
       name = String(payload.name || payload.given_name || "Google User").trim();
+      googleSub = String(payload.sub || "").trim();
     }
 
     if (!isValidEmail(email)) {
@@ -1107,18 +1132,34 @@ router.post("/google", async (req, res) => {
     }
 
     let user = await User.findOne({ email });
-    if (!user) {
+    if (user) {
+      if (user.isDeleted || user.isBlocked) {
+        return res.status(403).json({ message: "This account is deactivated or blocked." });
+      }
+      if (user.googleSub && googleSub && user.googleSub !== googleSub) {
+        return res.status(401).json({ message: "Google account does not match this user." });
+      }
+      if (!user.googleSub && googleSub) {
+        if (user.isAdmin) {
+          return res.status(403).json({ message: "Admin accounts must sign in with email and password." });
+        }
+        user.googleSub = googleSub;
+        await user.save();
+      }
+    } else {
       const randomPassword = crypto.randomBytes(32).toString("hex");
       const hashedPassword = await bcrypt.hash(randomPassword, 12);
       user = await User.create({
         name,
         email,
-        password: hashedPassword
+        password: hashedPassword,
+        googleSub: googleSub || undefined,
+        hasLocalPassword: false
       });
     }
 
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, tokenVersion: Number(user.tokenVersion || 0) },
       process.env.JWT_SECRET,
       { expiresIn: getTokenExpiry(rememberMe === true) }
     );

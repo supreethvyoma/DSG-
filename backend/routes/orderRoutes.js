@@ -560,24 +560,27 @@ router.get("/", protect, admin, async (req, res) => {
     const fromDateTime = req.query.fromDateTime;
     const toDateTime = req.query.toDateTime;
 
+    const escapeRegex = (str) => String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
     // 1. Build base query (matching search text and date range)
     let baseQuery = {};
 
     if (searchText) {
+      const safeSearch = escapeRegex(searchText);
       // Find matching users first (for user.name and user.email search)
       const matchingUsers = await User.find({
         $or: [
-          { name: { $regex: searchText, $options: "i" } },
-          { email: { $regex: searchText, $options: "i" } }
+          { name: { $regex: safeSearch, $options: "i" } },
+          { email: { $regex: safeSearch, $options: "i" } }
         ]
       }).select("_id");
       const userIds = matchingUsers.map((u) => u._id);
 
       const conditions = [
-        { "billing.name": { $regex: searchText, $options: "i" } },
-        { "billing.email": { $regex: searchText, $options: "i" } },
-        { "shipping.name": { $regex: searchText, $options: "i" } },
-        { "items.name": { $regex: searchText, $options: "i" } }
+        { "billing.name": { $regex: safeSearch, $options: "i" } },
+        { "billing.email": { $regex: safeSearch, $options: "i" } },
+        { "shipping.name": { $regex: safeSearch, $options: "i" } },
+        { "items.name": { $regex: safeSearch, $options: "i" } }
       ];
 
       if (mongoose.Types.ObjectId.isValid(searchText)) {
@@ -1148,17 +1151,35 @@ router.put("/:id/payment-status", protect, async (req, res) => {
   const razorpayPaymentId = String(req.body?.razorpayPaymentId || "").trim();
   const razorpaySignature = String(req.body?.razorpaySignature || req.body?.razorpay_signature || "").trim();
 
+  let verifiedPayment = null;
   if (rawPaymentStatus === "Paid") {
     if (!isAdmin) {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        return res.status(400).json({ message: "Payment reference is required." });
+      }
+      if (await Order.exists({ _id: { $ne: order._id }, "paymentMeta.razorpayPaymentId": razorpayPaymentId })) {
+        return res.status(409).json({ message: "Payment already used" });
+      }
+
+      const ic = resolveItemsCurrency(order.items);
+      const s = await StoreSettings.findOne().select("currencyConversionRates").lean();
+      const charge = getSettlementCharge({
+        total: order.total,
+        orderCurrency: ic.ok ? ic.currency : normalizeCurrencyCode(order.currencyDisplay?.currency, "INR"),
+        rates: s?.currencyConversionRates || {}
+      });
+
       const v = await verifyRazorpayPaymentForOrder({
-        order,
         razorpayOrderId,
         razorpayPaymentId,
-        razorpaySignature
+        razorpaySignature,
+        expectedAmount: charge.amount,
+        expectedCurrency: charge.currency
       });
-      if (!v.isValid) {
-        return sendPaymentVerificationError(res, v);
+      if (!v.ok) {
+        return sendPaymentVerificationError(res, v, razorpayPaymentId);
       }
+      verifiedPayment = v.payment;
     }
   }
 
@@ -1170,7 +1191,9 @@ router.put("/:id/payment-status", protect, async (req, res) => {
       razorpayOrderId: razorpayOrderId || order.paymentMeta?.razorpayOrderId || "",
       razorpayPaymentId: razorpayPaymentId || order.paymentMeta?.razorpayPaymentId || "",
       razorpaySignature: razorpaySignature || order.paymentMeta?.razorpaySignature || "",
-      paidAt: order.paymentMeta?.paidAt || new Date()
+      paidAt: order.paymentMeta?.paidAt || new Date(),
+      paidAmountMinor: verifiedPayment ? Number(verifiedPayment.amount) : order.paymentMeta?.paidAmountMinor || null,
+      paidCurrency: verifiedPayment ? String(verifiedPayment.currency).toUpperCase() : order.paymentMeta?.paidCurrency || ""
     };
 
     const isDigitalOnly = Array.isArray(order.items) && order.items.length > 0 && order.items.every((item) =>
@@ -1665,28 +1688,29 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
     const razorpayPaymentId = String(req.body?.razorpayPaymentId || "").trim();
     const razorpaySignature = String(req.body?.razorpaySignature || req.body?.razorpay_signature || "").trim();
 
+    let verifiedPayment = null;
     if (rawPaymentStatus === "Paid") {
-      const paymentOrderObj = {
-        currencyDisplay: calc.currencyDisplay,
-        totalInInr: calc.totalInInr,
-        total: calc.total,
-        paymentMeta: {
-          expectedAmountMinor: calc.expectedAmountMinor,
-          settlementAmountMinor: calc.settlementAmountMinor,
-          settlementCurrency: "INR"
-        }
-      };
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        return res.status(400).json({ message: "Payment reference is required to place paid order." });
+      }
+
+      if (await Order.exists({ "paymentMeta.razorpayPaymentId": razorpayPaymentId })) {
+        return res.status(409).json({ message: "Payment already used" });
+      }
 
       const v = await verifyRazorpayPaymentForOrder({
-        order: paymentOrderObj,
         razorpayOrderId,
         razorpayPaymentId,
-        razorpaySignature
+        razorpaySignature,
+        expectedAmount: calc.chargeAmount || calc.totalInInr || calc.total,
+        expectedCurrency: calc.chargeCurrency || "INR",
+        toleranceMinor: 100
       });
 
-      if (!v.isValid) {
-        return sendPaymentVerificationError(res, v);
+      if (!v.ok) {
+        return sendPaymentVerificationError(res, v, razorpayPaymentId);
       }
+      verifiedPayment = v.payment;
     }
 
     const isDigitalOnlyOrder = calc.items.length > 0 && calc.items.every((item) =>
@@ -1735,12 +1759,14 @@ router.post("/direct-buy", orderRateLimiter, honeypotMiddleware, async (req, res
       igstAmount: calc.igstAmount,
       currencyDisplay: calc.currencyDisplay,
       paymentMeta: {
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
+        razorpayOrderId: verifiedPayment ? razorpayOrderId : "",
+        razorpayPaymentId: verifiedPayment ? razorpayPaymentId : "",
+        razorpaySignature: verifiedPayment ? razorpaySignature : "",
         expectedAmountMinor: calc.expectedAmountMinor,
         settlementAmountMinor: calc.settlementAmountMinor,
         settlementCurrency: "INR",
+        paidAmountMinor: verifiedPayment ? Number(verifiedPayment.amount) : null,
+        paidCurrency: verifiedPayment ? String(verifiedPayment.currency).toUpperCase() : "",
         paidAt: rawPaymentStatus === "Paid" ? new Date() : null
       }
     };
