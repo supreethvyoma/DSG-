@@ -15,6 +15,15 @@ const SITE_NAME = "Digital Sanskrit Guru";
 const SITE_COLOR = "#1a1a2e";
 const ACCENT_COLOR = "#e94560";
 
+const escapeHtml = (s) =>
+  String(s || "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+
 // ── Transporter ──────────────────────────────────────────────────────────────
 
 let transporter = null;
@@ -713,6 +722,14 @@ async function sendGiftPassEmail({ to, buyerName, giftCode, productName, orderId
 
 async function sendBulkEnquiryEmail({ name, email, phone, quantity, productName, institution, message }) {
   const adminEmail = process.env.ADMIN_EMAIL || "admin@digitalsanskritguru.com";
+  const safeName = escapeHtml(name);
+  const safeEmail = escapeHtml(email);
+  const safePhone = escapeHtml(phone || "Not Provided");
+  const safeQuantity = escapeHtml(quantity);
+  const safeProductName = escapeHtml(productName);
+  const safeInstitution = escapeHtml(institution || "Not Provided");
+  const safeMessage = escapeHtml(message || "No message provided.");
+
   const html = htmlWrapper(
     "New Bulk Purchase Enquiry",
     `
@@ -721,34 +738,34 @@ async function sendBulkEnquiryEmail({ name, email, phone, quantity, productName,
     <table style="width: 100%; border-collapse: collapse; margin-top: 16px; margin-bottom: 24px;">
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; width: 180px; background-color: #f8fafc;">Product Name</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155; font-weight: 600;">${productName}</td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155; font-weight: 600;">${safeProductName}</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Quantity Requested</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155; font-weight: 600;">${quantity} units</td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155; font-weight: 600;">${safeQuantity} units</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Customer Name</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${name}</td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${safeName}</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Customer Email</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;"><a href="mailto:${email}">${email}</a></td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;"><a href="mailto:${safeEmail}">${safeEmail}</a></td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Phone Number</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${phone || "Not Provided"}</td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${safePhone}</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Institution / School</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${institution || "Not Provided"}</td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${safeInstitution}</td>
       </tr>
       <tr>
         <td style="padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;">Customer Message</td>
-        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${message || "No message provided."}</td>
+        <td style="padding: 10px; border: 1px solid #e2e8f0; color: #334155;">${safeMessage}</td>
       </tr>
     </table>
-    <p>Please reply directly to the customer at <a href="mailto:${email}">${email}</a> to send the wholesale pricing and shipping details.</p>
+    <p>Please reply directly to the customer at <a href="mailto:${safeEmail}">${safeEmail}</a> to send the wholesale pricing and shipping details.</p>
     `
   );
 

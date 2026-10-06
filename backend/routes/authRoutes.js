@@ -781,27 +781,37 @@ router.get("/admin/users-metrics", protect, admin, async (req, res) => {
 
     // 2. Build filter query for user listing
     const escapeRegex = (str) => String(str || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const query = { isDeleted: { $ne: true } };
+    const conditions = [];
 
     if (search) {
       const safeSearch = escapeRegex(search);
-      query.$or = [
-        { name: { $regex: safeSearch, $options: "i" } },
-        { email: { $regex: safeSearch, $options: "i" } }
-      ];
+      conditions.push({
+        $or: [
+          { name: { $regex: safeSearch, $options: "i" } },
+          { email: { $regex: safeSearch, $options: "i" } }
+        ]
+      });
     }
 
     if (statusFilter === "Online") {
       query.lastActiveAt = { $gte: activeThresholdDate };
     } else if (statusFilter === "Offline") {
-      query.$or = [
-        { lastActiveAt: { $lt: activeThresholdDate } },
-        { lastActiveAt: { $exists: false } },
-        { lastActiveAt: null }
-      ];
+      conditions.push({
+        $or: [
+          { lastActiveAt: { $lt: activeThresholdDate } },
+          { lastActiveAt: { $exists: false } },
+          { lastActiveAt: null }
+        ]
+      });
     } else if (statusFilter === "Admin") {
       query.isAdmin = true;
     } else if (statusFilter === "Customer") {
       query.isAdmin = { $ne: true };
+    }
+
+    if (conditions.length > 0) {
+      query.$and = conditions;
     }
 
     const skip = (page - 1) * limit;
@@ -1035,19 +1045,22 @@ router.put("/profile", protect, async (req, res) => {
     }
 
     if (password) {
-      const currentPassword = req.body.currentPassword;
-      if (!currentPassword) {
-        return res.status(400).json({ message: "Current password is required to set a new password." });
-      }
-      const isMatch = await bcrypt.compare(currentPassword, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ message: "Current password is incorrect." });
+      if (user.hasLocalPassword !== false) {
+        const currentPassword = req.body.currentPassword;
+        if (!currentPassword) {
+          return res.status(400).json({ message: "Current password is required to set a new password." });
+        }
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+          return res.status(400).json({ message: "Current password is incorrect." });
+        }
       }
       const passwordValidation = validatePassword(password);
       if (!passwordValidation.isValid) {
         return res.status(400).json({ message: passwordValidation.message });
       }
       user.password = await bcrypt.hash(password, 12);
+      user.hasLocalPassword = true;
       user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     }
 

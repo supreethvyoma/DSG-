@@ -100,9 +100,9 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
       : undefined
   ));
 
-  // 2. Global JSON body limit: increased to 25mb to support Base64 product image uploads
-  app.use(express.json({ limit: "25mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+  // 2. Global JSON body limit: 1mb default (large product upload routes use largeJson)
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.use(vulnerabilityGuard);
   app.use("/api", globalApiLimiter);
 
@@ -119,15 +119,8 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
     });
   });
 
-  // ── Cache stats endpoint (admin only reference) ─────────────────────────────
-  app.get("/api/cache/stats", (req, res) => {
-    try {
-      const { appCache } = require("./utils/cache");
-      res.json({ keys: appCache.keys().length, stats: appCache.getStats() });
-    } catch {
-      res.json({ keys: 0 });
-    }
-  });
+  const protect = require("./middleware/authMiddleware");
+  const admin = require("./middleware/adminMiddleware");
 
   const requireDatabase = (req, res, next) => {
     if (!dbConnected) {
@@ -137,6 +130,16 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
     }
     next();
   };
+
+  // ── Cache stats endpoint (admin only reference) ─────────────────────────────
+  app.get("/api/cache/stats", requireDatabase, protect, admin, admin.requireSuperAdmin, (req, res) => {
+    try {
+      const { appCache } = require("./utils/cache");
+      res.json({ keys: appCache.keys().length, stats: appCache.getStats() });
+    } catch {
+      res.json({ keys: 0 });
+    }
+  });
 
   // ── Routes ──────────────────────────────────────────────────────────────────
   const { router: giftRoutes } = require("./routes/giftRoutes");
@@ -245,7 +248,9 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
   });
 
   process.on("uncaughtException", (error) => {
-    console.error("Uncaught exception:", error?.stack || error?.message || error);
+    console.error("Uncaught exception — exiting:", error?.stack || error?.message || error);
+    server.close(() => process.exit(1));
+    setTimeout(() => process.exit(1), 10000).unref();
   });
 
   async function shutdown(signal) {
