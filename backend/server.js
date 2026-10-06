@@ -100,24 +100,35 @@ if (IS_PRODUCTION && cluster.isPrimary && maxWorkers > 1) {
       : undefined
   ));
 
-  // 2. Smart JSON body limits: 25mb for admin media/banner upload routes, 1mb default everywhere else
+  // 2. Smart JSON body limits: 25mb for authenticated admin media/banner upload routes, 1mb default everywhere else
   const defaultJson = express.json({ limit: "1mb" });
   const largeJson = express.json({ limit: "25mb" });
   const defaultUrlencoded = express.urlencoded({ extended: true, limit: "1mb" });
   const largeUrlencoded = express.urlencoded({ extended: true, limit: "25mb" });
 
   app.use((req, res, next) => {
-    const p = String(req.path || req.originalUrl || "").toLowerCase();
-    if (
-      p.includes("/api/products") ||
-      p.includes("/api/settings") ||
-      p.includes("/api/marketing")
-    ) {
+    const p = String(req.path || "").toLowerCase();
+    const isWriteMethod = req.method === "POST" || req.method === "PUT" || req.method === "PATCH";
+    const hasAuth = typeof req.headers.authorization === "string" && req.headers.authorization.startsWith("Bearer ");
+    const isPublicSubpath = p.endsWith("/reviews") || p.endsWith("/bulk-enquiry") || p.includes("/reviews") || p.includes("/bulk-enquiry");
+
+    const isLargeAdminRoute =
+      isWriteMethod &&
+      hasAuth &&
+      !isPublicSubpath &&
+      (
+        p.startsWith("/api/products") ||
+        p.startsWith("/api/settings") ||
+        p.startsWith("/api/marketing")
+      );
+
+    if (isLargeAdminRoute) {
       return largeJson(req, res, (err) => {
         if (err) return next(err);
         largeUrlencoded(req, res, next);
       });
     }
+
     return defaultJson(req, res, (err) => {
       if (err) return next(err);
       defaultUrlencoded(req, res, next);

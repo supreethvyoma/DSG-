@@ -24,6 +24,8 @@ const escapeHtml = (s) =>
     "'": "&#39;"
   }[c]));
 
+const cleanSubject = (s) => String(s || "").replace(/[\r\n]+/g, " ").trim();
+
 // ── Transporter ──────────────────────────────────────────────────────────────
 
 let transporter = null;
@@ -571,7 +573,7 @@ async function sendOrderStatusUpdate(order, user, newStatus) {
 
   return sendEmail({
     to,
-    subject: `${info.emoji} Order ${safeStatus} — ${SITE_NAME}`,
+    subject: `${info.emoji} Order ${cleanSubject(newStatus)} — ${SITE_NAME}`,
     html,
     type: "status-update",
     orderId: String(order._id || ""),
@@ -615,7 +617,7 @@ async function sendRefundStatusUpdate(order, user, refundStatus) {
 
   return sendEmail({
     to,
-    subject: `${info.emoji} Refund Update: ${safeRefundStatus} — Order #${safeOrderId}`,
+    subject: `${info.emoji} Refund Update: ${cleanSubject(refundStatus)} — Order #${safeOrderId}`,
     html,
     type: "refund-update",
     orderId: String(order._id || "")
@@ -734,7 +736,7 @@ async function sendGiftPassEmail({ to, buyerName, giftCode, productName, orderId
 
   return sendEmail({
     to,
-    subject: `🎁 You received a gift: ${safeProductName} — ${SITE_NAME}`,
+    subject: `🎁 You received a gift: ${cleanSubject(productName)} — ${SITE_NAME}`,
     html,
     type: "gift-pass",
     orderId
@@ -792,7 +794,7 @@ async function sendBulkEnquiryEmail({ name, email, phone, quantity, productName,
 
   return sendEmail({
     to: adminEmail,
-    subject: `✉️ New Wholesale Bulk Enquiry for ${safeProductName} (${safeQuantity} units)`,
+    subject: `✉️ New Wholesale Bulk Enquiry for ${cleanSubject(productName)} (${cleanSubject(quantity)} units)`,
     html,
     type: "bulk-enquiry"
   });
@@ -893,7 +895,7 @@ async function sendWishlistReminderEmail(user, wishlistItems = []) {
 
   return sendEmail({
     to,
-    subject: `🎁 Items in your wishlist are waiting for you, ${userName}!`,
+    subject: `🎁 Items in your wishlist are waiting for you, ${cleanSubject(user?.name || "Sanskrit Enthusiast")}!`,
     html,
     type: "wishlist-reminder"
   });
